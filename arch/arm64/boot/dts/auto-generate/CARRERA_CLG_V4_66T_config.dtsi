@@ -1,0 +1,82 @@
+
+/**
+ * Huawei Ltd.
+ * PhosphorV660
+ */
+
+
+/include/ "fastboot.dtsi"
+/include/ "CARRERA_CLG_V3_66T_config.dtsi"
+/include/ "CARRERA_CLG_V4_66T_pin.dtsi"
+/include/ "CARRERA_CLG_V4_66T_hi6402_pin.dtsi"
+/include/ "CARRERA_CLG_V4_66T_modem_pin.dtsi"
+///include/ "CARRERA_CLG_V4_66T_charger.dtsi"
+///include/ "CARRERA_CLG_V4_66T_pmic.dtsi"
+///include/ "CARRERA_CLG_V4_66T_gpio_logic.dtsi"
+
+/ {
+	hisi,boardid = <1 4 9 3 >;
+	hisi,boardname = "CARRERA_CLG_V4_66T";
+	hisi,modem_id = <0x3EBED000>;
+	antenna_fpga{
+		compatible = "antenna_fpga";
+		antenna_fpga,pre-image-filename = "CARRERA_CLG_V4.bin";
+		status = "ok";
+	};
+	amba {
+		i2c1: i2c@FDF0A000 {
+			pn547_nfc:nfc@28 {
+				compatible = "hisilicon,pn547_nfc";
+				nfc_nxp_name = "libnfc_nxp_carrera.conf";
+				detect_se = "false";
+				conf_for_factory = "true";
+				status = "ok";
+			};
+			ti-drv2605@5a {
+				compatible = "ti,drv2605";
+				reg = <0x5a>;
+				ti,label = "vibrator";
+				gpio-enable = <&gpio31 1 0>;
+				gpio-pwm = <&gpio12 2 0>;
+				ti,max-timeout-ms = <10000>;
+				status = "ok";
+			};
+		};
+	};
+	bcm_wifi {
+		wlan_enable,gpio_vio = <&gpio28 1 0>;
+		ext_type;
+	};
+	bluetooth_power:bluetooth_power{
+		huawei,vio_en = <225>;
+	};
+	touchscreen {
+		synaptics: touchscreen@70 {
+			pinctrl-0 = <&gpio020_cfg_func &gpio200_cfg_func>;
+			pinctrl-1 = <&gpio020_cfg_idle &gpio200_cfg_idle>;
+			reset_gpio = <&gpio2 4 0>;
+		};
+		hideep: touchscreen@6c {
+			pinctrl-0 = <&gpio020_cfg_func &gpio200_cfg_func>;
+			pinctrl-1 = <&gpio020_cfg_idle &gpio200_cfg_idle>;
+			reset_gpio = <&gpio2 4 0>;
+		};
+	};
+	hisi_vibrator@fff34000 {
+		status = "disable";
+	};
+	sensorhub_ext_config:sensorhub_ex{
+		txc_pa224_exist = "yes";
+	};
+	devcheck: devcheck {
+		vibrator_lra = <1>;
+		l_sensor = <1>;
+		ps_sensor = <1>;
+		status = "ok";
+	};
+	immersion {
+		compatible = "immersion,tspdrv";
+		immersion_exist = "yes";
+	};
+};
+

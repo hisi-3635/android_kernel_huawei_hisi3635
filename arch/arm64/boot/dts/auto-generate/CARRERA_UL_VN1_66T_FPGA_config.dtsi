@@ -1,0 +1,22 @@
+
+/**
+ * Huawei Ltd.
+ * PhosphorV660
+ */
+
+
+/include/ "fastboot.dtsi"
+/include/ "CARRERA_UL_VN1_66T_config.dtsi"
+/include/ "CARRERA_UL_VN1_66T_FPGA_pin.dtsi"
+/include/ "CARRERA_UL_VN1_66T_FPGA_hi6402_pin.dtsi"
+/include/ "CARRERA_UL_VN1_66T_FPGA_modem_pin.dtsi"
+///include/ "CARRERA_UL_VN1_66T_FPGA_charger.dtsi"
+///include/ "CARRERA_UL_VN1_66T_FPGA_pmic.dtsi"
+///include/ "CARRERA_UL_VN1_66T_FPGA_gpio_logic.dtsi"
+
+/ {
+	hisi,boardid = <1 4 7 5 >;
+	hisi,boardname = "CARRERA_UL_VN1_66T_FPGA";
+	hisi,config_profile = "high";
+};
+

@@ -1,0 +1,193 @@
+
+/**
+ * Huawei Ltd.
+ * PhosphorV660
+ */
+
+/dts-v1/;
+
+/include/ "fastboot.dtsi"
+/include/ "CARRERA_TUGL_V1_config.dtsi"
+/include/ "CARRERA_CLG_V1_pin.dtsi"
+/include/ "CARRERA_CLG_V1_hi6402_pin.dtsi"
+/include/ "CARRERA_CLG_V1_modem_pin.dtsi"
+///include/ "CARRERA_CLG_V1_charger.dtsi"
+///include/ "CARRERA_CLG_V1_pmic.dtsi"
+///include/ "CARRERA_CLG_V1_gpio_logic.dtsi"
+/include/ "huawei_ext_modem.dtsi"
+
+/ {
+	hisi,boardid = <1 4 9 0 >;
+	hisi,boardname = "CARRERA_CLG_V1";
+	hisi,modem_id = <0x3EBE8000>;
+
+	bcm_wifi {
+		wifi_nvram_name = "/vendor/firmware/nvram4334_hw_carrera_clg.txt";
+	};
+
+	amba {
+		serial5: uart@fdf05000 {
+			pinctrl-names = "default", "idle";
+			pinctrl-0 = <>;
+			pinctrl-1 = <>;
+			dmas;
+			dma-names;
+			//pinctrl-0 = <&gpio068_pmx_func &gpio069_pmx_func &gpio070_pmx_func &gpio068_cfg_func
+			//	     &gpio069_cfg_func &gpio070_cfg_func &gpio071_cfg_func>;
+			//pinctrl-1 = <&gpio068_pmx_idle &gpio069_pmx_idle &gpio070_pmx_idle &gpio068_cfg_idle
+			//	     &gpio069_cfg_idle &gpio070_cfg_idle &gpio071_cfg_idle>;
+			reset-controller-reg = <0x078 0x07c 0x080 15>;
+			status = "ok";
+		};
+
+		spi0:spi@fdf07000 {
+                        fingerprint: fingerprint@2 {
+                               fpc1020,moduleid_gpio = <226>;
+                        };
+                };
+
+		spi1: spi@fdf08000 {
+				status = "ok";
+				pinctrl-names = "default", "idle";
+				pinctrl-0 = <&gpio146_pmx_func &gpio147_pmx_func &gpio148_pmx_func &gpio149_pmx_func
+					     &gpio146_cfg_func &gpio147_cfg_func &gpio148_cfg_func &gpio149_cfg_func>;
+				pinctrl-1 = <&gpio146_pmx_idle &gpio147_pmx_idle &gpio148_pmx_idle &gpio149_pmx_idle
+					     &gpio146_cfg_idle &gpio147_cfg_idle &gpio148_cfg_idle &gpio149_cfg_idle>;
+
+				num-cs = <1>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+				cs-gpios = <&gpio18 5 0>;
+				spi_dev4: spi_dev4@4 {
+						compatible = "spi_dev4";
+						spi-max-frequency = <10000000>;
+						reg = <0>;
+						pl022,com-mode = <2>;
+						pl022,interface = <0>;
+						pl022,rx-level-trig = <3>;
+						pl022,tx-level-trig = <3>;
+						pl022,ctrl-len = <7>;
+						pl022,wait-state = <0>;
+						pl022,duplex = <0>;
+						pl022,slave-tx-disable = <0>;
+				};
+		};
+
+		i2c1: i2c@FDF0A000 {
+			huawei,lm3646@67{
+				compatible = "huawei,lm3646";
+				huawei,flash-name = "lm3646";
+				huawei,flash-pin = <72 156 155>;
+				/* 0 means gpio control, 1 means i2c control */
+				huawei,flash-ctrltype = <0>; /* gpio control */
+				pinctrl-0 = <
+					&gpio072_pmx_func
+					&gpio156_pmx_func
+					&gpio155_pmx_func
+					&gpio072_cfg_func
+					&gpio156_cfg_func
+					&gpio155_cfg_func
+				>;
+				pinctrl-1 = <
+					&gpio072_pmx_idle
+					&gpio156_pmx_idle
+					&gpio155_pmx_idle
+					&gpio072_cfg_idle
+					&gpio156_cfg_idle
+					&gpio155_cfg_idle
+				>;
+				status = "ok";
+			};
+
+			huawei,lm3646_front@68{
+				status = "disabled";
+			};
+		};
+	};
+
+	viacbp82d_power:viacbp82d_power {
+		via_reset_ind = <&gpio23 4 0>;
+		via_reset_ind_connect_to_codec = <0x0>;	        //reset_indication is connected to hi6402 codec?
+		status = "ok";
+	};
+	viacbp82d_cbp_spi:viacbp82d_cbp_spi {
+		status = "ok";
+	};
+	rnic_adapter:rnic_adapter {
+		status = "ok";
+	};
+	antenna_fpga{
+		compatible = "antenna_fpga";
+		antenna_fpga,gpio-cdone = <&gpio4 1 0>;
+		antenna_fpga,gpio-exception = <&gpio31 5 0>;
+		antenna_fpga,pre-image-filename = "CARRERA_CLG_V1.bin";
+		status = "ok";
+	};
+	sensorhub{
+		mag_sensor:compass{
+			mag1{
+				file_id=<4>;
+				softiron_parameter = <0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
+				status = "ok";
+			};
+		};
+	};
+	audio_hw_config {
+		product_name = "CARRERA_CLG";
+		modem_sio_master = "false";
+		status = "ok";
+	};
+
+	panel_lcd_samsung_S6E3FA3X01 {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		compatible = "hisilicon,mipi_samsung_S6E3FA3X01";
+		gpios = <&gpio4 5 0>, <&gpio3 3 0>, <&gpio15 4 0>, <&gpio31 0 0>, <&gpio5 1 0>;
+		lcdio-vcc-supply = <&lsw50>;
+		lcdanalog-vcc-supply = <&ldo17>;
+		pinctrl-names = "default", "idle";
+		pinctrl-0 = <&gpio036_pmx_func &gpio036_cfg_func &gpio037_cfg_func &gpio027_cfg_func &gpio124_cfg_func &gpio248_pinctrl_func &gpio041_cfg_func>;
+		pinctrl-1 = <&gpio036_pmx_idle &gpio036_cfg_idle &gpio037_cfg_idle &gpio027_cfg_idle &gpio124_cfg_idle &gpio248_pinctrl_idle &gpio041_cfg_idle>;
+		status = "disabled";
+	};
+
+	/* pmu led flash */
+	huawei,pmu_led {
+		compatible = "huawei,pmu_led";
+		huawei,flash-name = "pmu_led";
+		huawei,flash-index = <1>;
+		huawei,flash-type = <0>;
+		huawei,slave-address = <0x0>;
+		huawei,flash_led_num = <9>;
+		huawei,torch_led_num = <2>;
+		huawei,flash_led = <0x1 0x2 0x3 0x4 0x5 0x6 0x7 0x8 0x9>;
+		huawei,torch_led = <0x0 0x3>;
+		huawei,led_ctrl_flash = <0x13 0x00 0x75 0x0a 0xd0 0xc8 0x1b>;
+		huawei,led_ctrl_torch = <0x13 0x00 0x75 0x0a 0xd0 0x48 0x1b>;
+		huawei,flash-position = "front";
+		status = "ok";
+	};
+
+	/*
+		device check : the 0 means that it don't need to check;
+			the 1 means that it check at board check and running test;
+			the 2 means that it check at running test
+	*/
+	devcheck: devcheck {
+		fflash = <0>;
+		status = "ok";
+	};
+	amba {
+		i2c1: i2c@FDF0A000 {
+			pn547_nfc:nfc@28 {
+				nfc_card_num = <0x1>;
+				nfc_nxp_name = "libnfc_nxp_carrera_CLG_V3.conf";
+				nfc_brcm_conf_name = "libnfc_brcm_carrera.conf";
+				nfc_chip_type = "pn548";
+				detect_se = "true";
+				status = "ok";
+			};
+		};
+	};
+};
+

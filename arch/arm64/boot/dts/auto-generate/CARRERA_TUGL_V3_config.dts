@@ -1,0 +1,36 @@
+
+/**
+ * Huawei Ltd.
+ * PhosphorV660
+ */
+
+/dts-v1/;
+
+/include/ "fastboot.dtsi"
+/include/ "CARRERA_TUGL_V1_config.dtsi"
+/include/ "CARRERA_TUGL_V3_pin.dtsi"
+/include/ "CARRERA_TUGL_V3_hi6402_pin.dtsi"
+/include/ "CARRERA_TUGL_V3_modem_pin.dtsi"
+///include/ "CARRERA_TUGL_V3_charger.dtsi"
+///include/ "CARRERA_TUGL_V3_pmic.dtsi"
+///include/ "CARRERA_TUGL_V3_gpio_logic.dtsi"
+
+/ {
+	hisi,boardid = <1 4 8 1 >;
+	hisi,boardname = "CARRERA_TUGL_V3";
+	antenna_fpga{
+		compatible = "antenna_fpga";
+		antenna_fpga,pre-image-filename = "CARRERA-TULG-V3.bin";
+		status = "ok";
+	};
+	amba {
+		i2c1: i2c@FDF0A000 {
+			pn547_nfc:nfc@28 {
+				compatible = "hisilicon,pn547_nfc";
+				nfc_nxp_name = "libnfc_nxp_carrera_TUGL_V3.conf";
+				status = "ok";
+			};
+		};
+	};
+};
+

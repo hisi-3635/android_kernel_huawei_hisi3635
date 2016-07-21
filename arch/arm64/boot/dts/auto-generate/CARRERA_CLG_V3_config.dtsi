@@ -1,0 +1,66 @@
+
+/**
+ * Huawei Ltd.
+ * PhosphorV660
+ */
+
+
+/include/ "fastboot.dtsi"
+/include/ "CARRERA_CLG_V1_config.dtsi"
+/include/ "CARRERA_CLG_V3_pin.dtsi"
+/include/ "CARRERA_CLG_V3_hi6402_pin.dtsi"
+/include/ "CARRERA_CLG_V3_modem_pin.dtsi"
+///include/ "CARRERA_CLG_V3_charger.dtsi"
+///include/ "CARRERA_CLG_V3_pmic.dtsi"
+///include/ "CARRERA_CLG_V3_gpio_logic.dtsi"
+
+/ {
+	hisi,boardid = <1 4 9 1 >;
+	hisi,boardname = "CARRERA_CLG_V3";
+
+	antenna_fpga{
+		compatible = "antenna_fpga";
+		antenna_fpga,pre-image-filename = "CARRERA_CLG_V3.bin";
+		status = "ok";
+	};
+
+	amba {
+		i2c1: i2c@FDF0A000 {
+			huawei,lm3646@67{
+				compatible = "huawei,lm3646";
+				huawei,flash-name = "lm3646";
+				/* 999 means valid gpio for strobe&torch pin, compat driver */
+				/* first number means reset pin, can not be 999 */
+				huawei,flash-pin = <72 999 999>;
+				huawei,flash-ctrltype = <1>; //i2c control
+				pinctrl-0 = <
+					&gpio072_pmx_func
+					&gpio072_cfg_func
+				>;
+				pinctrl-1 = <
+					&gpio072_pmx_idle
+					&gpio072_cfg_idle
+				>;
+				status = "ok";
+			};
+
+			huawei,lm3646_front@68{
+				status = "ok";
+			};
+		};
+	};
+	huawei,pmu_led {
+		status = "disabled";
+	};
+
+	/*
+		device check : the 0 means that it don't need to check;
+			the 1 means that it check at board check and running test;
+			the 2 means that it check at running test
+	*/
+	devcheck: devcheck {
+		fflash = <1>;
+		status = "ok";
+	};
+};
+

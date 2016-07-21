@@ -1,0 +1,30 @@
+
+/**
+ * Huawei Ltd.
+ * PhosphorV660
+ */
+
+
+/include/ "fastboot.dtsi"
+/include/ "CARRERA_TUGL_V3_config.dtsi"
+/include/ "CARRERA_TUGL_V3_66T_pin.dtsi"
+/include/ "CARRERA_TUGL_V3_66T_hi6402_pin.dtsi"
+/include/ "CARRERA_TUGL_V3_66T_modem_pin.dtsi"
+///include/ "CARRERA_TUGL_V3_66T_charger.dtsi"
+///include/ "CARRERA_TUGL_V3_66T_pmic.dtsi"
+///include/ "CARRERA_TUGL_V3_66T_gpio_logic.dtsi"
+
+/ {
+	hisi,boardid = <1 4 7 2 >;
+	hisi,boardname = "CARRERA_TUGL_V3_66T";
+	amba {
+		i2c1: i2c@FDF0A000 {
+			pn547_nfc:nfc@28 {
+				nfc_card_num = <0x2>;
+				nfc_chip_type = "pn66t";
+				status = "ok";
+			};
+		};
+	};
+};
+
