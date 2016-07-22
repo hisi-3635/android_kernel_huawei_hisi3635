@@ -165,6 +165,7 @@ int altek6045_exec_cmd(const hwextisp_intf_t* i, hwextisp_config_data_t *data)
 			cam_err("%s kmalloc failed", __func__);
 			return -ENOMEM;;
 		}
+		memset(out_buf,0,out_len);
 	}
 
 	if(out_from_block) {
@@ -206,6 +207,7 @@ int altek6045_exec_cmd(const hwextisp_intf_t* i, hwextisp_config_data_t *data)
 			rc = -EFAULT;
 		}
 		kfree(out_buf);
+	    out_buf = NULL;
 	}
 	if(out_from_block) {
 		if(out_buf) {
@@ -238,7 +240,6 @@ static ssize_t altel6045_powerctrl_store(struct device *dev,
 
 	return count;
 }
-
 
 static struct device_attribute altel6045_powerctrl =
     __ATTR(power_ctrl, 0664, altel6045_powerctrl_show, altel6045_powerctrl_store);
@@ -284,7 +285,6 @@ static ssize_t altel6045_test_pipe_show(struct device_driver *drv,
 static ssize_t altel6045_test_pipe_store(struct device_driver *drv,
 								const char *buf, size_t count);
 static DRIVER_ATTR(test_pipe, 0664, altel6045_test_pipe_show, altel6045_test_pipe_store);
-
 
 static ssize_t altel6045_test_pipe_store(struct device_driver *drv,
 												  const char *buf, size_t count)

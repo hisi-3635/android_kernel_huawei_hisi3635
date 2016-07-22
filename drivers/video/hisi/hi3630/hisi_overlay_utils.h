@@ -23,6 +23,7 @@ extern uint32_t g_dss_module_base[DSS_CHN_MAX][MODULE_CHN_MAX];
 extern uint32_t g_dss_module_ovl_base[DSS_OVL_MAX][MODULE_OVL_MAX];
 extern uint32_t g_dss_module_eng_base[DSS_ENG_MAX][MODULE_ENG_MAX];
 
+extern int32_t g_enable_te_debug;
 
 void dumpDssOverlay(dss_overlay_t *ov_data);
 

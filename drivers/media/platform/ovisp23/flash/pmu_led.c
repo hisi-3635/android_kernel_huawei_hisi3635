@@ -67,6 +67,7 @@ struct pmu_led_private_data_t {
 	unsigned int led_ctrl_torch[LED_CTRL_MAX];
 	void __iomem *pmu_base;
 	struct regulator_bulk_data led_vcc;
+	struct wake_lock  pmu_led_wakelock;
 };
 
 /* Internal varible define */
@@ -103,7 +104,7 @@ static void pmu_led_write(unsigned int reg, unsigned int val)
 
 static int pmu_led_init(struct hisi_flash_ctrl_t *flash_ctrl)
 {
-	struct pmu_led_private_data_t *pdata;
+	struct pmu_led_private_data_t *pdata = NULL;
 	struct device_node *np = NULL;
 #if 0
 	int rc = 0;
@@ -116,6 +117,8 @@ static int pmu_led_init(struct hisi_flash_ctrl_t *flash_ctrl)
 
 	pum_led_flash_on = false;
 	pdata = (struct pmu_led_private_data_t *)flash_ctrl->pdata;
+	if(pdata!=NULL)
+		wake_lock_init(&pdata->pmu_led_wakelock,WAKE_LOCK_SUSPEND,"pmu_led");
 
 #if 0
 	pdata->led_vcc.supply = "led-vcc";
@@ -249,7 +252,7 @@ static int pmu_led_torch_mode(struct hisi_flash_ctrl_t *flash_ctrl,
 
 static int pmu_led_on(struct hisi_flash_ctrl_t *flash_ctrl, void *data)
 {
-	struct pmu_led_private_data_t *pdata;
+	struct pmu_led_private_data_t *pdata = NULL;
 	struct flash_cfg_data *cdata = (struct flash_cfg_data *)data;
 	int rc=-1;
 
@@ -276,7 +279,8 @@ static int pmu_led_on(struct hisi_flash_ctrl_t *flash_ctrl, void *data)
 		cam_notice("%s flash led has been power on.", __func__);
 	}
 	mdelay(2);
-
+	if(pdata!=NULL)
+		wake_lock(&pdata->pmu_led_wakelock);
 	if (FLASH_MODE == cdata->mode) {
 		rc = pmu_led_flash_mode(flash_ctrl, cdata->data);
 	} else {
@@ -291,7 +295,7 @@ static int pmu_led_on(struct hisi_flash_ctrl_t *flash_ctrl, void *data)
 
 static int pmu_led_off(struct hisi_flash_ctrl_t *flash_ctrl)
 {
-	struct pmu_led_private_data_t *pdata;
+	struct pmu_led_private_data_t *pdata = NULL;
 #if 0
 	int rc=-1;
 #endif
@@ -326,6 +330,8 @@ static int pmu_led_off(struct hisi_flash_ctrl_t *flash_ctrl)
 	}
 #endif
 	boost5v_flash_led_enable(false);
+	if(pdata!=NULL)
+		wake_unlock(&pdata->pmu_led_wakelock);
 	mutex_unlock(flash_ctrl->hisi_flash_mutex);
 
 	return 0;
@@ -600,6 +606,7 @@ static int pmu_led_register_attribute(struct hisi_flash_ctrl_t *flash_ctrl,
 		goto err_out;
 	}
 
+#ifdef DEBUG_HISI_CAMERA
 	rc = device_create_file(dev, &pmu_led_lightness);
 	if (rc < 0) {
 		cam_err("%s failed to creat lightness attribute.", __func__);
@@ -617,6 +624,10 @@ static int pmu_led_register_attribute(struct hisi_flash_ctrl_t *flash_ctrl,
 err_create_flash_mask_file:
 	device_remove_file(dev, &pmu_led_lightness);
 err_create_lightness_file:
+#else
+    return 0;
+#endif
+
 	led_classdev_unregister(&flash_ctrl->cdev_torch);
 err_out:
 

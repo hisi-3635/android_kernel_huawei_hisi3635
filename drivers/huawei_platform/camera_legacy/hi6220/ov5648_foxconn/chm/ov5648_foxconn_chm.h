@@ -322,8 +322,8 @@ static sensor_setting_t ov5648_foxconn_chm_init_array[] = {
 };
 
 static framesize_s ov5648_foxconn_chm_framesizes[] = {
-    {0, 0, 1280, 960, 2136, 1360, 30, 30, 0x194, 0x151, 0x100, VIEW_FULL, RESOLUTION_4_3, false, false, {ov5648_foxconn_chm_framesize_quarter, ARRAY_SIZE(ov5648_foxconn_chm_framesize_quarter)}, CLK_450M},
-    {0, 0, 2592, 1952, 2816, 2128, 14, 14, 0x133, 0x100, 0xc2, VIEW_FULL, RESOLUTION_4_3, false, false, {ov5648_foxconn_chm_framesize_full, ARRAY_SIZE(ov5648_foxconn_chm_framesize_full)}, CLK_450M },
+    {0, 0, 1280, 960, 2136, 1360, 30, 30, 0x194, 0x151, 0x100, VIEW_FULL, RESOLUTION_4_3, false, false, ECGC_TYPE_MAX,{ov5648_foxconn_chm_framesize_quarter, ARRAY_SIZE(ov5648_foxconn_chm_framesize_quarter)}, CLK_450M},
+    {0, 0, 2592, 1952, 2816, 2128, 14, 14, 0x133, 0x100, 0xc2, VIEW_FULL, RESOLUTION_4_3, false, false, ECGC_TYPE_MAX,{ov5648_foxconn_chm_framesize_full, ARRAY_SIZE(ov5648_foxconn_chm_framesize_full)}, CLK_450M },
 };
 #endif /* _OV5648_FOXCONN_CHM_H_ */
 

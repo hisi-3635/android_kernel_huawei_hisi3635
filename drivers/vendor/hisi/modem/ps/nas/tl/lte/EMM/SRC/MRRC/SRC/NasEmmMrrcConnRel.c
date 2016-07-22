@@ -618,19 +618,28 @@ VOS_UINT32  NAS_EMM_MsRrcConnRelInitSsWaitRrcRelMsgEsmdataReq
         /* 如果没给RRC发释放请求，则之前一定启动了3440等网络释放 */
         if(NAS_EMM_CONN_RELEASING != NAS_EMM_GetConnState())
         {
+            /* 如果是紧急类型的，则停止T3440定时器，主动发链路释放 */
             if (VOS_TRUE == pstsmdatareq->ulIsEmcType)
             {
                 NAS_LMM_SetEmmInfoIsEmerPndEsting(VOS_TRUE);
-            }
+                NAS_LMM_StopStateTimer(TI_NAS_EMM_STATE_T3440);
 
-            /* 透传SM消息 */
-            NAS_EMM_SER_SendMrrcDataReq_ESMdata(&pstsmdatareq->stEsmMsg);
+                /*启动定时器TI_NAS_EMM_MRRC_WAIT_RRC_REL*/
+                NAS_LMM_StartStateTimer(TI_NAS_EMM_MRRC_WAIT_RRC_REL_CNF);
+
+                /*向MRRC发送NAS_EMM_MRRC_REL_REQ消息*/
+                NAS_EMM_SndRrcRelReq(NAS_LMM_NOT_BARRED);
+
+                /* 设置连接状态为释放过程中 */
+                NAS_EMM_SetConnState(NAS_EMM_CONN_RELEASING);
+
+            }
+            return NAS_LMM_STORE_HIGH_PRIO_MSG;
         }
     }
 
     return NAS_LMM_MSG_HANDLED;
 }
-
 VOS_UINT32  NAS_EMM_MsRrcConnRelInitSsWaitRrcRelMsgTcDataReq
 (
     VOS_UINT32                          ulMsgId,
@@ -660,8 +669,8 @@ VOS_UINT32  NAS_EMM_MsRrcConnRelInitSsWaitRrcRelMsgTcDataReq
     {
         if(NAS_EMM_CONN_RELEASING != NAS_EMM_GetConnState())
         {
-            /* 透传TC消息 */
-            NAS_EMM_SER_SendMrrcDataReq_Tcdata(pstTcdataReq);
+            /* 高优先级缓存 */
+            return NAS_LMM_STORE_HIGH_PRIO_MSG;
         }
     }
     return NAS_LMM_MSG_HANDLED;

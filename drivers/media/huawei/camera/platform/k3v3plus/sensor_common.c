@@ -810,7 +810,7 @@ int hw_sensor_i2c_write_seq( sensor_t *s_ctrl, void *data)
 {
 	struct sensor_cfg_data *cdata = (struct sensor_cfg_data *)data;
 	struct sensor_i2c_setting setting;
-	int data_length = sizeof(struct sensor_i2c_reg)*cdata->cfg.setting.size;
+	unsigned int data_length = sizeof(struct sensor_i2c_reg)*cdata->cfg.setting.size;
 	long rc = 0;
 	unsigned char ucbuff[ISP_WRITE_SENSOR_BUFFERSIZE];
 

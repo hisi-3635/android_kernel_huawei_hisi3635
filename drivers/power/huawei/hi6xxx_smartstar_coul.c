@@ -164,7 +164,7 @@ static int batt_id_voltage_ops_get(char *buffer, const struct kernel_param *kp)
 {
     // TODO: HKADC batt_id_voltage
 
-    sprintf(buffer, "%d mV", batt_id_voltage);
+    snprintf(buffer, PAGE_SIZE, "%d mV", batt_id_voltage);
 	return strlen(buffer);
 }
 static struct kernel_param_ops batt_id_voltage_ops={
@@ -177,7 +177,7 @@ static int batt_voltage_uv;			// in uv
 static int batt_voltage_uv_ops_get(char *buffer, const struct kernel_param *kp)
 {
     int vol = smartstar_battery_voltage_uv();
-	sprintf(buffer, "%d", vol);
+	snprintf(buffer, PAGE_SIZE, "%d", vol);
 	return strlen(buffer);
 }
 
@@ -200,7 +200,7 @@ static int batt_init_ocv_ops_get(char *buffer, const struct kernel_param *kp)
 
 	ocv = convert_regval2uv(ocvreg - volreg_offset);
 
-	sprintf(buffer, "%d uv", ocv);
+	snprintf(buffer, PAGE_SIZE, "%d uv", ocv);
 	return strlen(buffer);
 }
 
@@ -237,7 +237,7 @@ static int coul_state_ops_set(const char *buffer,
 
 static int coul_state_ops_get(char *buffer, const struct kernel_param *kp)
 {
-	sprintf(buffer, "%d", coul_running);
+	snprintf(buffer, PAGE_SIZE, "%d", coul_running);
 	return strlen(buffer);
 }
 
@@ -252,7 +252,7 @@ static int batt_soc_with_uuc_ops_get(char *buffer,
 										const struct kernel_param *kp)
 {
 	struct smartstar_coul_device *di = g_smartstar_coul_dev;
-	sprintf(buffer, "%d", di->batt_soc_with_uuc);
+	snprintf(buffer, PAGE_SIZE, "%d", di->batt_soc_with_uuc);
 	return strlen(buffer);
 }
 
@@ -4641,7 +4641,7 @@ static ssize_t smartstar_show_gaugelog(struct device_driver *driver, char *buf)
     }
 
     if (di == NULL)
-        return sprintf(buf, "%s", "Smartstar coulometer probe failed!");
+        return snprintf(buf, PAGE_SIZE, "%s", "Smartstar coulometer probe failed!");
 
     uf_temp = smartstar_battery_uf_temperature();
     temp =  smartstar_battery_temperature();
@@ -4662,7 +4662,7 @@ static ssize_t smartstar_show_gaugelog(struct device_driver *driver, char *buf)
     ocv = smartstar_battery_ocv();
     rbatt = smartstar_battery_resistance();
 
-    sprintf(buf, "%-6d  %-6d  %-8d  %-6d  %-3d  %-5d  %-6d  %-6d  %-5d  %-6d  %-5d  %-4d  %-7d  %-5d  %-5d  ",
+    snprintf(buf, PAGE_SIZE, "%-6d  %-6d  %-8d  %-6d  %-3d  %-5d  %-6d  %-6d  %-5d  %-6d  %-5d  %-4d  %-7d  %-5d  %-5d  ",
                 voltage,  (signed short)cur, ufcapacity, capacity, afcapacity, rm, fcc, uuc, cc, delta_rc, uf_temp, temp, ocv, rbatt, di->batt_limit_fcc/1000);
 
     return strlen(buf);
@@ -4684,7 +4684,7 @@ static ssize_t smartstar_show_hand_chg_capacity_flag(struct device_driver *drive
     unsigned int val;
 
     val = hand_chg_capacity_flag;
-    return sprintf(buf, "%d\n", val);
+    return snprintf(buf, PAGE_SIZE, "%d\n", val);
 }
 
 static ssize_t smartstar_set_input_capacity(struct device_driver *driver, const char *buf, size_t count)
@@ -4703,7 +4703,7 @@ static ssize_t smartstar_show_input_capacity(struct device_driver *driver, char 
     unsigned int val;
 
     val = input_capacity;
-    return sprintf(buf, "%d\n", val);
+    return snprintf(buf, PAGE_SIZE, "%d\n", val);
 }
 
 static ssize_t smartstar_show_abs_cc(struct device_driver *driver, char *buf)
@@ -4711,7 +4711,7 @@ static ssize_t smartstar_show_abs_cc(struct device_driver *driver, char *buf)
     int val = 0;
 
     val = hisi_saved_abs_cc_mah + (calculate_cc_uah() / 1000);
-    return sprintf(buf, "%d\n", val);
+    return snprintf(buf, PAGE_SIZE, "%d\n", val);
 }
 
 static ssize_t smartstar_show_battery_brand_name(struct device_driver *driver, char *buf)
@@ -4722,7 +4722,7 @@ static ssize_t smartstar_show_battery_brand_name(struct device_driver *driver, c
         return -1;
     }
 
-    sprintf(buf, "%s\n",di->batt_data->batt_brand);
+    snprintf(buf, PAGE_SIZE, "%s\n",di->batt_data->batt_brand);
 
     return strlen(buf);
 }
@@ -4735,7 +4735,7 @@ static ssize_t smartstar_show_battery_id_voltage(struct device_driver *driver, c
         return -1;
     }
 
-    sprintf(buf, "%d\n",di->batt_id_vol);
+    snprintf(buf, PAGE_SIZE, "%d\n",di->batt_id_vol);
 
     return strlen(buf);
 }
@@ -4812,7 +4812,7 @@ static int hisi_get_irqs(struct platform_device *pdev, struct smartstar_coul_dev
 
 static ssize_t hisi_coul_show_pl_v_offset_a(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    return sprintf(buf, "%d\n", pl_v_offset_a);
+    return snprintf(buf, PAGE_SIZE, "%d\n", pl_v_offset_a);
 }
 static ssize_t hisi_coul_set_pl_v_offset_a(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -4830,7 +4830,7 @@ static ssize_t hisi_coul_set_pl_v_offset_a(struct device *dev, struct device_att
 
 static ssize_t hisi_coul_show_pl_v_offset_b(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    return sprintf(buf, "%d\n", pl_v_offset_b);
+    return snprintf(buf, PAGE_SIZE, "%d\n", pl_v_offset_b);
 }
 static ssize_t hisi_coul_set_pl_v_offset_b(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -4848,7 +4848,7 @@ static ssize_t hisi_coul_set_pl_v_offset_b(struct device *dev, struct device_att
 
 static ssize_t hisi_coul_show_pl_c_offset_a(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    return sprintf(buf, "%d\n", pl_c_offset_a);
+    return snprintf(buf, PAGE_SIZE, "%d\n", pl_c_offset_a);
 }
 static ssize_t hisi_coul_set_pl_c_offset_a(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -4866,7 +4866,7 @@ static ssize_t hisi_coul_set_pl_c_offset_a(struct device *dev, struct device_att
 
 static ssize_t hisi_coul_show_pl_c_offset_b(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    return sprintf(buf, "%d\n", pl_c_offset_b);
+    return snprintf(buf, PAGE_SIZE, "%d\n", pl_c_offset_b);
 }
 static ssize_t hisi_coul_set_pl_c_offset_b(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -4889,13 +4889,13 @@ static ssize_t hisi_coul_show_ate_v_offset_a(struct device *dev, struct device_a
 
     v_offset_regval = SMARTSTAR_REG_READ(SMARTSTAR_VOL_OFFSET_ADDR);
     ate_v_offset_a = get_vol_offset(v_offset_regval)==0? DEFAULT_V_OFF_A:get_vol_offset(v_offset_regval);
-    return sprintf(buf, "%d\n", ate_v_offset_a);
+    return snprintf(buf, PAGE_SIZE, "%d\n", ate_v_offset_a);
 }
 
 static int do_save_offset_ret;
 static ssize_t hisi_coul_show_do_save_offset_ret(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    return sprintf(buf, "%d\n", do_save_offset_ret);
+    return snprintf(buf, PAGE_SIZE, "%d\n", do_save_offset_ret);
 }
 static ssize_t hisi_coul_do_save_offset(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -4915,7 +4915,7 @@ static ssize_t hi6521_show_gaugelog_head(struct device *dev,
                   struct device_attribute *attr,
                   char *buf)
 {
-    return sprintf(buf,"ss_VOL  ss_CUR  ss_ufSOC  ss_SOC  SOC  ss_RM  ss_FCC  ss_UUC  ss_CC  ss_dRC  ufTemp Temp  ss_OCV   rbatt  fcc    ");
+    return snprintf(buf, PAGE_SIZE, "ss_VOL  ss_CUR  ss_ufSOC  ss_SOC  SOC  ss_RM  ss_FCC  ss_UUC  ss_CC  ss_dRC  ufTemp Temp  ss_OCV   rbatt  fcc    ");
 }
 static ssize_t hi6521_show_gaugelog(struct device *dev,
                   struct device_attribute *attr,
@@ -4931,7 +4931,7 @@ static ssize_t hi6521_show_gaugelog(struct device *dev,
     }
 
     if (di == NULL)
-        return sprintf(buf, "%s", "Smartstar coulometer probe failed!");
+        return snprintf(buf, PAGE_SIZE, "%s", "Smartstar coulometer probe failed!");
 
     uf_temp = smartstar_battery_uf_temperature();
     temp =  smartstar_battery_temperature();
@@ -4952,7 +4952,7 @@ static ssize_t hi6521_show_gaugelog(struct device *dev,
     ocv = smartstar_battery_ocv();
     rbatt = smartstar_battery_resistance();
 
-    sprintf(buf, "%-6d  %-6d  %-8d  %-6d  %-3d  %-5d  %-6d  %-6d  %-5d  %-6d  %-5d  %-4d  %-7d  %-5d  %-5d  ",
+    snprintf(buf, PAGE_SIZE, "%-6d  %-6d  %-8d  %-6d  %-3d  %-5d  %-6d  %-6d  %-5d  %-6d  %-5d  %-4d  %-7d  %-5d  %-5d  ",
                 voltage,  (signed short)cur, ufcapacity, capacity, afcapacity, rm, fcc, uuc, cc, delta_rc, uf_temp, temp, ocv, rbatt, di->batt_limit_fcc/1000);
 
     return strlen(buf);

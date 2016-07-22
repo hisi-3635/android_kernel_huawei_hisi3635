@@ -195,7 +195,7 @@ BST_ERR_ENUM_UINT8  BST_DSPP_CAppDlVa::Inquire(
     {
         return BST_ERR_NO_MEMORY;
     }
-
+    BST_OS_MEMSET( pcResBuffer, 0, usPktTotLen );
     /*
      * 从PID数据库或者应用程序获得参数内容
      */

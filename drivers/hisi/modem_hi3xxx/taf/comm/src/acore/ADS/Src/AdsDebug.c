@@ -124,6 +124,20 @@ VOS_VOID ADS_ShowPeriodPktNum(VOS_VOID)
     vos_printf("ADS_ShowPeriodPktNum Cur DL PeriodPktNum is %d\r\n", g_stAdsCtx.astAdsSpecCtx[0].stAdsStatsInfoCtx.stDLDataStats.ulDLCurDataRate);
     vos_printf("ADS_ShowPeriodPktNum Cur UL PeriodPktNum is %d\r\n", g_stAdsCtx.astAdsSpecCtx[0].stAdsStatsInfoCtx.stULDataStats.ulULCurDataRate);
 }
+VOS_VOID ADS_SetTxWakeLockTmrLen(VOS_UINT32 ulValue)
+{
+    g_stAdsCtx.stAdsIpfCtx.ulTxWakeLockTmrLen = ulValue;
+    return;
+}
+
+
+VOS_VOID ADS_SetRxWakeLockTmrLen(VOS_UINT32 ulValue)
+{
+    g_stAdsCtx.stAdsIpfCtx.ulRxWakeLockTmrLen = ulValue;
+    return;
+}
+
+
 VOS_VOID ADS_ShowEntityStats(VOS_VOID)
 {
     VOS_UINT8                           i;

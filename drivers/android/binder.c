@@ -688,6 +688,7 @@ static struct binder_buffer *binder_alloc_buf(struct binder_proc *proc,
 		hwbinderinfo(-1, proc->pid);
 	}
 #endif
+
 	if (is_async &&
 	    proc->free_async_space < size + sizeof(struct binder_buffer)) {
 		binder_debug(BINDER_DEBUG_BUFFER_ALLOC,

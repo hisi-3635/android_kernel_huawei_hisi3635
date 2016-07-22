@@ -63,11 +63,6 @@ extern "C" {
 #define TI_TAF_MTA_WAIT_JAM_DETECT_SET_CNF_TIMER_LEN        (3 * TIMER_S_TO_MS_1000)
 #define TI_TAF_MTA_WAIT_SET_GSM_FREQLOCK_CNF_TIMER_LEN      (3 * TIMER_S_TO_MS_1000)
 
-/* Added by zwx247453 for Refclkfreq, 2015-06-17, begin */
-#define TI_TAF_MTA_WAIT_REFCLOCK_STATUS_IND_TIMER_LEN    (1 * TIMER_S_TO_MS_1000)
-#define TI_TAF_MTA_WAIT_QRY_AFCLOCK_STATUS_CNF_TIMER_LEN    (3 * TIMER_S_TO_MS_1000)
-/* Added by zwx247453 for Refclkfreq, 2015-06-17, end */
-
 
 /*****************************************************************************
   3 枚举定义
@@ -121,11 +116,6 @@ enum TAF_MTA_TIMER_ID_ENUM
     TI_TAF_MTA_WAIT_JAM_DETECT_SET_CNF,
     TI_TAF_MTA_WAIT_SET_GSM_FREQLOCK_CNF,
 
-    /* Added by zwx247453 for Refclkfreq, 2015-06-17, begin */
-    TI_TAF_MTA_WAIT_REFCLOCK_STATUS_IND,
-    TI_TAF_MTA_WAIT_QRY_AFCLOCK_STATUS_CNF,
-    /* Added by zwx247453 for Refclkfreq, 2015-06-17, end */
-
     TI_TAF_MTA_TIMER_BUTT
 };
 typedef VOS_UINT32  TAF_MTA_TIMER_ID_ENUM_UINT32;
@@ -175,21 +165,6 @@ typedef struct
     VOS_UINT8                           aucReserve[3];      /* 保留位 */
     VOS_UINT32                          ulLen;              /* 定时器时长 */
 }TAF_MTA_TIMER_INFO_STRU;
-
-/* Added by zwx247453 for Refclkfreq, 2015-6-17, begin */
-/*****************************************************************************
- 结构名    : TAF_MTA_TIMER_PRECISION_STRU
- 结构说明  : 非32K精度定时器消息表
-  1.日    期   : 2015年6月17日
-    作    者   : zwx247453
-    修改内容   : Refclkfreq项目新增
-*****************************************************************************/
-typedef struct
-{
-    TAF_MTA_TIMER_ID_ENUM_UINT32        enTimerId;          /* TimerID */
-    VOS_TIMER_PRECISION_ENUM_UINT32     ulPrecision;        /* 定时器精度 */
-}TAF_MTA_TIMER_PRECISION_STRU;
-/* Added by zwx247453 for Refclkfreq, 2015-6-17, end */
 
 /*****************************************************************************
   8 UNION定义

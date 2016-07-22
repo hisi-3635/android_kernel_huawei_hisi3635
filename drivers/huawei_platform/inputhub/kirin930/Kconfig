@@ -16,8 +16,9 @@ config CYPRESS_PSOC4000
 
 	help
 	  Say 'Y' here if you want to configure cypress capsense
-
-config AP_POWERKEY_SENDS_PROX_SENSOR_REPORT
-	bool "Ap powerkey sends proximity sensor report"
-	depends on HISI_POWERKEY
+config HALL_DELAY_TYPE
+	bool "hall delay type"
 	default n
+
+	help
+	  Say 'Y' here if you want to configure hall delay

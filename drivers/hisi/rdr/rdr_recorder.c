@@ -40,7 +40,7 @@
 #include <linux/mmc/core.h>
 #include <linux/wakelock.h>
 #include <linux/mtd/hisi_nve_interface.h>
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 
 #include <linux/hisi/hi3xxx/global_ddr_map.h>
 
@@ -62,8 +62,11 @@ extern int hisi_nve_direct_access_for_rdr(
 #include <linux/suspend.h>
 #include <linux/vmalloc.h>
 #include "rdr_internal.h"
-
+#include "drv_reset.h"
 #include <linux/hisi/hi6402_hifi_misc.h>
+#ifndef CONFIG_ARM64
+#include "../hi3630dsp/hifi_lpp.h"
+#endif
 
 #ifdef _HIFI_WD_DEBUG
 #define HIFI_WD_DEBUG
@@ -122,6 +125,10 @@ static void __iomem *rdr_sctrl_base;
 static void __iomem *rdr_aspcfg_base;
 static void __iomem *rdr_crgperi_base;
 
+#ifdef CONFIG_HUAWEI_NFF
+#define INVALID_U32      (0x89748974)
+#endif
+
 #ifdef CONFIG_HISI_REBOOT_TYPE
 extern void set_watchdog_resetflag(void);
 #endif
@@ -137,18 +144,29 @@ struct linux_dirent {
           char            d_name[1];
   };
 
+#ifdef CONFIG_HUAWEI_NFF
+extern void nff_log_event_subsys_err(unsigned int mod_id, unsigned int arg1,
+				unsigned int arg2, unsigned int arg3);
+extern void nff_log_event_reset(void);
+#endif
+
 #ifdef HIFI_WD_DEBUG
 #define CFG_DSP_NMI 0x3C               /*DSP NMI ,bit0-bit15*/
+#define UCOM_HIFI_WTD_NMI_COMPLETE             (0xB5B5B5B5)
+#ifdef CONFIG_ARM64
 #define HIFI_WTD_FLAG_BASE		(0x37C75400)
 #define HIFI_WTD_FLAG_NMI		(HIFI_WTD_FLAG_BASE + 0x8)
-#define UCOM_HIFI_WTD_NMI_COMPLETE             (0xB5B5B5B5)
-
 #define DRV_DSP_POWER_STATUS_ADDR		(0x37c02020)
 #define DRV_DSP_POWER_ON				(0x55AA55AA)
 #define DRV_DSP_POWER_OFF				(0x55FF55FF)
 
-extern int hifireset_runcbfun (DRV_RESET_CALLCBFUN_MOMENT eparam);
 extern bool hifi_is_power_on(void);
+#endif
+
+extern int hifireset_runcbfun (DRV_RESET_CALLCBFUN_MOMENT eparam);
+#ifdef CONFIG_PROC_POSTFSDATA
+extern int wait_for_postfsdata(unsigned int timeout);
+#endif
 
 static int g_cpu_state = 1;
 static DEFINE_SPINLOCK(rdr_v_hifi_mb_lock);
@@ -1282,11 +1300,15 @@ noti_is_ap:
 #ifdef HIFI_WD_DEBUG
 			hifireset_runcbfun(DRV_RESET_CALLCBFUN_RESET_BEFORE);
 			reset_set_cpu_status(0, 0);
+#ifdef CONFIG_ARM64
 			if ((hifi_is_power_on())) {
 				hisi_rdr_nmi_notify_hifi();
 			} else {
 				pr_err("hifi is power off, do not send nmi. \n");
 			}
+#else
+			hisi_rdr_nmi_notify_hifi();
+#endif
 #else
 			pr_info("rdr:hifi excep,nofify lpm3(ipc)\n");
 			msg = HIFI_DIE_NOTIFY_LPM3;
@@ -1979,6 +2001,7 @@ void rdr_save_hifi(int mod_id, char *timedir)
 	/*HIFI WD ERR  save tcm and ocram data and reset hifi image*/
 	if (mod_id == HISI_RDR_MOD_HIFI_WD) {
 		/* save hifi tcm mem */
+#ifdef CONFIG_ARM64
 		if ((rdr_nv_get_value(RDR_NV_HIFI_TCM) == 1) && (hifi_is_power_on())) {
 			ret = dump_hifi_tcm(timedir);
 			pr_info("%s:dump hifi tcm,%s\n", __func__,
@@ -1990,12 +2013,26 @@ void rdr_save_hifi(int mod_id, char *timedir)
 			pr_info("rdr:%s():dump_hifi_ocram,%s\n", __func__,
 					ret ? "fail" : "success");
 		}
+#else
+        if (rdr_nv_get_value(RDR_NV_HIFI_TCM) == 1) {
+			ret = dump_hifi_tcm(timedir);
+			pr_info("%s:dump hifi tcm,%s\n", __func__,
+					ret ? "fail" : "success");
+		}
+		/* save hifi ocram mem: */
+		if (rdr_nv_get_value(RDR_NV_HIFI_OCRAM) == 1) {
+			ret = dump_hifi_ocram(timedir);
+			pr_info("rdr:%s():dump_hifi_ocram,%s\n", __func__,
+					ret ? "fail" : "success");
+		}
+#endif
+
 		/*reset hifi ddr bss section*/
 		ret = reset_hifi_sec();
 		pr_info("rdr:%s():reset hifi sec,%s\n", __func__,
 				ret ? "fail" : "success");
 	}
-
+#ifdef CONFIG_ARM64
 	/*save tcm and ocram data */
 	if (mod_id == HISI_RDR_MOD_CP_PANIC
 	    || mod_id == HISI_RDR_MOD_CP_WD
@@ -2014,6 +2051,7 @@ void rdr_save_hifi(int mod_id, char *timedir)
 					ret ? "fail" : "success");
 		}
 	}
+#endif
 
 	rdr_looprw_set_state(0); /* restore fs read/write to origin state */
 
@@ -2769,17 +2807,19 @@ int rdr_modem_reset_cb(DRV_RESET_CALLCBFUN_MOMENT stage, int userdata)
 extern void top_tmc_disable(char *pdir);
 #ifdef HIFI_WD_DEBUG
 extern void sochifi_watchdog_send_event(void);
+#ifdef CONFIG_ARM64
 extern void notify_hifi_misc_watchdog_coming(void);
 extern struct dsm_client *dsm_audio_client;
+#endif
 static int rdr_do_hifi_reset(int mod_id)
 {
-	void *start = NULL;
 	unsigned int * hifi_power_status_addr = NULL;
 	int i = 0;
 	int ret = 0;
 	u32 msg = 0xdead;
 	char timedir[32];
-
+#ifdef CONFIG_ARM64
+    void *start = NULL;
 	if (!dsm_client_ocuppy(dsm_audio_client)) {
 		dsm_client_record(dsm_audio_client, "DSM_SOC_HIFI_RESET\n");
 		dsm_client_notify(dsm_audio_client, DSM_SOC_HIFI_RESET);
@@ -2804,11 +2844,12 @@ static int rdr_do_hifi_reset(int mod_id)
 	}
 	iounmap(start);
 	start = NULL;
-
+#endif
 	rdr_get_xtime(pbb, timedir, 32);
 	rdr_save_hifi(mod_id, timedir);
 
 	pr_info("rdr:hifi excep,nofify lpm3 pwr down dsp\n");
+#ifdef CONFIG_ARM64
 	hifi_power_status_addr = ioremap(DRV_DSP_POWER_STATUS_ADDR, 0x4);
 	if (NULL == hifi_power_status_addr) {
 		pr_err("DRV_DSP_POWER_STATUS_ADDR ioremap failed\n");
@@ -2816,7 +2857,7 @@ static int rdr_do_hifi_reset(int mod_id)
 	}
 	writel(DRV_DSP_POWER_OFF, hifi_power_status_addr);
 	iounmap(hifi_power_status_addr);
-
+#endif
 	msg = HIFI_DIE_NOTIFY_LPM3;
 	hisi_rdr_ipc_notify_lpm3(&msg, 1);
 
@@ -2845,6 +2886,10 @@ static int rdr_write_thread(void *arg)
 	pr_info("rdr:wait_for_fs_ready start\n");
 	while(wait_for_fs_ready() > 0);
 	pr_info("rdr:wait_for_fs_ready OK end\n");
+
+#ifdef CONFIG_HUAWEI_NFF
+	nff_log_event_reset();
+#endif
 
 	rdr_nv_init();
 	if (rdr_nv_get_value(RDR_NV_RDR) == 0)
@@ -3073,6 +3118,12 @@ int rdr_save_mem2fs(u32 mod_id)
 	int ret;
 	char time_dir[32];
 	char xname[RDR_FNAME_LEN] = {0};
+
+#ifdef CONFIG_PROC_POSTFSDATA
+	//wait till fs ready
+	wait_for_postfsdata(0);
+#endif
+
 	mm_segment_t old_fs = get_fs();
 	set_fs(KERNEL_DS);
 
@@ -3134,6 +3185,9 @@ void rdr_system_error_process(struct rdr_system_error_param_s *p)
 
 	if (mod_id != HISI_RDR_MOD_CP_REBOOT)
 	{
+#ifdef CONFIG_HUAWEI_NFF
+		nff_log_event_subsys_err(mod_id, arg1, arg2, INVALID_U32);
+#endif
 		pr_info("rdr_system_error_process start mod_id [%08x] !!\n", mod_id);
 		rdr_nv_update();
 		if ((mod_id & HISI_RDR_MOD_EXCE_MASK) !=
@@ -3143,16 +3197,8 @@ void rdr_system_error_process(struct rdr_system_error_param_s *p)
 					NULL);
 		}
 
-	pr_info("rdr_system_error_process start mod_id [%08x] !!\n", mod_id);
-    rdr_nv_update();
-	if ((mod_id & HISI_RDR_MOD_EXCE_MASK) !=
-			HISI_RDR_MOD_EXCE_PANIC) {
-		show_mem(0);
-		show_stack((struct task_struct *)rdr_current_task, NULL);
-	}
-
-	if (mod_id != HISI_RDR_MOD_AP_PANIC)
-		rdr_system_dump(mod_id, arg1, arg2, data, length);
+		if (mod_id != HISI_RDR_MOD_AP_PANIC)
+			rdr_system_dump(mod_id, arg1, arg2, data, length);
 #ifdef HIFI_WD_DEBUG
 		if (mod_id == HISI_RDR_MOD_HIFI_WD) {
 			ret = rdr_do_hifi_reset(HISI_RDR_MOD_HIFI_WD);
@@ -3191,7 +3237,11 @@ void rdr_system_error_process(struct rdr_system_error_param_s *p)
 					break;
 				}
 			}
+#ifdef CONFIG_PROC_POSTFSDATA
+			if (0 != wait_for_postfsdata(5)) {
+#else
 			if (0 != rdr_wait4partition("/data/lost+found", 1)) {
+#endif
 				pr_info("rdr: we dump info to p22.\n");
 				rdr_save_pbb_to_p22();
 			} else

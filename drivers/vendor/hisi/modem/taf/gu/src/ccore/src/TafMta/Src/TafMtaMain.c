@@ -113,15 +113,6 @@ const MTA_MSG_PROC_STRU g_astMtaMsgProcApmTab[]=
     {ID_APM_MTA_HANDLE_DETECT_QRY_CNF,          TAF_MTA_RcvPhyHandleDectQryCnf},
 };
 
-/* Added by zwx247453 for Refclkfreq, 2015-06-17, begin */
-/* MTA模块处理来自TLPHY模块的消息函数对应表 */
-const MTA_MSG_PROC_STRU g_astMtaMsgProcRttAgentTab[]=
-{
-    /* 消息ID */                                /* 消息处理函数 */
-    {ID_APM_MTA_REFCLOCK_STATUS_IND,       TAF_MTA_RcvTlPhyAfclockStatusInd},
-};
-/* Added by zwx247453 for Refclkfreq, 2015-6-17, end */
-
 /* MTA模块处理来自接入层G模下消息函数对应表*/
 const MTA_MSG_PROC_STRU g_astMtaMsgProcGasTab[]=
 {
@@ -225,12 +216,6 @@ const MTA_MSG_PROC_STRU g_astMtaMsgProcTimerTab[]=
     {TI_TAF_MTA_WAIT_JAM_DETECT_SET_CNF,        TAF_MTA_RcvTiWaitGrrSetJamDetectExpired},
 
     {TI_TAF_MTA_WAIT_SET_GSM_FREQLOCK_CNF,      TAF_MTA_RcvTiWaitGasSetGFreqLockExpired},
-
-    /* Added by zwx247453 for Refclkfreq, 2015-06-17, begin */
-    {TI_TAF_MTA_WAIT_REFCLOCK_STATUS_IND,       TAF_MTA_RcvTiWaitAgentRefclockIndExpired},
-    {TI_TAF_MTA_WAIT_QRY_AFCLOCK_STATUS_CNF,    TAF_MTA_RcvTiWaitAgentQryAfclockExpired},
-    /* Added by zwx247453 for Refclkfreq, 2015-06-17, end */
-
 };
 
 /* MTA模块处理来自MMA模块的消息函数对应表*/
@@ -406,45 +391,6 @@ VOS_VOID TAF_MTA_RcvApmMsg(struct MsgCB *pstMsg)
 
     return;
 }
-
-/* Added by zwx247453 for Refclkfreq, 2015-06-17, begin */
-/*****************************************************************************
- 函 数 名  : TAF_MTA_RcvRttAgentMsg
- 功能描述  : 处理来自RTTAGENT模块的消息
- 输入参数  : struct MsgCB *pstMsg
- 输出参数  : 无
- 返 回 值  : VOS_VOID
- 调用函数  :
- 被调函数  :
-
- 修改历史      :
-  1.日    期   : 2015年06月17日
-    作    者   : zwx247453
-    修改内容   : Refclkfreq项目新增函数
-
-*****************************************************************************/
-VOS_VOID TAF_MTA_RcvRttAgentMsg(struct MsgCB *pstMsg)
-{
-    VOS_UINT32                          ulMsgCnt;
-    VOS_UINT32                          ulRst;
-
-    /* 从g_astMtaMsgProcRttAgentTab中获取消息个数 */
-    ulMsgCnt = sizeof(g_astMtaMsgProcRttAgentTab)/sizeof(MTA_MSG_PROC_STRU);
-
-    /* g_astMtaMsgProcRttAgentTab查表，进行消息分发 */
-    ulRst = TAF_MTA_SearchMsgProcTab(ulMsgCnt, pstMsg, g_astMtaMsgProcRttAgentTab);
-
-    /* 没有找到匹配的消息 */
-    if (VOS_ERR == ulRst)
-    {
-        MTA_ERROR_LOG("TAF_MTA_RcvRttAgentMsg: Msg Id is invalid!");
-    }
-
-    return;
-}
-/* Added by zwx247453 for Refclkfreq, 2015-06-17, end */
-
-
 VOS_VOID TAF_MTA_RcvGasMsg(struct MsgCB *pstMsg)
 {
     VOS_UINT32                          ulMsgCnt;
@@ -819,12 +765,6 @@ VOS_VOID  TAF_MTA_ProcMsg (struct MsgCB *pstMsg)
             TAF_MTA_RcvTdsMsg(pstMsg);
             break;
 #endif
-
-        /* Added by zwx247453 for Refclkfreq, 2015-06-17, begin */
-        case TLPHY_PID_RTTAGENT:
-            TAF_MTA_RcvRttAgentMsg(pstMsg);
-            break;
-        /* Added by zwx247453 for Refclkfreq, 2015-06-17, end */
 
         default:
             MTA_ERROR_LOG("TAF_MTA_ProcMsg: No opposite MsgPro Function!");

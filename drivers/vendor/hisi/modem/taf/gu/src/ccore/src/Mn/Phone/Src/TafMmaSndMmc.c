@@ -1435,6 +1435,57 @@ VOS_VOID TAF_MMA_SndMmcAutoReselSetReq(
     return;
 }
 
+/*****************************************************************************
+ 函 数 名  : TAF_MMA_SndMmcImsiRefreshInd
+ 功能描述  : 通知MMC IMSI REFRESH
+ 输入参数  : VOS_VOID
+ 输出参数  : 无
+ 返 回 值  : VOS_VOID
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年11月17日
+    作    者   : z00359541
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+VOS_VOID TAF_MMA_SndMmcImsiRefreshInd(VOS_VOID)
+{
+    MMA_MMC_IMSI_REFRESH_IND_STRU      *pstMsg = VOS_NULL_PTR;
+    VOS_UINT32                          ulRet;
+
+    /* 申请内存  */
+    pstMsg = (MMA_MMC_IMSI_REFRESH_IND_STRU *)PS_ALLOC_MSG(WUEPS_PID_MMA,
+                           sizeof(MMA_MMC_IMSI_REFRESH_IND_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    if ( VOS_NULL_PTR == pstMsg )
+    {
+        MN_ERR_LOG("TAF_MMA_SndMmcImsiRefreshInd:ERROR: Memory Alloc Error for pMsg");
+
+        return;
+    }
+
+    PS_MEM_SET((VOS_INT8*)pstMsg + VOS_MSG_HEAD_LENGTH, 0,
+                     sizeof(MMA_MMC_IMSI_REFRESH_IND_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    pstMsg->stMsgHeader.ulReceiverCpuId  = VOS_LOCAL_CPUID;
+    pstMsg->stMsgHeader.ulReceiverPid    = WUEPS_PID_MMC;
+    pstMsg->stMsgHeader.ulSenderCpuId    = VOS_LOCAL_CPUID;
+    pstMsg->stMsgHeader.ulSenderPid      = WUEPS_PID_MMA;
+    pstMsg->stMsgHeader.ulLength         = sizeof(MMA_MMC_IMSI_REFRESH_IND_STRU) - VOS_MSG_HEAD_LENGTH;
+    pstMsg->stMsgHeader.ulMsgName        = ID_MMA_MMC_IMSI_REFRESH_IND;
+
+    /* 调用VOS发送原语 */
+    ulRet = PS_SEND_MSG( WUEPS_PID_MMA, pstMsg );
+    if ( VOS_OK != ulRet )
+    {
+        MN_ERR_LOG("TAF_MMA_SndMmcImsiRefreshInd:ERROR:PS_SEND_MSG FAILURE");
+    }
+
+    return;
+}
+
 #ifdef  __cplusplus
   #if  __cplusplus
   }

@@ -1703,6 +1703,8 @@ VOS_VOID TAF_APS_GenMatchParamByCidInfo(
     /* APNÐÅÏ¢ */
     PS_MEM_CPY(&pstMatchParam->stApn, &pstPdpTblInfo->CidTab.stApn, sizeof(TAF_PDP_APN_STRU));
 
+    PIH_GetVsimAPN(TAF_MAX_APN_LEN, pstMatchParam->stApn.aucValue, &pstMatchParam->stApn.ucLength);
+
     return;
 }
 
@@ -1733,6 +1735,7 @@ VOS_VOID TAF_APS_GenMatchParamByDailInfo(
     {
         pstMatchParam->stApn.ucLength = (VOS_UINT8)VOS_StrLen((VOS_CHAR *)pstDialParaInfo->aucApn);
         PS_MEM_CPY(pstMatchParam->stApn.aucValue, pstDialParaInfo->aucApn, TAF_MAX_APN_LEN);
+        PIH_GetVsimAPN(TAF_MAX_APN_LEN, pstMatchParam->stApn.aucValue, &pstMatchParam->stApn.ucLength);
     }
     else
     {

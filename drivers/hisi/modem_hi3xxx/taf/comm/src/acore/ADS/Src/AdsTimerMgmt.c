@@ -33,7 +33,7 @@ ADS_TIMER_PRECISION_STRU                g_astAdsTmrPrecisionTbl[] =
     { TI_ADS_DL_ADQ_EMPTY,              VOS_TIMER_PRECISION_0  },
     { TI_ADS_DL_PROTECT,                VOS_TIMER_PRECISION_5  },
     { TI_ADS_RPT_STATS_INFO,            VOS_TIMER_NO_PRECISION },
-    { TI_ADS_UL_DATA_STAT,              VOS_TIMER_PRECISION_5 }
+    { TI_ADS_UL_DATA_STAT,              VOS_TIMER_NO_PRECISION }
 };
 
 

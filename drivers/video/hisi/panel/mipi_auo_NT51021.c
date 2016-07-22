@@ -26,12 +26,25 @@
 #define CHECKSUM_SIZE 8
 static struct hisi_fb_panel_data auo_panel_data;
 
-static int g_lcd_type = 2; //g_lcd_type = 1(AUO);  g_lcd_type = 0(truly)  else unkown;
+enum {  
+    TRULY_PANEL = 0,
+    AUO_PANEL = 1,
+    NO_PANEL = 2,
+};
+static int g_lcd_type = NO_PANEL; //g_lcd_type = 1(AUO);  g_lcd_type = 0(truly)  else unkown;
 
 static int g_cabc_mode = 2;//0:off  2:still   3:moving
 
+enum {  
+    IC_CE_REG_OFF = 0,
+    IC_CE_REG_ON = 1,
+};
+static int g_ce_mode = IC_CE_REG_ON;
+
 static int hkadc_buf = 0;
 static bool checksum_enable_ctl = false;
+
+static int g_support_mode = 0;
 
 extern int fastboot_set_needed;
 
@@ -348,20 +361,20 @@ static u32 acm_lut_satr_table[] = {
 
 static u32 truly_acm_lut_hue_table[] = {
 	0x0000, 0x0001, 0x0002, 0x0003, 0x0004, 0x0005, 0x0005, 0x0006, 0x0007, 0x0008, 0x0009, 0x000a, 0x000b, 0x000c, 0x000d, 0x000e, 
-	0x000e, 0x000f, 0x0010, 0x0011, 0x0012, 0x0013, 0x0014, 0x0015, 0x0016, 0x0017, 0x0018, 0x0019, 0x001a, 0x001b, 0x001c, 0x001d, 
-	0x001e, 0x001e, 0x001f, 0x0020, 0x0021, 0x0022, 0x0023, 0x0024, 0x0025, 0x0026, 0x0027, 0x0028, 0x0029, 0x002a, 0x002b, 0x002c, 
-	0x002d, 0x002e, 0x002f, 0x0030, 0x0031, 0x0032, 0x0033, 0x0034, 0x0035, 0x0036, 0x0037, 0x0038, 0x0039, 0x003a, 0x003b, 0x003c, 
-	0x003d, 0x003e, 0x003f, 0x0040, 0x0041, 0x0042, 0x0043, 0x0044, 0x0045, 0x0046, 0x0047, 0x0048, 0x0049, 0x004a, 0x004b, 0x004c, 
-	0x004d, 0x004e, 0x004f, 0x0050, 0x0051, 0x0052, 0x0053, 0x0054, 0x0055, 0x0056, 0x0057, 0x0058, 0x0059, 0x005a, 0x005b, 0x005c, 
-	0x005e, 0x005f, 0x0060, 0x0061, 0x0062, 0x0063, 0x0064, 0x0065, 0x0066, 0x0067, 0x0068, 0x0069, 0x006a, 0x006b, 0x006c, 0x006d, 
-	0x006e, 0x006f, 0x0070, 0x0071, 0x0072, 0x0073, 0x0075, 0x0076, 0x0077, 0x0078, 0x0079, 0x007a, 0x007b, 0x007c, 0x007d, 0x007e, 
-	0x007f, 0x0080, 0x0081, 0x0082, 0x0083, 0x0084, 0x0085, 0x0086, 0x0087, 0x0088, 0x0089, 0x008b, 0x008c, 0x008d, 0x008e, 0x008f, 
-	0x0090, 0x0091, 0x0092, 0x0093, 0x0094, 0x0095, 0x0096, 0x0097, 0x0098, 0x0099, 0x009a, 0x009b, 0x009c, 0x009d, 0x009e, 0x009f, 
-	0x00a0, 0x00a1, 0x00a2, 0x00a3, 0x00a4, 0x00a5, 0x00a6, 0x00a7, 0x00a8, 0x00a9, 0x00aa, 0x00ab, 0x00ac, 0x00ad, 0x00ae, 0x00af, 
-	0x00b0, 0x00b1, 0x00b2, 0x00b3, 0x00b4, 0x00b5, 0x00b6, 0x00b7, 0x00b8, 0x00b9, 0x00ba, 0x00bb, 0x00bc, 0x00bd, 0x00be, 0x00bf, 
-	0x00c0, 0x00c1, 0x00c2, 0x00c3, 0x00c4, 0x00c5, 0x00c6, 0x00c7, 0x00c8, 0x00c9, 0x00ca, 0x00cb, 0x00cc, 0x00cd, 0x00ce, 0x00cf, 
-	0x00d0, 0x00d1, 0x00d2, 0x00d3, 0x00d4, 0x00d5, 0x00d6, 0x00d7, 0x00d8, 0x00d9, 0x00da, 0x00db, 0x00dc, 0x00dd, 0x00de, 0x00df, 
-	0x00e0, 0x00e1, 0x00e2, 0x00e3, 0x00e4, 0x00e5, 0x00e6, 0x00e7, 0x00e8, 0x00e9, 0x00ea, 0x00eb, 0x00ec, 0x00ed, 0x00ee, 0x00ef, 
+	0x000e, 0x000f, 0x0010, 0x0011, 0x0012, 0x0013, 0x0014, 0x0015, 0x0016, 0x0016, 0x0017, 0x0018, 0x0019, 0x001a, 0x001b, 0x001c, 
+	0x001c, 0x001d, 0x001e, 0x001f, 0x0020, 0x0021, 0x0022, 0x0023, 0x0023, 0x0024, 0x0025, 0x0026, 0x0027, 0x0028, 0x0029, 0x002a, 
+	0x002b, 0x002b, 0x002c, 0x002d, 0x002e, 0x002f, 0x0030, 0x0031, 0x0032, 0x0033, 0x0034, 0x0034, 0x0035, 0x0036, 0x0037, 0x0038, 
+	0x0039, 0x003a, 0x003b, 0x003c, 0x003d, 0x003e, 0x003e, 0x003f, 0x0040, 0x0041, 0x0042, 0x0043, 0x0044, 0x0045, 0x0046, 0x0047, 
+	0x0047, 0x0048, 0x0049, 0x004a, 0x004b, 0x004c, 0x004d, 0x004e, 0x004f, 0x0050, 0x0051, 0x0052, 0x0053, 0x0054, 0x0055, 0x0056, 
+	0x0057, 0x0058, 0x0059, 0x005a, 0x005b, 0x005c, 0x005d, 0x005e, 0x005f, 0x0060, 0x0061, 0x0062, 0x0063, 0x0064, 0x0065, 0x0066, 
+	0x0067, 0x0068, 0x0069, 0x006a, 0x006b, 0x006c, 0x006e, 0x006f, 0x0070, 0x0071, 0x0072, 0x0073, 0x0074, 0x0075, 0x0076, 0x0077, 
+	0x0078, 0x0079, 0x007a, 0x007b, 0x007c, 0x007d, 0x007f, 0x0080, 0x0081, 0x0082, 0x0083, 0x0084, 0x0085, 0x0086, 0x0087, 0x0088, 
+	0x008a, 0x008b, 0x008c, 0x008d, 0x008e, 0x008f, 0x0090, 0x0091, 0x0092, 0x0094, 0x0095, 0x0096, 0x0097, 0x0098, 0x0099, 0x009a, 
+	0x009c, 0x009d, 0x009e, 0x009f, 0x00a0, 0x00a1, 0x00a2, 0x00a3, 0x00a5, 0x00a6, 0x00a7, 0x00a8, 0x00a9, 0x00aa, 0x00ab, 0x00ac, 
+	0x00ad, 0x00ae, 0x00af, 0x00b0, 0x00b1, 0x00b2, 0x00b4, 0x00b5, 0x00b6, 0x00b7, 0x00b8, 0x00b9, 0x00ba, 0x00bb, 0x00bc, 0x00bd, 
+	0x00be, 0x00bf, 0x00c0, 0x00c1, 0x00c2, 0x00c3, 0x00c4, 0x00c5, 0x00c6, 0x00c7, 0x00c8, 0x00c9, 0x00ca, 0x00cb, 0x00cc, 0x00cd, 
+	0x00ce, 0x00d0, 0x00d1, 0x00d2, 0x00d3, 0x00d4, 0x00d5, 0x00d6, 0x00d7, 0x00d8, 0x00d9, 0x00da, 0x00db, 0x00dc, 0x00dd, 0x00de, 
+	0x00df, 0x00e0, 0x00e1, 0x00e2, 0x00e3, 0x00e4, 0x00e5, 0x00e6, 0x00e7, 0x00e8, 0x00e9, 0x00ea, 0x00eb, 0x00ec, 0x00ed, 0x00ee, 
 	0x00f0, 0x00f1, 0x00f2, 0x00f3, 0x00f4, 0x00f5, 0x00f6, 0x00f7, 0x00f8, 0x00f9, 0x00fa, 0x00fb, 0x00fc, 0x00fd, 0x00fe, 0x00ff, 
 	0x0100, 0x0101, 0x0102, 0x0103, 0x0104, 0x0105, 0x0106, 0x0107, 0x0108, 0x0109, 0x010a, 0x010b, 0x010c, 0x010d, 0x010e, 0x010f, 
 	0x0110, 0x0112, 0x0113, 0x0114, 0x0115, 0x0116, 0x0117, 0x0118, 0x0119, 0x011a, 0x011b, 0x011c, 0x011d, 0x011e, 0x011f, 0x0120, 
@@ -439,10 +452,10 @@ static u32 truly_acm_lut_sata_table[] = {
 	0x0000, 0x0000, 0x0000, 0x0001, 0x0001, 0x0001, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0001, 0x0001, 0x0001, 0x0000, 0x0000, 
 	0x0000, 0x0000, 0x0000, 0x0001, 0x0001, 0x0001, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0001, 0x0001, 0x0001, 0x0000, 0x0000, 
 	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0001, 0x0001, 0x0001, 0x0002, 0x0002, 
-	0x0002, 0x0002, 0x0002, 0x0001, 0x0001, 0x0001, 0x0000, 0x0000, 0x0000, 0x0002, 0x0003, 0x0004, 0x0006, 0x0008, 0x0009, 0x000a, 
-	0x000c, 0x000f, 0x0011, 0x0014, 0x0016, 0x0019, 0x001c, 0x001e, 0x0021, 0x0024, 0x0026, 0x0029, 0x002c, 0x002f, 0x0032, 0x0034, 
-	0x0037, 0x0036, 0x0034, 0x0032, 0x0031, 0x0030, 0x002e, 0x002c, 0x002b, 0x0028, 0x0024, 0x0020, 0x001d, 0x001a, 0x0016, 0x0012, 
-	0x000f, 0x000d, 0x000b, 0x0009, 0x0008, 0x0006, 0x0004, 0x0002, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 
+	0x0002, 0x0002, 0x0002, 0x0001, 0x0001, 0x0001, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0001, 0x0001, 0x0001, 0x0002, 0x0002, 
+	0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 
+	0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0002, 0x0001, 0x0001, 0x0001, 0x0000, 0x0000, 
+	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 
 	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 
 	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 
 	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 
@@ -456,10 +469,10 @@ static u32 truly_acm_lut_satr_table[] = {
 	0x0054, 0x0057, 0x005a, 0x005d, 0x0060, 0x0062, 0x0065, 0x0068, 0x006b, 0x006e, 0x0071, 0x0074, 0x0076, 0x0079, 0x007c, 0x007f, 
 	0x007c, 0x0079, 0x0076, 0x0073, 0x0070, 0x006d, 0x006a, 0x0067, 0x0064, 0x0061, 0x005e, 0x005a, 0x0057, 0x0054, 0x0051, 0x004e, 
 	0x004b, 0x0048, 0x0045, 0x0042, 0x003f, 0x003c, 0x0036, 0x0030, 0x002a, 0x0024, 0x001e, 0x0018, 0x0012, 0x000c, 0x0006, 0x0000, 
-	0x0000, 0x0006, 0x000d, 0x0013, 0x0019, 0x0020, 0x0026, 0x002c, 0x0032, 0x0039, 0x003f, 0x0041, 0x0043, 0x0045, 0x0048, 0x004a, 
-	0x004c, 0x004e, 0x0050, 0x0052, 0x0054, 0x0057, 0x0059, 0x005b, 0x005d, 0x005f, 0x0061, 0x0063, 0x0066, 0x0068, 0x006a, 0x006c, 
-	0x006a, 0x0068, 0x0066, 0x0064, 0x0062, 0x0060, 0x005e, 0x005c, 0x005a, 0x0058, 0x0055, 0x0053, 0x0051, 0x004f, 0x004d, 0x004b, 
-	0x0049, 0x0047, 0x0045, 0x0043, 0x0041, 0x003f, 0x0039, 0x0032, 0x002c, 0x0026, 0x0020, 0x0019, 0x0013, 0x000d, 0x0006, 0x0000, 
+	0x0000, 0x0006, 0x000d, 0x0013, 0x0019, 0x0020, 0x0026, 0x002c, 0x0032, 0x0039, 0x003f, 0x0042, 0x0045, 0x0048, 0x004b, 0x004e, 
+	0x0051, 0x0054, 0x0057, 0x005a, 0x005d, 0x005f, 0x0062, 0x0065, 0x0068, 0x006b, 0x006e, 0x0071, 0x0074, 0x0077, 0x007a, 0x007d, 
+	0x007a, 0x0077, 0x0075, 0x0072, 0x006f, 0x006c, 0x0069, 0x0066, 0x0064, 0x0061, 0x005e, 0x005b, 0x0058, 0x0056, 0x0053, 0x0050, 
+	0x004d, 0x004a, 0x0047, 0x0045, 0x0042, 0x003f, 0x0039, 0x0032, 0x002c, 0x0026, 0x0020, 0x0019, 0x0013, 0x000d, 0x0006, 0x0000, 
 	0x0000, 0x0006, 0x000d, 0x0013, 0x0019, 0x0020, 0x0026, 0x002c, 0x0032, 0x0039, 0x003f, 0x0042, 0x0045, 0x0048, 0x004b, 0x004e, 
 	0x0051, 0x0054, 0x0057, 0x005a, 0x005d, 0x0061, 0x0064, 0x0067, 0x006a, 0x006d, 0x0070, 0x0073, 0x0076, 0x0079, 0x007c, 0x007f, 
 	0x007c, 0x0079, 0x0076, 0x0073, 0x0070, 0x006e, 0x006b, 0x0068, 0x0065, 0x0062, 0x005f, 0x005c, 0x0059, 0x0056, 0x0053, 0x0050, 
@@ -491,7 +504,6 @@ static u32 truly_acm_lut_satr_table[] = {
 
 #define AUO_CE_TEST 1
 #if AUO_CE_TEST
-static int g_ce_mode = 1;
 static struct hisi_fb_data_type *hisifd_test = NULL;
 static ssize_t get_ce_mode(struct device *dev,
     struct device_attribute *attr, char *buf)
@@ -504,18 +516,6 @@ static ssize_t set_ce_mode(struct device *dev,
 {
 	int ret = 0;
 	unsigned long val = 0;
-
-	struct dsi_cmd_desc ce_enable_cmd[] = {
-		{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page3_step0), select_page3_step0},
-		{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page3_step1), select_page3_step1},
-		{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(ce_enable), ce_enable},
-	};
-
-	struct dsi_cmd_desc ce_disable_cmd[] = {
-		{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page3_step0), select_page3_step0},
-		{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page3_step1), select_page3_step1},
-		{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(ce_disable), ce_disable},
-	};
 
 	ret = strict_strtoul(buf, 0, &val);
 	if (ret)
@@ -648,7 +648,7 @@ static int mipi_auo_panel_on(struct platform_device *pdev)
 				ARRAY_SIZE(elusion_high_bl), hisifd->mipi_dsi0_base);
 		
 		/*g_lcd_type = 01(AUO);  g_lcd_type = 00(truly);*/
-		if (1 == g_lcd_type){
+		if (AUO_PANEL == g_lcd_type){
 			mipi_dsi_cmds_tx(auo_cabc_initial_cmd, \
 				ARRAY_SIZE(auo_cabc_initial_cmd), hisifd->mipi_dsi0_base);
 			mipi_dsi_cmds_tx(auo_ce_initial_cmd, \
@@ -668,7 +668,7 @@ static int mipi_auo_panel_on(struct platform_device *pdev)
 
 		mipi_dsi_cmds_tx(dimming_initial_cmd, ARRAY_SIZE(dimming_initial_cmd), hisifd->mipi_dsi0_base);
 		
-		g_cabc_mode = 2;
+		g_cabc_mode = 3;
 		g_ce_mode = 1;
 
 #if defined (CONFIG_HUAWEI_DSM)
@@ -772,9 +772,11 @@ static int mipi_auo_panel_remove(struct platform_device *pdev)
 #define MOVING_DIMMING_LONG    0x78
 
 //300ms
-#define ESD_CHECK_TIME_PERIOD	(400)
+#define ESD_CHECK_TIME_PERIOD	(1000)
 static struct hrtimer cabc_dimming_hrtimer;
 static int timer_restart = 0;
+static char temp_still_dimming = 0;
+static char temp_moving_dimming = 0;
 static enum hrtimer_restart hrtimer_set_dimming(struct hrtimer *timer)  
 {
 	char set_still_dimming[2] = {0x95,0x00};
@@ -790,6 +792,9 @@ static enum hrtimer_restart hrtimer_set_dimming(struct hrtimer *timer)
 	set_still_dimming[1] = STILL_DIMMING_SHORT;
 	set_moving_dimming[1] = MOVING_DIMMING_SHORT;
 	mipi_dsi_cmds_tx(set_dimming_cmd, ARRAY_SIZE(set_dimming_cmd), hisifd_test->mipi_dsi0_base);
+
+	temp_still_dimming = STILL_DIMMING_SHORT;
+	temp_moving_dimming = MOVING_DIMMING_SHORT;
 	return HRTIMER_NORESTART;
 };
 
@@ -811,27 +816,18 @@ static int mipi_auo_panel_set_backlight(struct platform_device *pdev)
        char led_page1[2] = {0x84, 0x00};       /* DTYPE_DCS_WRITE1 */
        char bl_level_adjust[2] = {0x9f, 0x00}; /* DTYPE_DCS_WRITE1 */
 	struct dsi_cmd_desc bl_cmd[] = {
-		{DTYPE_DCS_WRITE1, 0, 100, WAIT_TYPE_US,
-			sizeof(led_page0), led_page0},
-		{DTYPE_DCS_WRITE1, 0, 100, WAIT_TYPE_US,
-			sizeof(led_page1), led_page1},		
-		{DTYPE_DCS_WRITE1, 0, 100, WAIT_TYPE_US,
-			sizeof(bl_level_adjust), bl_level_adjust},		
+		{DTYPE_DCS_WRITE1, 0, 100, WAIT_TYPE_US, sizeof(bl_level_adjust), bl_level_adjust},
 	};
 
 	char set_still_dimming[2] = {0x95,0x00};
 	char set_moving_dimming[2] = {0x94, 0x00};
-	char set_min_bl[2] = {0x96,0x40};
 	struct dsi_cmd_desc set_dimming_cmd[] = {
 		{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page2_step0), select_page2_step0},
 		{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page2_step1), select_page2_step1},
 		{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(set_still_dimming), set_still_dimming},
 		{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(set_moving_dimming), set_moving_dimming},
-	};
-	struct dsi_cmd_desc set_min_bl_cmd[] = {
-		{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page2_step0), select_page2_step0},
-		{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page2_step1), select_page2_step1},
-		{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(set_min_bl), set_min_bl},
+		{DTYPE_DCS_WRITE1, 0, 100, WAIT_TYPE_US, sizeof(led_page0), led_page0},
+		{DTYPE_DCS_WRITE1, 0, 100, WAIT_TYPE_US, sizeof(led_page1), led_page1},
 	};
 
 	BUG_ON(pdev == NULL);
@@ -853,14 +849,14 @@ static int mipi_auo_panel_set_backlight(struct platform_device *pdev)
 			hrtimer_cancel(&cabc_dimming_hrtimer);
 			timer_restart = 0;
 		}
-		set_min_bl[1] = (bl_level_adjust[1] > 0x40) ? 0x40 : bl_level_adjust[1];
-		mipi_dsi_cmds_tx(set_min_bl_cmd, ARRAY_SIZE(set_min_bl_cmd), hisifd->mipi_dsi0_base);
 		
-		HISI_FB_INFO("set bl = %d !!!\n", bl_level_adjust[1]);
+		HISI_FB_INFO("driver set bl = %d , app set bl = %d!\n", bl_level_adjust[1], hisifd->bl_level);
 		bl_gpio_status = gpio_get_value(gpio_lcd_bl_enable);
 		if (!bl_gpio_status){
 			set_still_dimming[1] = (bl_level_adjust[1] > dimming_valve) ? STILL_DIMMING_LONG : STILL_DIMMING_SHORT;
 			set_moving_dimming[1] = (bl_level_adjust[1] > dimming_valve) ? MOVING_DIMMING_LONG : MOVING_DIMMING_SHORT;
+			temp_still_dimming = set_still_dimming[1];
+			temp_moving_dimming = set_moving_dimming[1];
 			mipi_dsi_cmds_tx(set_dimming_cmd, ARRAY_SIZE(set_dimming_cmd), hisifd->mipi_dsi0_base);
 			mipi_dsi_cmds_tx(bl_cmd, ARRAY_SIZE(bl_cmd), hisifd->mipi_dsi0_base);
 			gpio_cmds_tx(auo_lcd_enable_bl_cmds, ARRAY_SIZE(auo_lcd_enable_bl_cmds));
@@ -873,7 +869,12 @@ static int mipi_auo_panel_set_backlight(struct platform_device *pdev)
 				set_still_dimming[1] = (bl_level_adjust[1] > dimming_valve) ? STILL_DIMMING_LONG : STILL_DIMMING_SHORT;
 				set_moving_dimming[1] = (bl_level_adjust[1] > dimming_valve) ? MOVING_DIMMING_LONG : MOVING_DIMMING_SHORT;
 			}
-			mipi_dsi_cmds_tx(set_dimming_cmd, ARRAY_SIZE(set_dimming_cmd), hisifd->mipi_dsi0_base);
+
+			if (!(set_still_dimming[1] == temp_still_dimming && set_moving_dimming[1] == temp_moving_dimming)){
+				temp_still_dimming = set_still_dimming[1];
+				temp_moving_dimming = set_moving_dimming[1];
+				mipi_dsi_cmds_tx(set_dimming_cmd, ARRAY_SIZE(set_dimming_cmd), hisifd->mipi_dsi0_base);
+			}
 			mipi_dsi_cmds_tx(bl_cmd, ARRAY_SIZE(bl_cmd), hisifd->mipi_dsi0_base);
 
 			if (old_level > dimming_valve && bl_level_adjust[1] < (dimming_valve+1) && hisifd->bl_level > 0){
@@ -905,9 +906,9 @@ static ssize_t mipi_auo_panel_lcd_model_show(struct platform_device *pdev,
 
 	HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
 
-	if (1 == g_lcd_type){
+	if (AUO_PANEL == g_lcd_type){
 		ret = snprintf(buf, PAGE_SIZE, "auo_NT51021 8.0' VIDEO TFT 1200 x 1920\n");
-	}else if (0 == g_lcd_type){
+	}else if (TRULY_PANEL == g_lcd_type){
 		ret = snprintf(buf, PAGE_SIZE, "truly_NT51021 8.0' VIDEO TFT 1200 x 1920\n");
 	}else{
 		ret = snprintf(buf, PAGE_SIZE, "error, no this panel, check the panel !\n");
@@ -960,7 +961,7 @@ static ssize_t mipi_auo_panel_lcd_cabc_mode_store(struct platform_device *pdev,
 	flag=(int)val;
 	if (flag==CABC_OFF ){
               g_cabc_mode=0;
-		if (1 == g_lcd_type){
+		if (AUO_PANEL == g_lcd_type){
 			mipi_dsi_cmds_tx(auo_cabc_off_cmds,  ARRAY_SIZE(auo_cabc_off_cmds), mipi_dsi0_base);
 			
 		}else{
@@ -968,23 +969,23 @@ static ssize_t mipi_auo_panel_lcd_cabc_mode_store(struct platform_device *pdev,
 		}
 	} else if (flag==CABC_UI_MODE ){
               g_cabc_mode=CABC_UI_MODE;
-              if (1 == g_lcd_type){
-			mipi_dsi_cmds_tx(auo_cabc_still_on_cmds,  ARRAY_SIZE(auo_cabc_still_on_cmds), mipi_dsi0_base);
+              if (AUO_PANEL == g_lcd_type){
+			mipi_dsi_cmds_tx(auo_cabc_moving_on_cmds,  ARRAY_SIZE(auo_cabc_moving_on_cmds), mipi_dsi0_base);
 			
 		}else{
-			mipi_dsi_cmds_tx(truly_cabc_still_on_cmds,  ARRAY_SIZE(truly_cabc_still_on_cmds), mipi_dsi0_base);
+			mipi_dsi_cmds_tx(truly_cabc_moving_on_cmds,  ARRAY_SIZE(truly_cabc_moving_on_cmds), mipi_dsi0_base);
 		}
 	}else if (flag==CABC_STILL_MODE ){
               g_cabc_mode=CABC_STILL_MODE;
-              if (1 == g_lcd_type){
-			mipi_dsi_cmds_tx(auo_cabc_still_on_cmds,  ARRAY_SIZE(auo_cabc_still_on_cmds), mipi_dsi0_base);
+              if (AUO_PANEL == g_lcd_type){
+			mipi_dsi_cmds_tx(auo_cabc_moving_on_cmds,  ARRAY_SIZE(auo_cabc_moving_on_cmds), mipi_dsi0_base);
 			
 		}else{
-			mipi_dsi_cmds_tx(truly_cabc_still_on_cmds,  ARRAY_SIZE(truly_cabc_still_on_cmds), mipi_dsi0_base);
+			mipi_dsi_cmds_tx(truly_cabc_moving_on_cmds,  ARRAY_SIZE(truly_cabc_moving_on_cmds), mipi_dsi0_base);
 		}
 	}else if (flag==CABC_MOVING_MODE ){
               g_cabc_mode=CABC_MOVING_MODE;
-              if (1 == g_lcd_type){
+              if (AUO_PANEL == g_lcd_type){
 			mipi_dsi_cmds_tx(auo_cabc_moving_on_cmds,  ARRAY_SIZE(auo_cabc_moving_on_cmds), mipi_dsi0_base);
 			
 		}else{
@@ -997,6 +998,110 @@ static ssize_t mipi_auo_panel_lcd_cabc_mode_store(struct platform_device *pdev,
 	HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
 	
 	return snprintf((char *)buf, count, "%d\n", g_cabc_mode);
+}
+
+static ssize_t mipi_auo_panel_lcd_ic_color_enhancement_mode_show(struct platform_device *pdev,
+	char *buf)
+{
+	struct hisi_fb_data_type *hisifd = NULL;
+	ssize_t ret = 0;
+
+	BUG_ON(pdev == NULL);
+	hisifd = platform_get_drvdata(pdev);
+	BUG_ON(hisifd == NULL);
+
+	HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
+
+	ret = snprintf(buf, PAGE_SIZE, "ic_color_enhancement_mode = %d\n", g_ce_mode);
+
+	HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
+
+	return ret;
+}
+
+static ssize_t mipi_auo_panel_lcd_ic_color_enhancement_mode_store(struct platform_device *pdev,
+	const char *buf, size_t count)
+{
+	int ret = 0;
+	unsigned long val = 0;
+	int flag=-1;
+	struct hisi_fb_data_type *hisifd = NULL;
+	char __iomem *mipi_dsi0_base = NULL;
+
+	BUG_ON(pdev == NULL);
+	hisifd = platform_get_drvdata(pdev);
+	BUG_ON(hisifd == NULL);
+	mipi_dsi0_base =hisifd->mipi_dsi0_base;
+
+	ret = strict_strtoul(buf, 0, &val);
+	if (ret)
+               return ret;
+
+	HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
+	
+	if (TRULY_PANEL == g_lcd_type){
+		flag=(int)val;
+		if (IC_CE_REG_OFF == flag){
+			g_ce_mode = 0;
+			mipi_dsi_cmds_tx(ce_disable_cmd, \
+				ARRAY_SIZE(ce_disable_cmd), mipi_dsi0_base);
+		} else if (IC_CE_REG_ON == flag){
+			g_ce_mode = 1;
+			mipi_dsi_cmds_tx(ce_enable_cmd, \
+					ARRAY_SIZE(ce_enable_cmd), mipi_dsi0_base);
+		}else{
+			HISI_FB_DEBUG("color_enhancement no this mode!\n");
+		};
+	}
+	
+	HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
+	
+	return snprintf((char *)buf, count, "%d\n", g_ce_mode);
+}
+
+static ssize_t mipi_auo_panel_lcd_support_mode_show(struct platform_device *pdev,
+	char *buf)
+{
+	struct hisi_fb_data_type *hisifd = NULL;
+	ssize_t ret = 0;
+
+	BUG_ON(pdev == NULL);
+	hisifd = platform_get_drvdata(pdev);
+	BUG_ON(hisifd == NULL);
+
+	HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
+
+	ret = snprintf(buf, PAGE_SIZE, "%d\n", g_support_mode);
+
+	HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
+
+	return ret;
+}
+
+static ssize_t mipi_auo_panel_lcd_support_mode_store(struct platform_device *pdev,
+	const char *buf, size_t count)
+{
+	int ret = 0;
+	unsigned long val = 0;
+	int flag=-1;
+	struct hisi_fb_data_type *hisifd = NULL;
+	BUG_ON(pdev == NULL);
+	hisifd = platform_get_drvdata(pdev);
+	BUG_ON(hisifd == NULL);
+
+	ret = strict_strtoul(buf, 0, &val);
+	if (ret)
+               return ret;
+
+	HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
+
+	flag=(int)val;
+
+	g_support_mode = flag;
+	
+	HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
+	
+	return snprintf((char *)buf, count, "%d\n", g_support_mode);
 }
 
 static ssize_t mipi_auo_panel_lcd_check_reg_show(struct platform_device *pdev, char *buf)
@@ -1154,6 +1259,10 @@ static struct hisi_fb_panel_data auo_panel_data = {
 	.lcd_model_show = mipi_auo_panel_lcd_model_show,
 	.lcd_cabc_mode_show = mipi_auo_panel_lcd_cabc_mode_show,
 	.lcd_cabc_mode_store = mipi_auo_panel_lcd_cabc_mode_store,
+	.lcd_ic_color_enhancement_mode_show = mipi_auo_panel_lcd_ic_color_enhancement_mode_show,
+	.lcd_ic_color_enhancement_mode_store = mipi_auo_panel_lcd_ic_color_enhancement_mode_store,
+	.lcd_support_mode_show = mipi_auo_panel_lcd_support_mode_show,
+	.lcd_support_mode_store = mipi_auo_panel_lcd_support_mode_store,
 	.lcd_check_reg = mipi_auo_panel_lcd_check_reg_show,
 	.lcd_mipi_detect = mipi_auo_panel_lcd_mipi_detect_show,
 	.lcd_hkadc_debug_show = mipi_auo_panel_lcd_hkadc_debug_show,
@@ -1182,7 +1291,7 @@ static int mipi_auo_probe(struct platform_device *pdev)
 	int id1 = 0;
 	int nflag0 = 0;
 	int nflag1 = 0;
-
+	int support_mode = 0;
 	if (hisi_fb_device_probe_defer(PANEL_MIPI_CMD))
 		goto err_probe_defer;
 
@@ -1241,13 +1350,9 @@ static int mipi_auo_probe(struct platform_device *pdev)
 	if(runmode_is_factory()) {
 		HISI_FB_INFO("sbl_support = 0\n");
 		pinfo->sbl_support = 0;
-		pinfo->acm_support = 0;
-		pinfo->acm_color_enhancement_mode_support = 0;
 	} else {
 		HISI_FB_INFO("sbl_support = 1\n");
 		pinfo->sbl_support = 1;
-		pinfo->acm_support = 1;
-		pinfo->acm_color_enhancement_mode_support = 1;
 	}
 
 	pinfo->color_temperature_support = 1;
@@ -1329,7 +1434,16 @@ static int mipi_auo_probe(struct platform_device *pdev)
 
 	/*id0:id1 = 01(AUO);  id0:id1 = 00(truly);*/
 	if (0 == id0 && 1 == id1){
-		g_lcd_type  = 1; //AUO
+		g_lcd_type  = AUO_PANEL; //AUO
+		if(runmode_is_factory()) {
+			pinfo->acm_support = 0;
+			pinfo->acm_color_enhancement_mode_support = 0;
+			pinfo->lcd_ic_color_enhancement_mode_support = 0;
+		} else {
+			pinfo->acm_support = 1;
+			pinfo->acm_color_enhancement_mode_support = 1;
+			pinfo->lcd_ic_color_enhancement_mode_support = 0;
+		}
 		if(pinfo->acm_support == 1){
 			pinfo->acm_lut_hue_table = acm_lut_hue_table;
 			pinfo->acm_lut_hue_table_len = sizeof(acm_lut_hue_table) / sizeof(acm_lut_hue_table[0]);
@@ -1342,7 +1456,16 @@ static int mipi_auo_probe(struct platform_device *pdev)
 		}
 		HISI_FB_INFO("auo_NT51021 8.0' VIDEO TFT 1200 x 1920\n");
 	}else if (0 == id0 && 0 == id1){
-		g_lcd_type  = 0; //truly
+		g_lcd_type  = TRULY_PANEL; //truly
+		if(runmode_is_factory()) {
+			pinfo->acm_support = 0;
+			pinfo->acm_color_enhancement_mode_support = 0;
+			pinfo->lcd_ic_color_enhancement_mode_support = 0;
+		} else {
+			pinfo->acm_support = 1;
+			pinfo->acm_color_enhancement_mode_support = 0;
+			pinfo->lcd_ic_color_enhancement_mode_support = 1;
+		}
 		if(pinfo->acm_support == 1){
 			pinfo->acm_lut_hue_table = truly_acm_lut_hue_table;
 			pinfo->acm_lut_hue_table_len = sizeof(truly_acm_lut_hue_table) / sizeof(truly_acm_lut_hue_table[0]);
@@ -1355,10 +1478,21 @@ static int mipi_auo_probe(struct platform_device *pdev)
 		}
 		HISI_FB_INFO("truly_NT51021 8.0' VIDEO TFT 1200 x 1920\n");
 	}else{
-		g_lcd_type = 2;
+		g_lcd_type = NO_PANEL;
 		HISI_FB_INFO("error, no this panel, check the panel !\n");
 	}
-
+	
+	if(pinfo->comform_mode_support == 1){  
+		support_mode = (support_mode | 1);
+	}
+	if(pinfo->acm_color_enhancement_mode_support == 1){
+		support_mode = (support_mode | 2);
+	}
+	if(pinfo->lcd_ic_color_enhancement_mode_support == 1){
+		support_mode = (support_mode | 4);
+	}
+	g_support_mode =   support_mode;
+	
 	/* alloc panel device data */
 	ret = platform_device_add_data(pdev, &auo_panel_data,
 		sizeof(struct hisi_fb_panel_data));

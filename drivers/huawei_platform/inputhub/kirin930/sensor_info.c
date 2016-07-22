@@ -33,7 +33,7 @@
 #endif
 #include <linux/regulator/consumer.h>
 #include <linux/of_device.h>
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #include <linux/huawei/rdr.h>
 
 int hisi_nve_direct_access(struct hisi_nve_info_user *user_info);
@@ -47,6 +47,7 @@ int hisi_nve_direct_access(struct hisi_nve_info_user *user_info);
 #define SENSOR_CONFIG_DATA_OK 0
 #define MAX_MCU_DATA_LENGTH  30
 #define ACC_OFFSET_NV_NUM	307
+#define ACC_OFFSET_NV_SIZE	(16)
 #define MAG_CALIBRATE_DATA_NV_NUM 233
 #define MAG_CALIBRATE_DATA_NV_SIZE (MAX_MAG_CALIBRATE_DATA_LENGTH)
 #define NV_READ_TAG	1
@@ -84,12 +85,14 @@ bool sensor_info_isensor_version = false;
 
 bool is_invensense_dmp_exist = false;
 bool is_txc_pa224_dmp_exist = false;
+int motion_rotate_mask = MOTION_ROTATION_PRITRIAT_REVERSE;
 static char sensor_chip_info[SENSOR_MAX][50];
 static int gsensor_offset[3]; //g-sensor校准参数
 static int ps_sensor_offset = 0;
-static RET_TYPE return_calibration = EXEC_FAIL;
+static RET_TYPE return_calibration = EXEC_FAIL;//acc calibrate result
+static RET_TYPE ps_calibration_res = EXEC_FAIL;//ps calibrate result
 static RET_TYPE return_cap_prox_calibration = EXEC_FAIL;
-static struct sensor_status sensor_status;
+struct sensor_status sensor_status;
 static struct sensor_status sensor_status_backup;
 extern int first_start_flag;
 extern int ps_first_start_flag;
@@ -105,6 +108,7 @@ extern int get_airpress_data;
 extern int get_temperature_data;
 extern int iom3_timeout;
 static u8 rohm_rgb_flag = 0;
+static u8 avago_rgb_flag = 0;
 static u8 phone_color = 0;
 static unsigned char tp_color_buf[TP_COLOR_BUF_SIZE] = {0};
 
@@ -125,15 +129,31 @@ BH1745_ALS_PARA_TABLE als_para_diff_tp_color_table[] =
 	{CARRERA,V4,BLACK,{1913, 19872, 3055, 65200, 45870, 1913, 410, 2271, 100, -3115, 6419, -2570, 5421, 1151, 1207, 2319, 2170 }},
 	{CARRERA,V4,WHITE,{205, 209, 112, 897, 842, 205, 473, 1752, 100, -3037, 8368, -3237, 6760, 1433, 1366, 3035, 1948}},
 	{CARRERA,V4,GOLD,{254, 1609, 942,  10029, 9683, 254, 1025, 4146, 100, -3296, 18087, -4242, 14088, 2408, 1547, 8872, 2011}},
-	{CARRERA,VN1,BLACK,{469, 274, 102, 943, 463, 469, 355, 1428, 100, -2449, 4030, -2501, 4310, 818, 1359, 2023, 2038 }},
+	{CARRERA,VN1,BLACK,{414, 142, 43, 627, 482, 414, 336, 1451, 100, -2737, 4674, -2954, 4762, 1091, 1293, 2984, 2019 }},
 	{CARRERA,VN1,WHITE,{205, 209, 112, 897, 842, 205, 473, 1752, 100, -3037, 8368, -3237, 6760, 1433, 1366, 3035, 1948}},
-	{CARRERA,VN1,GOLD,{282, 1661, 725,  11827, 10800, 282, 898, 3716, 100, -2628, 12127, -3807, 11048, 1659, 1774, 6183, 2042}},
-	{CARRERA,VN2,BLACK,{469, 274, 102, 943, 463, 469, 355, 1428, 100, -2449, 4030, -2501, 4310, 818, 1359, 2023, 2038 }},
+	{CARRERA,VN1,GOLD,{214, 586, 339,  2981, 2671, 214, 561, 2205, 100, -2482, 8362, -3191, 7024, 1208, 1647, 3002, 2001}},
+	{CARRERA,VN1,PINK,{337, 176, 83, 1351, 1274, 337, 1068, 3925, 100, -2725, 14138, -4170, 13492, 1864, 1791, 8655, 1981}},
+	{CARRERA,VN2,BLACK,{414, 142, 43, 627, 482, 414, 336, 1451, 100, -2737, 4674, -2954, 4762, 1091, 1293, 2984, 2019 }},
 	{CARRERA,VN2,WHITE,{205, 209, 112, 897, 842, 205, 473, 1752, 100, -3037, 8368, -3237, 6760, 1433, 1366, 3035, 1948}},
-	{CARRERA,VN2,GOLD,{287, 886, 350,  3988, 3919, 287, 577, 2570, 100, -2445, 8378, -3194, 6982, 1104, 1630, 3212, 2080}},
-	{CARRERA,VN2,PINK,{306, 197, 107, 1450, 1329, 306, 906, 3317, 100, -2666, 12873, -3875, 11655, 1739, 1782, 6081, 1943}},
+	{CARRERA,VN2,GOLD,{214, 586, 339,  2981, 2671, 214, 561, 2205, 100, -2482, 8362, -3191, 7024, 1208, 1647, 3002, 2001}},
+	{CARRERA,VN2,PINK,{337, 176, 83, 1351, 1274, 337, 1068, 3925, 100, -2725, 14138, -4170, 13492, 1864, 1791, 8655, 1981}},
 };
+typedef struct _APDS9251_ALS_PARA_TABLE{
+	uint8_t phone_type;
+	uint8_t phone_version;
+	uint8_t tp_color;
+	s16 apds251_para[13]; //give to apds251 rgb sensor use,output lux and cct will use these para
+}APDS9251_ALS_PARA_TABLE;	//the apds251_para size must small SENSOR_PLATFORM_EXTEND_DATA_SIZE(48) Bytes
 
+/* be attention! must keep this rules: apds251_para[8]>apds251_para[9]>apds251_para[10]*/
+APDS9251_ALS_PARA_TABLE apds_als_para_diff_tp_color_table[] =
+{
+	{CARRERA,VN2,BLACK,{2550, 1734, 764, 542, 420, 1175, 1605, 1035, 740, 510, 200, 1, 70 }},
+	{CARRERA,VN2,WHITE,{5521, 2135, 1221, 1062, 1025, 905, 1246, 790, 230, 150, 100, 0, 70}},
+	{CARRERA,VN2,GOLD,{5370, 2662, 2473, 2318, 2134, 815, 1379, 690, 192, 129, 57, 0, 70}},
+	{CARRERA,VN2,PINK,{19947, 1123, 1400, 1268, 1046, 846, 1065, 712, 238, 157, 68, 0, 70}},
+};
+/* be attention! must keep this rules: apds251_para[8]>apds251_para[9]>apds251_para[10]*/
 static struct gyro_platform_data gyro_data={
 		.poll_interval=10,
 		.axis_map_x=1,
@@ -685,7 +705,7 @@ int read_airpress_calibrate_data_from_nv(void)
 		return -1;
 	}
 	//send to mcu
-	pkg_ap.tag = TAG_AIRPRESS;
+	pkg_ap.tag = TAG_PRESSURE;
 	pkg_ap.cmd = CMD_AIRPRESS_SET_CALIDATA_REQ;
 	pkg_ap.wr_buf = (const void *)&airpress_data.offset;
 	pkg_ap.wr_len = sizeof(airpress_data.offset);
@@ -860,7 +880,7 @@ void reset_calibrate_when_recovery_iom3(void)
 	write_customize_cmd_noresp(TAG_MAG, CMD_MAG_SET_CALIBRATE_TO_MCU_REQ, &msensor_calibrate_data, MAG_CALIBRATE_DATA_NV_SIZE);
 	msleep(10);
 	if (strlen(sensor_chip_info[AIRPRESS]) != 0) {
-		write_customize_cmd_noresp(TAG_AIRPRESS, CMD_AIRPRESS_SET_CALIDATA_REQ, &airpress_data.offset, sizeof(airpress_data.offset));
+		write_customize_cmd_noresp(TAG_PRESSURE, CMD_AIRPRESS_SET_CALIDATA_REQ, &airpress_data.offset, sizeof(airpress_data.offset));
 		msleep(10);
 	}
 	if (txc_ps_flag == 1) {
@@ -1077,6 +1097,41 @@ static bool check_sensorhub_isensor_version(void)
         return false;
     }
 }
+
+static int check_sensorhub_motion_rotate_mask(void)
+{
+    int len = 0;
+    struct device_node *sensorhub_node = NULL;
+    const char *is_motion_rotate_mask = NULL;
+    sensorhub_node = of_find_compatible_node(NULL, NULL, "huawei,sensorhub");
+    if (!sensorhub_node) {
+        hwlog_err("%s, can't find node sensorhub\n", __func__);
+        return MOTION_ROTATION_PRITRIAT_REVERSE;
+    }
+    is_motion_rotate_mask = of_get_property(sensorhub_node, "motion_rotate_mask", &len);
+    if (!is_motion_rotate_mask) {
+        hwlog_info("%s, can't find property motion_rotate_mask\n", __func__);
+        return MOTION_ROTATION_PRITRIAT_REVERSE;
+    }
+     if (strstr(is_motion_rotate_mask, "right")) {
+         hwlog_info("%s, motion_rotate_mask is right\n", __func__);
+        return MOTION_ROTATION_LAND_RIGHT;
+    } else  if(strstr(is_motion_rotate_mask, "left")){
+         hwlog_info("%s, motion_rotate_mask is left\n", __func__);
+        return MOTION_ROTATION_LAND_LEFT;
+    }else if(strstr(is_motion_rotate_mask, "up")){
+        hwlog_info("%s, motion_rotate_mask is up\n", __func__);
+        return MOTION_ROTATION_PRITRIAT_REVERSE;
+    }else if(strstr(is_motion_rotate_mask, "down")){
+        hwlog_info("%s, motion_rotate_mask is down\n", __func__);
+        return MOTION_ROTATION_PORTRIAT;
+    }else if(strstr(is_motion_rotate_mask, "none")){
+        hwlog_info("%s, motion_rotate_mask is none\n", __func__);
+        return MOTION_ROTATION_LAND_NONE;
+    }
+    return MOTION_ROTATION_PRITRIAT_REVERSE;
+}
+
 static int mcu_i2c_rw(uint8_t bus_num, uint8_t i2c_add, uint8_t register_add, uint8_t rw, int len, uint8_t *buf)
 {
 	int ret=0;
@@ -1490,6 +1545,44 @@ out:
 	return ret;
 }
 
+const char *get_sensor_info_by_tag(int tag)
+{
+	enum sensor_name sname = SENSOR_MAX;
+
+	switch (tag) {
+	case TAG_ACCEL:
+		sname = ACC;
+		break;
+	case TAG_MAG:
+		sname = MAG;
+		break;
+	case TAG_GYRO:
+		sname = GYRO;
+		break;
+	case TAG_ALS:
+		sname = ALS;
+		break;
+	case TAG_PS:
+		sname = PS;
+		break;
+	case TAG_PRESSURE:
+		sname = AIRPRESS;
+		break;
+	case TAG_HANDPRESS:
+		sname = HANDPRESS;
+		break;
+	case TAG_CAP_PROX:
+		sname = CAP_PROX;
+		break;
+
+	default:
+		hwlog_err("tag %d has no chip_info\n", tag);
+		break;
+	}
+
+	return (sname != SENSOR_MAX) ? sensor_chip_info[sname] : "";
+}
+
 static int init_sensors_cfg_data_from_dts(void)
 {
 	int ret = 0, i=0;
@@ -1510,10 +1603,12 @@ static int init_sensors_cfg_data_from_dts(void)
 	int ps_i2c_address = 0;
 	char buf[SENSOR_MAX][50] = {{0}};
 	char detect_result[MAX_STR_SIZE] = {0};
+	int als_table_index = 0;
 
 	sensor_info_isensor_version = check_sensorhub_isensor_version();
 	is_invensense_dmp_exist = check_invensense_exist();
 	is_txc_pa224_dmp_exist = check_txc_pa224_exist();
+	motion_rotate_mask = check_sensorhub_motion_rotate_mask();
 	for_each_node_with_property(dn, "sensor_type")
 	{
 		ret=of_property_read_string(dn, "sensor_type", (const char **)&sensor_ty);
@@ -1786,6 +1881,10 @@ static int init_sensors_cfg_data_from_dts(void)
 				rohm_rgb_flag = 1;
 				hwlog_err("%s:rohm_bh1745 i2c_address suc,%d \n",__func__,temp);
 			}
+			if(!strncmp(chip_info, "huawei,avago_apds9251", sizeof("huawei,avago_apds9251"))){
+				avago_rgb_flag = 1;
+				hwlog_err("%s:avago_apds9251 i2c_address suc,%d \n",__func__,temp);
+			}
 
 			hwlog_info("get als dev from dts.sensor name=%s\n", chip_info);
 
@@ -1857,14 +1956,37 @@ static int init_sensors_cfg_data_from_dts(void)
 				}
 				else
 				{
-					for(i=0;i<10;i++){
+					for(i=0;i<ARRAY_SIZE(als_para_diff_tp_color_table);i++){
 						if((als_para_diff_tp_color_table[i].phone_type== als_data.als_phone_type) && (als_para_diff_tp_color_table[i].phone_version==als_data.als_phone_version)
                                                     && (als_para_diff_tp_color_table[i].tp_color== phone_color)){
+							als_table_index = i;
 							break;
 						}
 					}
-					memcpy(als_data.als_extend_data, als_para_diff_tp_color_table[i].bh745_para, sizeof(als_para_diff_tp_color_table[i].bh745_para));
-					hwlog_err("i=%d bh1745 phone_color=0x%x phone_type=%d,phone_version=%d\n",i,phone_color,als_data.als_phone_type,als_data.als_phone_version);
+					memcpy(als_data.als_extend_data, als_para_diff_tp_color_table[als_table_index].bh745_para, sizeof(als_para_diff_tp_color_table[als_table_index].bh745_para));
+					hwlog_err("als_table_index=%d bh1745 phone_color=0x%x phone_type=%d,phone_version=%d\n",als_table_index,phone_color,als_data.als_phone_type,als_data.als_phone_version);
+				}
+			}
+			else if(avago_rgb_flag == 1)
+			{
+				if(phone_color != BLACK && phone_color != WHITE && phone_color != GOLD && phone_color !=PINK)
+				{
+					//use the defoult als para adjust to the tp black color
+					memcpy(als_data.als_extend_data, apds_als_para_diff_tp_color_table[0].apds251_para,
+						sizeof(apds_als_para_diff_tp_color_table[0].apds251_para)>SENSOR_PLATFORM_EXTEND_DATA_SIZE?SENSOR_PLATFORM_EXTEND_DATA_SIZE:sizeof(apds_als_para_diff_tp_color_table[0].apds251_para));
+				}
+				else
+				{
+					for(i=0;i<ARRAY_SIZE(apds_als_para_diff_tp_color_table);i++){
+						if((apds_als_para_diff_tp_color_table[i].phone_type== als_data.als_phone_type) && (apds_als_para_diff_tp_color_table[i].phone_version==als_data.als_phone_version)
+                                                    && (apds_als_para_diff_tp_color_table[i].tp_color== phone_color)){
+							als_table_index = i;
+							break;
+						}
+					}
+					memcpy(als_data.als_extend_data, apds_als_para_diff_tp_color_table[als_table_index].apds251_para,
+						sizeof(apds_als_para_diff_tp_color_table[als_table_index].apds251_para)>SENSOR_PLATFORM_EXTEND_DATA_SIZE?SENSOR_PLATFORM_EXTEND_DATA_SIZE:sizeof(apds_als_para_diff_tp_color_table[als_table_index].apds251_para));
+					hwlog_err("als_table_index=%d apds9251 phone_color=0x%x phone_type=%d,phone_version=%d\n",als_table_index,phone_color,als_data.als_phone_type,als_data.als_phone_version);
 				}
 			}
 			else
@@ -2607,7 +2729,7 @@ static int sensor_set_cfg_data(void)
 	//airpress
 	if(strlen(sensor_chip_info[AIRPRESS]) != 0)
 	{
-		pkg_ap.tag=TAG_AIRPRESS;
+		pkg_ap.tag=TAG_PRESSURE;
 		pkg_ap.cmd=CMD_AIRPRESS_PARAMET_REQ;
 		pkg_ap.wr_buf=&airpress_data;
 		pkg_ap.wr_len=sizeof(airpress_data);
@@ -2756,8 +2878,8 @@ static DEVICE_ATTR(als_read_data, 0664, sensor_show_TAG_ALS_read_data, NULL);
 SENSOR_SHOW_VALUE(TAG_PS);
 static DEVICE_ATTR(ps_read_data, 0664, sensor_show_TAG_PS_read_data, NULL);
 
-SENSOR_SHOW_VALUE(TAG_AIRPRESS);
-static DEVICE_ATTR(airpress_read_data, 0664, sensor_show_TAG_AIRPRESS_read_data, NULL);
+SENSOR_SHOW_VALUE(TAG_PRESSURE);
+static DEVICE_ATTR(airpress_read_data, 0664, sensor_show_TAG_PRESSURE_read_data, NULL);
 
 SENSOR_SHOW_VALUE(TAG_HANDPRESS);
 static DEVICE_ATTR(handpress_read_data, 0664, sensor_show_TAG_HANDPRESS_read_data, NULL);
@@ -3009,7 +3131,7 @@ static DEVICE_ATTR(acc_calibrate, 0664, attr_acc_calibrate_show, attr_acc_calibr
 static ssize_t attr_ps_calibrate_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
-	int val = return_calibration;
+	int val = ps_calibration_res;
 	return snprintf(buf, PAGE_SIZE, "%d\n", val);
 }
 
@@ -3020,7 +3142,7 @@ static int ps_calibrate_save(const void *buf, int length)
 	if(buf == NULL||length <= 0)
 	{
 		hwlog_err("%s invalid argument.", __func__);
-		return_calibration=EXEC_FAIL;
+		ps_calibration_res=EXEC_FAIL;
 		return -1;
 	}
 	memcpy(temp_buf, buf, length);
@@ -3029,10 +3151,10 @@ static int ps_calibrate_save(const void *buf, int length)
 	if(ret)
 	{
 		hwlog_err("nv write fail.\n");
-		return_calibration=NV_FAIL;
+		ps_calibration_res=NV_FAIL;
 		return -1;
 	}
-	return_calibration=SUC;
+	ps_calibration_res=SUC;
 	return 0;
 }
 
@@ -3062,14 +3184,14 @@ static ssize_t attr_ps_calibrate_write(struct device *dev,
 		ret=write_customize_cmd(&pkg_ap,  &pkg_mcu);
 		if(ret)
 		{
-			return_calibration=COMMU_FAIL;
+			ps_calibration_res=COMMU_FAIL;
 			hwlog_err("send ps calibrate cmd to mcu fail,ret=%d\n", ret);
 			return count;
 		}
 		if(pkg_mcu.errno!=0)
 		{
 			hwlog_err("ps calibrate fail, %d\n", pkg_mcu.errno);
-			return_calibration=EXEC_FAIL;
+			ps_calibration_res=EXEC_FAIL;
 		}
 		else
 		{
@@ -3324,15 +3446,14 @@ static ssize_t attr_fingersense_latch_data(struct device *dev, struct device_att
 static DEVICE_ATTR(fingersense_latch_data, 0440, attr_fingersense_latch_data, NULL);
 
 extern int vibrator_shake;
-volatile int TP_weigh_mode = 0;/*1: mode enable, 0: mode disable*/
 static ssize_t attr_fingersense_req_data(struct device *dev, struct device_attribute *attr,
 				const char *buf, size_t size)
 {
 	int ret = -1;
 	write_info_t pkg_ap;
 
-	if((vibrator_shake == 1)||(TP_weigh_mode == 1)){
-		hwlog_err("vibrator shaking %d, tp weigh mode %d, not send fingersense req data cmd to mcu\n", vibrator_shake, TP_weigh_mode);
+	if(vibrator_shake == 1){
+		hwlog_err("vibrator shaking, not send fingersense req data cmd to mcu\n");
 		return -1;
 	}
 //	hwlog_err("[FINGERSENSE] Requesting z-axis data: %lums\n", (unsigned long) ktime_to_ms(ktime_get()));
@@ -3511,11 +3632,11 @@ SHOW_DELAY_FUNC(rvs, TAG_ROTATION_VECTORS)
 STORE_DELAY_FUNC(rvs, TAG_ROTATION_VECTORS, CMD_CMN_INTERVAL_REQ) 
 static DEVICE_ATTR(rvs_setdelay, 0664, show_rvs_delay_result, attr_set_rvs_delay);
 
-SHOW_ENABLE_FUNC(airpress, TAG_AIRPRESS)
-STORE_ENABLE_FUNC(airpress, TAG_AIRPRESS, CMD_CMN_OPEN_REQ, CMD_CMN_CLOSE_REQ)
+SHOW_ENABLE_FUNC(airpress, TAG_PRESSURE)
+STORE_ENABLE_FUNC(airpress, TAG_PRESSURE, CMD_CMN_OPEN_REQ, CMD_CMN_CLOSE_REQ)
 static DEVICE_ATTR(airpress_enable, 0664, show_airpress_enable_result, attr_set_airpress_enable);
-SHOW_DELAY_FUNC(airpress, TAG_AIRPRESS)
-STORE_DELAY_FUNC(airpress, TAG_AIRPRESS, CMD_CMN_INTERVAL_REQ)
+SHOW_DELAY_FUNC(airpress, TAG_PRESSURE)
+STORE_DELAY_FUNC(airpress, TAG_PRESSURE, CMD_CMN_INTERVAL_REQ)
 static DEVICE_ATTR(airpress_setdelay, 0664, show_airpress_delay_result, attr_set_airpress_delay);
 
 SHOW_ENABLE_FUNC(handpress, TAG_HANDPRESS)
@@ -3633,7 +3754,7 @@ static ssize_t attr_set_sensor_motion_stup(struct device *dev, struct device_att
 
 	for( i = 0; i < 20 ; i++){
 		msleep(100);
-		inputhub_route_write(ROUTE_SHB_PORT, (char *)&event, 16);
+		report_sensor_event(TAG_ACCEL, event.value, event.length);
 	}
 	return size;
 }
@@ -3652,7 +3773,7 @@ static ssize_t attr_set_sensor_stepcounter_stup(struct device *dev, struct devic
 	event.value[1] = 0;
 	event.value[2] = 0;
 
-	inputhub_route_write(ROUTE_SHB_PORT, (char *)&event, 16);
+	report_sensor_event(TAG_STEP_COUNTER, event.value, event.length);
 	return size;
 }
 static DEVICE_ATTR(dt_stepcounter_stup, 0664, NULL, attr_set_sensor_stepcounter_stup);
@@ -3665,11 +3786,16 @@ static ssize_t show_iom3_sr_status(struct device *dev,
 static DEVICE_ATTR(iom3_sr_status, 0664, show_iom3_sr_status, NULL);
 
 static int airpress_cali_flag = 0;
-static ssize_t show_sensor_read_airpress(struct device *dev,
+ssize_t show_sensor_read_airpress_common(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
 	airpress_cali_flag = 1;
 	return snprintf(buf, MAX_STR_SIZE, "%d\n", get_airpress_data);
+}
+static ssize_t show_sensor_read_airpress(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	return show_sensor_read_airpress_common(dev, attr, buf);
 }
 static DEVICE_ATTR(read_airpress, 0664, show_sensor_read_airpress, NULL);
 
@@ -3679,47 +3805,6 @@ static ssize_t show_sensor_read_temperature(struct device *dev,
 	return snprintf(buf, MAX_STR_SIZE, "%d\n", get_temperature_data);
 }
 static DEVICE_ATTR(read_temperature, 0664, show_sensor_read_temperature, NULL);
-
-#ifdef CONFIG_AP_POWERKEY_SENDS_PROX_SENSOR_REPORT
-int powerkey_sends_prox_flag;
-
-static ssize_t show_powerkey_sends_prox(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	return snprintf(buf, MAX_STR_SIZE, "%d\n", powerkey_sends_prox_flag);
-}
-
-static ssize_t store_powerkey_sends_prox(struct device *dev, struct device_attribute *attr,
-				const char *buf, size_t size)
-{
-	unsigned int flag;
-
-	flag = simple_strtoul(buf, NULL, 10);
-
-	if (flag != 0 && flag != 1) {
-		hwlog_info("%s: Invalid value: %u\n", __FUNCTION__, flag);
-	} else {
-		powerkey_sends_prox_flag = flag;
-		hwlog_info("%s: powerkey_sends_prox_flag=%d\n", __FUNCTION__, powerkey_sends_prox_flag);
-	}
-
-	return size;
-}
-
-static DEVICE_ATTR(powerkey_sends_prox, 0664, show_powerkey_sends_prox, store_powerkey_sends_prox);
-
-/* report value: (1: far), (0: near). */
-int ap_powerkey_sends_prox_sensor_report(int value)
-{
-    struct sensor_data event;
-
-    hwlog_info("%s: value=%d\n", __FUNCTION__, value);
-    event.type = TAG_PS;
-    event.length = sizeof(event.value[0]);
-    event.value[0] = (int)value;
-    return inputhub_route_write(ROUTE_SHB_PORT, (char *)&event, event.length + OFFSET_OF_END_MEM(struct sensor_data, length));
-}
-#endif
 
 static ssize_t show_dump_sensor_status(struct device *dev,
 				struct device_attribute *attr, char *buf)
@@ -3767,7 +3852,7 @@ static ssize_t store_airpress_set_calidata(struct device *dev, struct device_att
 	airpress_data.offset += (int)source;
 
 	//send to mcu
-	pkg_ap.tag = TAG_AIRPRESS;
+	pkg_ap.tag = TAG_PRESSURE;
 	pkg_ap.cmd = CMD_AIRPRESS_SET_CALIDATA_REQ;
 	pkg_ap.wr_buf = (const void *)&airpress_data.offset;
 	pkg_ap.wr_len = sizeof(airpress_data.offset);
@@ -3814,6 +3899,48 @@ static ssize_t store_airpress_set_calidata(struct device *dev, struct device_att
 	return size;
 }
 static DEVICE_ATTR(airpress_set_calidata, 0664, show_airpress_set_calidata, store_airpress_set_calidata);
+
+ssize_t sensors_calibrate_show(int tag, struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	switch (tag) {
+	case TAG_ACCEL:
+		return snprintf(buf, PAGE_SIZE, "%d\n", return_calibration != SUC);//flyhorse k: SUC-->"0", OTHERS-->"1"
+
+	case TAG_PS:
+		return snprintf(buf, PAGE_SIZE, "%d\n", ps_calibration_res != SUC);//flyhorse k: SUC-->"0", OTHERS-->"1"
+
+	case TAG_PRESSURE:
+		return show_airpress_set_calidata(dev, attr, buf);
+
+	default:
+		hwlog_err("tag %d calibrate not implement in %s\n", tag, __func__);
+		break;
+	}
+
+	return 0;
+}
+
+ssize_t sensors_calibrate_store(int tag, struct device *dev,
+				struct device_attribute *attr, const char *buf, size_t count)
+{
+	switch (tag) {
+	case TAG_ACCEL:
+		return attr_acc_calibrate_write(dev, attr, buf, count);
+
+	case TAG_PS:
+		return attr_ps_calibrate_write(dev, attr, buf, count);
+
+	case TAG_PRESSURE:
+		return store_airpress_set_calidata(dev, attr, buf, count);
+
+	default:
+		hwlog_err("tag %d calibrate not implement in %s\n", tag, __func__);
+		break;
+	}
+
+	return count;
+}
 
 static unsigned int handpress_data_flag = 0;
 static ssize_t show_hp_sensor_switch(struct device *dev, struct device_attribute *attr,
@@ -4002,9 +4129,6 @@ static struct attribute *sensor_attributes[] = {
 	&dev_attr_cap_prox_setdelay.attr,
 	&dev_attr_rdr_test.attr,
 	&dev_attr_dump_sensor_status.attr,
-#ifdef CONFIG_AP_POWERKEY_SENDS_PROX_SENSOR_REPORT
-	&dev_attr_powerkey_sends_prox.attr,
-#endif
 	NULL
 };
 static const struct attribute_group sensor_node = {

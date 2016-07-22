@@ -42,7 +42,7 @@
 #include <asm/irq.h>
 
 #if defined (CONFIG_HUAWEI_DSM)
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #endif
 
 
@@ -292,8 +292,10 @@ static void hisi_gpio_keysmart_work(struct work_struct *work)
 	input_report_key(gpio_key->input_dev, KEY_F24, report_action);
 	input_sync(gpio_key->input_dev);
 
-	if (keysmart_value == GPIO_HIGH_VOLTAGE)
+	if (keysmart_value == GPIO_HIGH_VOLTAGE) {
 		wake_unlock(&smart_key_lock);
+		wake_lock_timeout(&smart_key_lock, 500);
+	}
 
 	return;
 }
@@ -378,6 +380,8 @@ static void gpio_keysmart_timer(unsigned long data)
         if (keysmart_value == GPIO_LOW_VOLTAGE)
                 wake_lock(&smart_key_lock);
 
+	printk(KERN_INFO "[gpiokey] [%s]keysmart_value=%d\n",
+			__FUNCTION__, keysmart_value);
 	schedule_delayed_work(&(gpio_key->gpio_keysmart_work), 0);
 
 	return;
@@ -461,6 +465,7 @@ static irqreturn_t hisi_gpio_key_irq_handler(int irq, void *dev_id)
 #endif
 #ifdef CONFIG_HISI_GPIO_KEY_SUPPORT_SMART_KEY
 	} else if (irq == gpio_key->key_smart_irq) {
+		printk(KERN_INFO "[gpiokey] [%s]smart key irq=%d\n", __FUNCTION__, irq);
 		mod_timer(&(gpio_key->key_smart_timer), jiffies + msecs_to_jiffies(TIMER_DEBOUNCE));
 		wake_lock_timeout(&smart_key_lock, 50);
 #endif

@@ -640,7 +640,7 @@ static int ov5648_foxconn_try_framesizes(struct v4l2_frmsizeenum *framesizes)
  **************************************************************************
 */
 static int ov5648_foxconn_set_framesizes(camera_state state,
-				 struct v4l2_frmsize_discrete *fs, int flag, camera_setting_view_type view_type, bool zsl_preview)
+				 struct v4l2_frmsize_discrete *fs, int flag, camera_setting_view_type view_type, bool zsl_preview, camera_b_shutter_mode b_shutter_mode,ecgc_support_type_s ecgc_type)
 {
 	int i = 0;
 	bool match = false;
@@ -648,13 +648,15 @@ static int ov5648_foxconn_set_framesizes(camera_state state,
 
 	framesize_s * ov5648_foxconn_framesizes = NULL;
 	assert(fs);
+	(void)b_shutter_mode;//front sensor does not support b_shutter_mode
+	(void)ecgc_type;
 
 	if(NULL == fs) {
 		return -EINVAL;
 	}
 
-	print_debug("Enter Function:%s State(%d), flag=%d, width=%d, height=%d",
-		    __func__, state, flag, fs->width, fs->height);
+	print_info("Enter Function:%s State(%d), flag=%d, width=%d, height=%d, b_shutter_mode=0x%x, ecgc_type=0x%x",
+		   __func__, state, flag, fs->width, fs->height,b_shutter_mode,ecgc_type);
 
 	size = ov5648_foxconn_config->framesizes.size;
 	ov5648_foxconn_framesizes = ov5648_foxconn_config->framesizes.framesize_setting;

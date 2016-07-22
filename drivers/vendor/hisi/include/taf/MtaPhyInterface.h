@@ -29,10 +29,6 @@
 #define MTA_BODY_SAR_GBAND_EDGE_1800_MASK   (0x00040000)
 #define MTA_BODY_SAR_GBAND_EDGE_1900_MASK   (0x00080000)
 
-/* Added by zwx247453 for Refclkfreq, 2015/6/17, begin */
-#define MTA_PHY_AFCLOCK_REPORT_DURATION     (500)
-/* Added by zwx247453 for Refclkfreq, 2015/6/17, end */
-
 /*****************************************************************************
   3 枚举定义
 *****************************************************************************/
@@ -158,11 +154,6 @@ enum MTA_PHY_MSG_TYPE_ENUM
     ID_GPHY_MTA_XPASS_INFO_IND                  = 0x6501,                       /* _H2ASN_MsgChoice GPHY_MTA_XPASS_INFO_IND_STRU */
     ID_WPHY_MTA_XPASS_INFO_IND                  = 0x6502,                       /* _H2ASN_MsgChoice WPHY_MTA_XPASS_INFO_IND_STRU */
 
-    /* Added by zwx247453 for Refclkfreq, 2015-6-17, begin */
-    /* 与TLPHY间的消息 */
-    ID_MTA_AGENT_AFCLOCK_STATUS_RPT_NTF         = 0x7503,                       /* _H2ASN_MsgChoice MTA_AGENT_AFCLOCK_STATUS_NTF_STRU */
-    /* Added by zwx247453 for Refclkfreq, 2015-6-17, end */
-
     ID_MTA_PHY_MSG_TYPE_BUTT
 };
 typedef VOS_UINT16 MTA_PHY_MSG_TYPE_ENUM_UINT16;
@@ -277,40 +268,6 @@ typedef struct
     PHY_MTA_WPHY_HIGHWAY_MODE_ENUM_UINT16   enHighwayMode;                      /* W高铁模式 */
     VOS_UINT16                              usReserved;
 } WPHY_MTA_XPASS_INFO_IND_STRU;
-
-/* Added by zwx247453 for Refclkfreq, 2015/6/17, begin */
-/*****************************************************************************
-结构名    : TLPHY_MTA_AFCLOCK_STATUS_IND_STRU
-结构说明  : TLPHY_PID_RTTAGENT上报到UEPS_PID_MTA的锁定状态消息结构体
-
-  1.日    期  : 2015年06月17日
-    作    者  : zwx247453
-    创建内容  : 新建
-*****************************************************************************/
-typedef struct
-{
-    MTA_PHY_MSG_HEADER                                                          /*_H2ASN_Skip*/
-    VOS_UINT16                              usStatus;                           /* AFC锁定状态: 0, 失锁; 1, 锁定 */
-    VOS_UINT16                              ausReserved1[1];
-} TLPHY_MTA_AFCLOCK_AFCSTATUS_IND_STRU;
-
-/*****************************************************************************
-结构名    : MTA_AGENT_AFCLOCK_STATUS_NIF_STRU
-结构说明  : UEPS_PID_MTA发送到TLPHY_PID_RTTAGENT的AFC锁定状态NTF消息结构体
-
-  1.日    期  : 2015年06月17日
-    作    者  : zwx247453
-    创建内容  : 新建
-*****************************************************************************/
-typedef struct
-{
-    MTA_PHY_MSG_HEADER                                                          /*_H2ASN_Skip*/
-    VOS_UINT16                              usReportCtrolflag;                  /* 0:停止上报，1:启动上报 */
-    VOS_UINT16                              usReportCount;                      /* 上报次数，若是0xffff则无限上报 */
-    VOS_UINT16                              usReportDuration;                   /* 上报间隔，以ms为单位，粒度为10ms整数倍。上报次数大于1时有效 */
-    VOS_UINT16                              ausReserved1[1];
-} MTA_AGENT_AFCLOCK_AFCSTATUS_NTF_STRU;
-/* Added by zwx247453 for Refclkfreq, 2015/6/17, end */
 
 /*****************************************************************************
   8 UNION定义

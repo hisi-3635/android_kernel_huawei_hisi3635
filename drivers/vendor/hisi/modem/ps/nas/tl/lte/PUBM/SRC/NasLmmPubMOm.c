@@ -20,6 +20,7 @@
 #endif
 #include    "NasEmmAttDetInclude.h"
 
+#include    "NasCommSndOm.h"
 
 /*lint -e767*/
 #define    THIS_FILE_ID            PS_FILE_ID_NASMMPUBMOM_C
@@ -3715,7 +3716,43 @@ VOS_UINT32 NAS_EMM_ExportMsgInfoExcLog(VOS_UINT8* pulExcLogAddr, VOS_UINT32 *pul
     }
     return ulSaveSize;
 }
+/* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,Begin */
 
+/*****************************************************************************
+ Function Name   : NAS_LMM_SndOmImsiRefreshStatus
+ Description     : 上报imsi刷新状态
+ Input           : VOS_UINT8   ucImsiRefreshStatusFlag
+ Output          : None
+ Return          : VOS_VOID
+
+ History         :
+    1.    yanglei 00307272      2015-11-18  Draft Enact
+*****************************************************************************/
+VOS_VOID  NAS_LMM_SndOmImsiRefreshStatus(VOS_UINT8   ucImsiRefreshStatusFlag)
+{
+    NAS_EMM_IMSI_REFRESH_STATUS_STRU                   *pstImsiRefreshStatusInfo = VOS_NULL_PTR;
+
+    pstImsiRefreshStatusInfo = (NAS_EMM_IMSI_REFRESH_STATUS_STRU *)NAS_LMM_MEM_ALLOC(sizeof(NAS_EMM_IMSI_REFRESH_STATUS_STRU));
+    if (VOS_NULL_PTR == pstImsiRefreshStatusInfo)
+    {
+        return;
+    }
+
+    NAS_LMM_MEM_SET(pstImsiRefreshStatusInfo, 0, sizeof(NAS_EMM_IMSI_REFRESH_STATUS_STRU));
+    pstImsiRefreshStatusInfo->stMsgHeader.ulSenderCpuId        = VOS_LOCAL_CPUID;
+    pstImsiRefreshStatusInfo->stMsgHeader.ulSenderPid          = PS_PID_MM;
+    pstImsiRefreshStatusInfo->stMsgHeader.ulReceiverCpuId      = VOS_LOCAL_CPUID;
+    pstImsiRefreshStatusInfo->stMsgHeader.ulReceiverPid        = PS_PID_MM;
+    pstImsiRefreshStatusInfo->stMsgHeader.ulLength             = sizeof(NAS_EMM_IMSI_REFRESH_STATUS_STRU) - NAS_EMM_LEN_VOS_MSG_HEADER;
+    pstImsiRefreshStatusInfo->stMsgHeader.ulMsgName            = LNAS_OM_LOG_IMSI_REFRESH_STATUS_IND;
+    pstImsiRefreshStatusInfo->ucImsiRefreshStatusFlag          = ucImsiRefreshStatusFlag;
+
+    /* 单板发送，PC则因打桩无操作不会发送消息，不会影响PC ST */
+    (VOS_VOID)LTE_MsgHook((VOS_VOID*)pstImsiRefreshStatusInfo);
+    NAS_LMM_MEM_FREE(pstImsiRefreshStatusInfo);
+    return;
+}
+/* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,End */
 #ifdef __cplusplus
     #if __cplusplus
         }

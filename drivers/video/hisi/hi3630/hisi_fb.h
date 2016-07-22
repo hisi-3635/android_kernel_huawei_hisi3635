@@ -61,7 +61,7 @@
 #include <linux/dma-buf.h>
 #include <linux/genalloc.h>
 #if defined (CONFIG_HUAWEI_DSM)
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #endif
 //#include <linux/huawei/hisi_irq_affinity.h>
 
@@ -283,6 +283,7 @@ struct hisi_fb_data_type {
 #endif
 	struct hrtimer esd_hrtimer;
 	bool esd_hrtimer_enable;
+    bool dsi_bit_clk_updated;
 	struct workqueue_struct *frame_end_wq;
 	struct work_struct frame_end_work;
 

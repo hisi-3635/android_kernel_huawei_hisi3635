@@ -95,6 +95,10 @@ NAS_ACT_STRU        g_astNasMmcPreProcessActTbl[]   =
                       ID_MMA_MMC_PLMN_USER_RESEL_REQ,
                       NAS_MMC_RcvUserReselReq_PreProc),
 
+    NAS_ACT_TBL_ITEM( WUEPS_PID_MMA,
+                      ID_MMA_MMC_IMSI_REFRESH_IND,
+                      NAS_MMC_RcvMmaImsiRefreshInd_PreProc),
+
     NAS_ACT_TBL_ITEM( VOS_PID_TIMER,
                       TI_NAS_MMC_AVAILABLE_TIMER,
                       NAS_MMC_RcvTiAvailTimerExpired_PreProc),

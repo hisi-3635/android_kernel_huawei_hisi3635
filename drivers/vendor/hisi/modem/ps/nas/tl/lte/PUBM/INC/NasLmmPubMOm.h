@@ -946,7 +946,21 @@ typedef struct
     LNAS_EXC_MSG_MNTN_STRU              stLNasMsgList;
     LNAS_EXC_PRE_STATE_STRU             stLNasPreState;
 }LNAS_EXC_LOG_INFO_STRU;
+/* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,Begin */
+/*****************************************************************************
+ 结构名    : NAS_EMM_IMSI_REFRESH_STATUS_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : EMM可维可测，勾出当前状态
+*****************************************************************************/
+typedef struct
+{
+    MSG_HEADER_STRU                      stMsgHeader;
+    VOS_UINT8                            ucImsiRefreshStatusFlag;
+    VOS_UINT8                            aucRsv[3];
+}NAS_EMM_IMSI_REFRESH_STATUS_STRU;
 
+/* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,End */
 /*****************************************************************************
   6 UNION
 *****************************************************************************/
@@ -1123,7 +1137,9 @@ extern VOS_VOID  NAS_LMM_SndOmRej19Cnt(VOS_VOID);
 extern VOS_VOID NAS_EMM_SaveRecvMsgList(VOS_VOID *pMsg);
 extern VOS_VOID NAS_EMM_SavePreEmmState(VOS_VOID);
 extern VOS_UINT32 NAS_EMM_ExportMsgInfoExcLog(VOS_UINT8* pulExcLogAddr, VOS_UINT32 *pulLeftSize);
-
+/* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,Begin */
+extern VOS_VOID  NAS_LMM_SndOmImsiRefreshStatus(VOS_UINT8   ucImsiRefreshStatusFlag);
+/* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,End */
 /*****************************************************************************
   9 OTHERS
 *****************************************************************************/

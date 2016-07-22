@@ -45,7 +45,7 @@
 #include <linux/wakelock.h>
 #include <linux/workqueue.h>
 #endif
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #include <huawei_platform/log/log_exception.h>
 
 static struct dsm_dev dsm_pmu_ocp = {
@@ -315,6 +315,10 @@ static void get_hi6421_register_info(struct hi6421_ocp_info *temp_info)
 	pr_info("[%s]: OCP BOOST status [0x0B0] = 0x%x.\n", __func__, ioread8(temp_info->pmic->regs + REGULATOR_BOOST_ADDR));
 }
 
+#ifdef CONFIG_HUAWEI_NFF
+extern void nff_log_event_ocp(char *ldo);
+#endif
+
 static void inquiry_hi6421_ocp_reg(struct work_struct *work)
 {
 	struct hi6421_ocp_info *ocp_info = container_of(work, struct hi6421_ocp_info, regulator_ocp_wk);
@@ -344,6 +348,9 @@ static void inquiry_hi6421_ocp_reg(struct work_struct *work)
 	for (i = 0; i < 32; i++) {
 		if (ocp_status_all1 & (0x01 << i)) {
 			pr_warn("hi6421 %s ocp happened, please attention!\n\r", pmuocp_name1[i]);
+#ifdef CONFIG_HUAWEI_NFF
+			nff_log_event_ocp(pmuocp_name1[i]);
+#endif
 			if (-1 == error_offset) {
 				if (dsm_error_found >= 0) {
 					dsm_client_record(ocp_dclient, "hi6421 %s ocp happened, please attention!\n", pmuocp_name1[i]);
@@ -356,6 +363,9 @@ static void inquiry_hi6421_ocp_reg(struct work_struct *work)
 	for (i = 0; i < 24; i++) {
 		if (ocp_status_all2 & (0x01 << i)) {
 			pr_warn("hi6421 %s ocp happened, please attention!\n\r", pmuocp_name2[i]);
+#ifdef CONFIG_HUAWEI_NFF
+			nff_log_event_ocp(pmuocp_name2[i]);
+#endif
 			if (-1 == error_offset) {
 				if (dsm_error_found >= 0) {
 					dsm_client_record(ocp_dclient, "hi6421 %s ocp happened, please attention!\n", pmuocp_name1[i]);

@@ -428,6 +428,9 @@ struct balong_fb_data_type {
     u32 lcd_readvalue;
     u32 lcd_inversion_mode;
 
+    /*for scan */
+    u32 lcd_scan_mode;
+
     /* for frc */
     s32 frc_state;
     s32 frc_threshold_count;

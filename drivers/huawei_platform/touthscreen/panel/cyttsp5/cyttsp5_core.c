@@ -946,14 +946,6 @@ static int cyttsp5_hid_send_output_and_wait_(struct cyttsp5_core_data *cd,
     if (rc)
         goto error;
 
-    /* Workaround for FW defect, CDT165308
-     * bl_launch app creates a glitch in IRQ line */
-    if (hid_output->command_code == HID_OUTPUT_BL_LAUNCH_APP) {
-        disable_irq(cd->irq);
-        msleep(20);
-        enable_irq(cd->irq);
-    }
-
     t = wait_event_timeout(cd->wait_q, (cd->hid_cmd_state == 0),
             msecs_to_jiffies(timeout_ms));
     if (IS_TMO(t)) {
@@ -2769,6 +2761,50 @@ static int cyttsp5_hid_output_bl_get_panel_id(
     return rc;
 }
 
+static int cyttsp5_get_panel_id(struct cyttsp5_core_data *cd, u8 *panel_id)
+{
+    *panel_id = cd->response_buf[47];
+    return 0;
+}
+
+
+static int cyttsp5_hid_output_get_panel_id_(struct cyttsp5_core_data *cd, u8 *panel_id)
+{
+    int rc;
+    struct cyttsp5_hid_output hid_output = {
+        HID_OUTPUT_APP_COMMAND(HID_OUTPUT_GET_SYSINFO),
+        .timeout_ms = CY_HID_OUTPUT_GET_SYSINFO_TIMEOUT,
+    };
+
+    rc = cyttsp5_hid_send_output_and_wait_(cd, &hid_output);
+    if (rc)
+        return rc;
+
+    return cyttsp5_get_panel_id(cd, panel_id);
+}
+
+
+static int cyttsp5_hid_output_get_panel_id(struct device *dev, int protect, u8 *panel_id)
+{
+    int rc;
+    struct cyttsp5_core_data *cd = dev_get_drvdata(dev);
+
+    rc = request_exclusive(cd, cd->dev, CY_REQUEST_EXCLUSIVE_TIMEOUT);
+    if (rc < 0) {
+        dev_err(cd->dev, "%s: fail get exclusive ex=%p own=%p\n",
+            __func__, cd->exclusive_dev, cd->dev);
+        return rc;
+    }
+
+    rc = cyttsp5_hid_output_get_panel_id_(cd, panel_id);
+
+    if (release_exclusive(cd, cd->dev) < 0)
+        dev_err(cd->dev, "%s: fail to release exclusive\n", __func__);
+
+    return rc;
+}
+
+
 static int _cyttsp5_request_hid_output_bl_get_panel_id(
         struct device *dev, int protect, u8 *panel_id)
 {
@@ -4007,7 +4043,8 @@ static int cyttsp5_parse_input(struct cyttsp5_core_data *cd)
 static int cyttsp5_read_input(struct cyttsp5_core_data *cd)
 {
     struct device *dev = cd->dev;
-    int rc;
+    int rc = 0;
+    unsigned int size = 0;
 
     rc = cyttsp5_adap_read_default_nosize(cd, cd->input_buf, CY_MAX_INPUT);
     if (rc) {
@@ -4015,15 +4052,48 @@ static int cyttsp5_read_input(struct cyttsp5_core_data *cd)
                 __func__, rc);
         return rc;
     }
+    size = get_unaligned_le16(&cd->input_buf[0]);
+    if( size > CY_MAX_INPUT ) {
+        TS_LOG_ERR("%s line%d: max input size exceeded!size=%d\n",__func__,__LINE__,size);
+        size = CY_MAX_INPUT;
+        cd->input_buf[0] = (char)size;
+        cd->input_buf[1] = (char)(size>>8);
+        TS_LOG_INFO("%s line%d: manual set size to CY_MAX_INPUT: %d\n",__func__,__LINE__,size);
+    }
     TS_LOG_DEBUG("%s: Read input successfully\n", __func__);
     return rc;
 }
+
+static  bool cyttsp5_check_irq_asserted(struct cyttsp5_core_data *cd)
+{
+#ifdef ENABLE_WORKAROUND_FOR_GLITCH_AFTER_BL_LAUNCH_APP
+	/* Workaround for FW defect, CDT165308
+	* bl_launch app creates a glitch in IRQ line */
+    if (cd->hid_cmd_state == HID_OUTPUT_BL_LAUNCH_APP + 1
+        && cd->cpdata->irq_stat) {
+	    /*
+		in X1S panel and GC1546 panel, the width for the INT
+		            glitch is about 4us,the normal INT width of response
+		will last more than 200us, so use 10us delay
+		for distinguish the glitch the normal INT is enough.
+		*/
+        udelay(20);
+        if (cd->cpdata->irq_stat(cd->cpdata, cd->dev)
+            != CY_IRQ_ASSERTED_VALUE)
+        return false;
+    }
+#endif
+    return true;
+}
+
 
 static irqreturn_t cyttsp5_irq(int irq, void *handle)
 {
     struct cyttsp5_core_data *cd = handle;
     int rc;
 
+    if (!cyttsp5_check_irq_asserted(cd))
+        return IRQ_HANDLED;
     rc = cyttsp5_read_input(cd);
     if (!rc)
         cyttsp5_parse_input(cd);
@@ -4253,12 +4323,19 @@ static int cyttsp5_core_wake_device_from_easy_wakeup_(struct cyttsp5_core_data *
 static int cyttsp5_core_wake_device_from_deep_sleep_(
         struct cyttsp5_core_data *cd)
 {
-    int rc;
+    int rc = -EAGAIN;
+    int retry_times = 0;
 
-    rc = cyttsp5_hid_cmd_set_power_(cd, HID_POWER_ON);
-    if (rc)
+    for (retry_times = 0; retry_times < CY_WAKEUP_RETRY_TIMES; retry_times++) {
+        rc = cyttsp5_hid_cmd_set_power_(cd, HID_POWER_ON);
+        if (!rc) {
+            TS_LOG_INFO("%s %d:set power to wake up success\n", __func__, __LINE__);
+            break;
+        } else {
+            TS_LOG_INFO("%s:set power to wake up fail,retry=%d\n", __func__, retry_times);
+        }
         rc =  -EAGAIN;
-
+    }
     /* Prevent failure on sequential wake/sleep requests from OS */
     msleep(20);
 
@@ -4452,7 +4529,11 @@ static int cyttsp5_get_ic_crc_(struct cyttsp5_core_data *cd, u8 ebid)
 
     if (status) {
         rc = -EINVAL;
+        cd->config_crc_fail_flag = true;
+        TS_LOG_ERR("%s: crc fail ,status=%d\n",__func__,status);
         goto exit;
+    } else {
+        cd->config_crc_fail_flag = false;
     }
 
     si->ttconfig.crc = stored_crc;
@@ -5674,7 +5755,8 @@ static struct cyttsp5_core_nonhid_cmd _cyttsp5_core_nonhid_cmd = {
     .prog_and_verify = _cyttsp5_request_hid_output_bl_program_and_verify,
     .verify_app_integrity =
         _cyttsp5_request_hid_output_bl_verify_app_integrity,
-    .get_panel_id = _cyttsp5_request_hid_output_bl_get_panel_id,
+     //.get_panel_id = _cyttsp5_request_hid_output_bl_get_panel_id,
+    .get_panel_id = cyttsp5_hid_output_get_panel_id,
 };
 
 static struct cyttsp5_core_commands _cyttsp5_core_commands = {
@@ -6135,7 +6217,6 @@ static int cyttsp5_regulator_disable(struct cyttsp5_power_control *power_ctrl)
         if (!IS_ERR(power_ctrl->vci)) {
             regulator_disable(power_ctrl->vci);
             TS_LOG_INFO("%s: disable vci regulator success.\n",__func__);
-            goto exit;
         }
     }
 
@@ -6143,14 +6224,10 @@ static int cyttsp5_regulator_disable(struct cyttsp5_power_control *power_ctrl)
         if (!IS_ERR(power_ctrl->vddio)) {
             regulator_disable(power_ctrl->vddio);
             TS_LOG_INFO("%s: disable vddio regulator success.\n",__func__);
-            goto exit;
         }
     }
 
     return 0;
-
-exit:
-    return -EINVAL;
 }
 
 static int cyttsp5_set_power(struct cyttsp5_core_data *cd,

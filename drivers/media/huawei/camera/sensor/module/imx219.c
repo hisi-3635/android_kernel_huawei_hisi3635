@@ -297,7 +297,13 @@ imx219_config(
 	static bool csi_enable = false;
 	data = (struct sensor_cfg_data *)argp;
 	cam_debug("imx219 cfgtype = %d",data->cfgtype);
-	switch(data->cfgtype){
+
+	if(!imx219_power_on && (data->cfgtype != SEN_CONFIG_POWER_ON))
+	{
+		cam_err("%s POWER_ON must be done before other CMD %d",__func__,data->cfgtype);
+		return ret;
+	}
+    switch(data->cfgtype){
 		case SEN_CONFIG_POWER_ON:  // 0
 			if (!imx219_power_on) {
 				ret = si->vtbl->power_up(si);

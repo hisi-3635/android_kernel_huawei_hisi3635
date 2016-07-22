@@ -8164,7 +8164,6 @@ VOS_UINT32 NAS_MMC_RcvGmmSigStateInd_PreProc(
 }
 
 
-
 #if (FEATURE_ON == FEATURE_IMS)
 
 VOS_UINT32 NAS_MMC_RcvMmaImsSrvInfoNotify_PreProc(
@@ -8348,6 +8347,34 @@ VOS_UINT32 NAS_MMC_RcvMmaAutoReselSet_PreProc(
 
     NAS_MML_SetUserAutoReselActiveFlg(pstRcvMsg->ucActiveFlg);
 
+    return VOS_TRUE;
+}
+
+/*****************************************************************************
+ 函 数 名  : NAS_MMC_RcvMmaImsiRefreshInd_PreProc
+ 功能描述  : ID_MMA_MMC_IMSI_REFRESH_IND消息的预处理
+ 输入参数  : ulEventType - 事件类型
+             *pstMsg     - 消息内容
+ 输出参数  : 无
+ 返 回 值  : VOS_TRUE : 不进状态机处理
+             VOS_FALSE: 进状态机处理
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年11月17日
+    作    者   : z00359541
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT32  NAS_MMC_RcvMmaImsiRefreshInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    /* 将IMSI REFRESH指示写入全局变量，此全局变量会在开关机时清除 */
+    NAS_MML_SetImsiRefreshStatus(VOS_TRUE);
+
+    /* 不进状态机处理 */
     return VOS_TRUE;
 }
 

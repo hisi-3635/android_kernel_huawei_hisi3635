@@ -54,18 +54,18 @@
 #define VIACBP82D_POWER_DRIVER_NAME    "huawei,viacbp82d-power"
 
 
-/* ioctl for vomodem, which must be same as viatelutils.h  */
-#define VMDM_IOCTL_RESET    _IO( 'v', 0x01)
-#define VMDM_IOCTL_POWER    _IOW('v', 0x02, int)
-#define VMDM_IOCTL_CRL    _IOW('v', 0x03, int)
-#define VMDM_IOCTL_DIE        _IO( 'v', 0x04)
-#define VMDM_IOCTL_WAKE        _IO( 'v', 0x05)
 
-
-#define POWER_SET_DEBUGOFF     0
-#define POWER_SET_DEBUGON      1
-#define POWER_SET_OFF          2
-#define POWER_SET_ON           3
+typedef enum MODEM_CONTROL {
+    POWER_SET_DEBUGOFF = 0,
+    POWER_SET_DEBUGON,
+    POWER_SET_OFF,
+    POWER_SET_ON,
+    MODEM_CTRL_RESET,
+    MODEM_CTRL_DIE,     //5
+    MODEM_CTRL_WAKE_LOCK,
+    MODEM_CTRL_WAKE_LOCK_RELEASE,    //7
+    MODEM_CONTROL_MAX,
+}MODEM_CONTROL_T;
 
 static const char* const via_state_str[] = {
     "MODEM_STATE_OFF",
@@ -573,62 +573,6 @@ static int misc_modem_open(struct inode *inode, struct file *filp)
     return ret;
 }
 
-static long misc_modem_ioctl(struct file *file, unsigned int
-        cmd, unsigned long arg)
-{
-    void __user *argp = (void __user *) arg;
-    int flag,ret=-1;
-
-    switch (cmd) {
-        case VMDM_IOCTL_RESET:
-            oem_reset_modem();
-            break;
-        case VMDM_IOCTL_POWER:
-            if (copy_from_user(&flag, argp, sizeof(flag)))
-                return -EFAULT;
-            if (flag < 0 || flag > 1)
-                return -EINVAL;
-            if(flag){
-                oem_power_on_modem();
-            }else{
-                oem_power_off_modem();
-            }
-            break;
-    case VMDM_IOCTL_CRL:
-        if (copy_from_user(&flag, argp, sizeof(flag)))
-                return -EFAULT;
-        if (flag < 0 || flag > 1)
-            return -EINVAL;
-        if(flag){
-            ret=0;
-        }else{
-            ret=0;
-        }
-        break;
-    case VMDM_IOCTL_DIE:
-        oem_let_cbp_die();
-        break;
-    case VMDM_IOCTL_WAKE:
-        if (copy_from_user(&flag, argp, sizeof(flag)))
-            return -EFAULT;
-        if (flag < 0 || flag > 1)
-            return -EINVAL;
-        if(flag){
-            hwlog_info("hold on wakelock.\n");
-            wake_lock(&vmdata->wlock);
-        }else{
-            hwlog_info("release wakelock.\n");
-            wake_unlock(&vmdata->wlock);
-        }
-        break;
-    default:
-        break;
-
-    }
-
-    return 0;
-}
-
 static int misc_modem_release(struct inode *inode, struct file *filp)
 {
     struct viatel_modem_data *d = (struct viatel_modem_data *)(filp->private_data);
@@ -691,23 +635,43 @@ static ssize_t modem_boot_set(struct device *pdev, struct device_attribute *attr
         return -EINVAL;
     }
 
-    if (state == POWER_SET_ON) {
-        modem_boot_change_state(state);
-        oem_power_on_modem();
-    } else if (state == POWER_SET_OFF) {
-        modem_boot_change_state(state);
-        via_modem_state = MODEM_STATE_OFF;
-        via_monitor_uevent_notify(MODEM_STATE_OFF);
-        oem_power_off_modem();
-    } else if (state == POWER_SET_DEBUGON) {
-        modem_boot_change_state(state);
-        oem_power_on_modem();
-    } else if (state == POWER_SET_DEBUGOFF) {
-        modem_boot_change_state(state);
-        oem_power_off_modem();
-    } else {
-        hwlog_err("Power PHY error state. %s\n", buf);
-    }
+	switch(state){
+		case POWER_SET_DEBUGOFF:
+			modem_boot_change_state(state);
+			oem_power_off_modem();
+			break;
+		case POWER_SET_DEBUGON:
+			modem_boot_change_state(state);
+			oem_power_on_modem();
+			break;
+		case POWER_SET_OFF:
+			modem_boot_change_state(state);
+			via_modem_state = MODEM_STATE_OFF;
+			via_monitor_uevent_notify(MODEM_STATE_OFF);
+			oem_power_off_modem();
+			break;
+		case POWER_SET_ON:
+			modem_boot_change_state(state);
+			oem_power_on_modem();
+			break;
+		case MODEM_CTRL_RESET:
+			oem_reset_modem();
+			break;
+		case MODEM_CTRL_DIE:
+			oem_let_cbp_die();
+			break;
+		case MODEM_CTRL_WAKE_LOCK:
+			hwlog_info("hold on wakelock.\n");
+			wake_lock(&vmdata->wlock);
+			break;
+		case MODEM_CTRL_WAKE_LOCK_RELEASE:
+			hwlog_info("release wakelock.\n");
+			wake_unlock(&vmdata->wlock);
+			break;
+		default:
+			hwlog_info("default: do nothing!\n");
+			break;
+	}
 
     return count;
 }
@@ -1101,14 +1065,10 @@ static struct platform_driver modem_boot_driver = {
 
 
 static const struct file_operations misc_modem_fops = {
-    .owner = THIS_MODULE,
-    .open = misc_modem_open,
-    .unlocked_ioctl = misc_modem_ioctl,
-#ifdef CONFIG_COMPAT
-    .compat_ioctl = misc_modem_ioctl,
-#endif
-    .release = misc_modem_release,
-    .fasync    = misc_modem_fasync,
+	.owner = THIS_MODULE,
+	.open = misc_modem_open,
+	.release = misc_modem_release,
+	.fasync	= misc_modem_fasync,
 };
 
 static struct miscdevice misc_modem_device = {
@@ -1134,7 +1094,7 @@ static int __init modem_boot_init(void)
         hwlog_err("misc regiser via modem failed\n");
         goto err_misc_device_register;
     }
-
+	hwlog_info("%s %d: Exit.\n", __func__, __LINE__);
     return ret;
 
 err_misc_device_register:

@@ -41,7 +41,7 @@ void hisi_mclk_config(struct hisi_sensor_ctrl_t *s_ctrl,
 	} else {
 		//SETREG8(REG_ISP_CLK_DIVIDER, 0);
 	}
-	
+
 	if (0 != power_setting->delay) {
 		camdrv_msleep(power_setting->delay);
 	}
@@ -369,6 +369,11 @@ int hisi_sensor_i2c_read_seq(struct hisi_sensor_ctrl_t *s_ctrl, void *data)
 
 	cam_debug("%s: enter.\n", __func__);
 
+    if (cdata->cfg.setting.size > MAX_WRITE_READ_SEQ_SIZE) {
+        cam_err("%s, the size of read req(%d) exceeds the maximum range.", __func__, cdata->cfg.setting.size);
+        return -EFAULT;
+    }
+
 	setting.setting = (struct sensor_i2c_reg*)kzalloc(size, GFP_KERNEL);
 	if (NULL == setting.setting) {
 		cam_err("%s kmalloc error.\n", __func__);
@@ -411,6 +416,11 @@ int hisi_sensor_i2c_write_seq(struct hisi_sensor_ctrl_t *s_ctrl, void *data)
 	struct sensor_i2c_setting setting;
 	int data_length = sizeof(struct sensor_i2c_reg)*cdata->cfg.setting.size;
 	long rc = 0;
+
+    if (cdata->cfg.setting.size > MAX_WRITE_READ_SEQ_SIZE) {
+        cam_err("%s, the size of write req(%d) exceeds the maximum range.", __func__, cdata->cfg.setting.size);
+        return -EFAULT;
+    }
 
 	cam_info("%s: enter setting=0x%x size=%d.\n", __func__,
 			(unsigned int)cdata->cfg.setting.setting,
@@ -457,6 +467,26 @@ int hisi_sensor_apply_expo_gain(struct hisi_sensor_ctrl_t *s_ctrl, void *data)
 	return setup_eof_tasklet(sensor, &host_ae_seq);
 
 }
+
+int hisi_sensor_apply_bshutter_expo_gain(struct hisi_sensor_ctrl_t *s_ctrl, void *data)
+{
+	struct sensor_cfg_data *cdata = (struct sensor_cfg_data *)data;
+	struct bshutter_expo_gain_seq host_ae_seq = cdata->cfg.bshutter_seq;
+	struct hisi_sensor_t *sensor = s_ctrl->sensor;
+	int i;
+
+	cam_info("%s enter,eof_bshutter_trigger(%d)", __func__,host_ae_seq.eof_bshutter_trigger);
+
+	for(i=0; i<host_ae_seq.seq_size; i++)
+	{
+	    cam_info("%s enter, bshutter_seq[%d],expo_time(%u),expo(%u),gain(%u),vts(%u),hts(%u)", __func__, i,
+	        host_ae_seq.expo_time[i],host_ae_seq.expo[i],host_ae_seq.gain[i],host_ae_seq.vts[i],host_ae_seq.hts[i]);
+	}
+
+	return setup_eof_bshutter_tasklet(sensor, &host_ae_seq);
+
+}
+
 
 int hisi_sensor_suspend_eg_task(struct hisi_sensor_ctrl_t *s_ctrl, void *data)
 {

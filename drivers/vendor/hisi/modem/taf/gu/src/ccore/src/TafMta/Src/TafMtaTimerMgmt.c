@@ -17,14 +17,8 @@ extern "C" {
 #include "TafMtaTimerMgmt.h"
 
 /*****************************************************************************
-  2 全局变量定义
+  2 全局变量声明
 *****************************************************************************/
-/* Added by zwx247453 for Refclkfreq, 2015-6-17, begin */
-TAF_MTA_TIMER_PRECISION_STRU g_astTafMtaTimerPrecisionTab[]=
-{
-   {TI_TAF_MTA_WAIT_REFCLOCK_STATUS_IND,      VOS_TIMER_NO_PRECISION}
-};
-/* Added by zwx247453 for Refclkfreq, 2015-6-17, end */
 
 /*****************************************************************************
   3 函数申明
@@ -67,56 +61,6 @@ VOS_VOID  TAF_MTA_SndOmTimerStatus(
     return;
 }
 
-/* Added by zwx247453 for Refclkfreq, 2015-6-17, begin */
-/*****************************************************************************
- 函 数 名  : TAF_MTA_GetTimerPrecision
- 功能描述  : 获取定时器精度范围
- 输入参数  : enTimerId    -- 定时器名
- 输出参数  : 无
- 返 回 值  : VOS_TIMER_PRECISION_ENUM_UINT32 -- 定时器精度范围
- 调用函数  :
- 被调函数  :
-
- 修改历史      :
-  1.日    期   : 2015年6月17日
-    作    者   : zwx247453
-    修改内容   : 新生成函数
-
-*****************************************************************************/
-VOS_TIMER_PRECISION_ENUM_UINT32 TAF_MTA_GetTimerPrecision(
-    TAF_MTA_TIMER_ID_ENUM_UINT32        enTimerId
-)
-{
-   /*定时器分为两种，26M定时器和32K定时器，
-         26M定时器，系统开销少，推荐使用，但当DRX睡眠时，停止计数，可能计时不准。
-         32K定时器，系统开销大，不推荐使用，但计时准确，
-         当选择无精度要求时(VOS_TIMER_NO_PRECISION)，启动26M定时器
-         其他有精度要求的，启动32K定时器。
-     定时器选择依据:
-       1）对IDLE态下定时器，要求定时器必须是精确定时的，包括我们异常保护定时器中
-          自己设计的要求绝对定时的； 协议定时器中必须绝对定时的，比如说必须绝对
-          定时才能通过GCF用例； 对这类定时器，使用32K定时器；
-       2）其他IDLE定时器，不需要绝对定时的：挂到26M定时器；
-       3）非IDLE态的定时器，使用26M定时器 */
-
-    VOS_UINT32                      i;
-    VOS_TIMER_PRECISION_ENUM_UINT32 ulPrecision;
-
-    /* 默认精度为32K */
-    ulPrecision = VOS_TIMER_PRECISION_5;
-
-    for(i=0; i<( sizeof(g_astTafMtaTimerPrecisionTab)/sizeof(TAF_MTA_TIMER_PRECISION_STRU) ); i++)
-    {
-        if (enTimerId == g_astTafMtaTimerPrecisionTab[i].enTimerId)
-        {
-            ulPrecision = g_astTafMtaTimerPrecisionTab[i].ulPrecision;
-            break;
-        }
-    }
-
-    return ulPrecision;
-}
-/* Added by zwx247453 for Refclkfreq, 2015-6-17, end */
 
 
 VOS_VOID  TAF_MTA_InitAllTimers(
@@ -145,9 +89,6 @@ TAF_MTA_TIMER_START_RESULT_ENUM_UINT8  TAF_MTA_StartTimer(
     TAF_MTA_TIMER_CTX_STRU             *pstMtaTimerCtx;
     VOS_UINT32                          i;
     VOS_UINT32                          ulRet;
-    /* Added by zwx247453 for Refclkfreq, 2015-6-17, begin */
-    VOS_TIMER_PRECISION_ENUM_UINT32     ulPrecision;
-    /* Added by zwx247453 for Refclkfreq, 2015-6-17, end */
 
     if ( enTimerId >= TI_TAF_MTA_TIMER_BUTT)
     {
@@ -197,8 +138,6 @@ TAF_MTA_TIMER_START_RESULT_ENUM_UINT8  TAF_MTA_StartTimer(
     {
 
     }
-    /* Modified by zwx247453 for Refclkfreq, 2015-6-17, begin */
-    ulPrecision = TAF_MTA_GetTimerPrecision(enTimerId);
 
     /* 启动定时器 */
     ulRet = VOS_StartRelTimer(&(pstMtaTimerCtx[i].hTimer),
@@ -207,8 +146,7 @@ TAF_MTA_TIMER_START_RESULT_ENUM_UINT8  TAF_MTA_StartTimer(
                               enTimerId,
                               0,
                               VOS_RELTIMER_NOLOOP,
-                              ulPrecision);
-    /* Modified by zwx247453 for Refclkfreq, 2015-6-17, end */
+                              VOS_TIMER_PRECISION_5);
 
     if ( VOS_OK != ulRet)
     {

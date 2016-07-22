@@ -690,6 +690,50 @@ ssize_t panel_next_lcd_ic_color_enhancement_mode_store(struct platform_device *p
 	return ret;
 }
 
+ssize_t panel_next_lcd_support_mode_show(struct platform_device *pdev, char *buf)
+{
+	ssize_t ret = 0;
+	struct hisi_fb_panel_data *pdata = NULL;
+	struct hisi_fb_panel_data *next_pdata = NULL;
+	struct platform_device *next_pdev = NULL;
+
+	BUG_ON(pdev == NULL);
+	pdata = dev_get_platdata(&pdev->dev);
+	BUG_ON(pdata == NULL);
+
+	next_pdev = pdata->next;
+	if (next_pdev) {
+		next_pdata = dev_get_platdata(&next_pdev->dev);
+		if ((next_pdata) && (next_pdata->lcd_support_mode_show))
+			ret = next_pdata->lcd_support_mode_show(next_pdev, buf);
+	}
+
+	return ret;
+}
+
+ssize_t panel_next_lcd_support_mode_store(struct platform_device *pdev,
+	const char *buf, size_t count)
+{
+	ssize_t ret = 0;
+	struct hisi_fb_panel_data *pdata = NULL;
+	struct hisi_fb_panel_data *next_pdata = NULL;
+	struct platform_device *next_pdev = NULL;
+
+	BUG_ON(pdev == NULL);
+	pdata = dev_get_platdata(&pdev->dev);
+	BUG_ON(pdata == NULL);
+
+	next_pdev = pdata->next;
+	if (next_pdev) {
+		next_pdata = dev_get_platdata(&next_pdev->dev);
+		if ((next_pdata) && (next_pdata->lcd_support_mode_store))
+			ret = next_pdata->lcd_support_mode_store(next_pdev, buf, count);
+	}
+
+	return ret;
+}
+
+
 ssize_t panel_next_lcd_check_reg(struct platform_device *pdev, char *buf)
 {
 	ssize_t ret = -1;

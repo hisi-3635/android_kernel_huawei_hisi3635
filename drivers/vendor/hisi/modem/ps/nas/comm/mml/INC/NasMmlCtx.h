@@ -1261,8 +1261,8 @@ typedef struct
     VOS_UINT8                                   ucSimPsRegStatus;    /* SIM卡PS域的注册结果导致的卡是否有效VOS_TRUE:PS域的卡有效,VOS_FALSE:PS域的卡无效*/
     NAS_MML_ROUTING_UPDATE_STATUS_ENUM_UINT8    enPsUpdateStatus;    /* status of routing update */
     NAS_MML_LOCATION_UPDATE_STATUS_ENUM_UINT8   enCsUpdateStatus;    /* status of location update */
-    VOS_UINT8                                   aucReserve[2];
-
+    VOS_UINT8                                   ucImsiRefreshStatus; /* IMSI Refresh状态，VOS_TRUE表示Refresh，VOS_FALSE表示没有Refresh*/
+    VOS_UINT8                                   aucReserve[1];
 }NAS_MML_SIM_STATUS_STRU;
 
 
@@ -3310,6 +3310,12 @@ VOS_VOID NAS_MML_SetCsUpdateStatus(
     NAS_MML_LOCATION_UPDATE_STATUS_ENUM_UINT8   enCsUpdateStatus
 );
 NAS_MML_LOCATION_UPDATE_STATUS_ENUM_UINT8 NAS_MML_GetCsUpdateStatus(VOS_VOID);
+
+VOS_UINT8 NAS_MML_GetImsiRefreshStatus(VOS_VOID);
+
+VOS_VOID NAS_MML_SetImsiRefreshStatus(
+    VOS_UINT8                           ucImsiRefreshStatus
+);
 
 VOS_VOID NAS_MML_SetSimUserPlmnList(
     NAS_MML_SIM_USERPLMN_INFO_STRU      *pstUserPlmnList

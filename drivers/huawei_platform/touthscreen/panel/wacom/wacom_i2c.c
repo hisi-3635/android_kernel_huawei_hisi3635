@@ -21,24 +21,18 @@
 #define WACOM_ALGO_ID "algo_id"
 #define WACOM_VDD	 "wacom-vdd"
 #define WACOM_VBUS	 "wacom-io"
-#define WACOM_IC_TYPES	 "ic_type"
-#define WACOM_X_MAX	 "x_max"
-#define WACOM_Y_MAX	 "y_max"
-#define WACOM_X_MAX_MT	 "x_max_mt"
-#define WACOM_Y_MAX_MT	 "y_max_mt"
-#define WACOM_UNIT_CAP_TEST_INTERFACE "unite_cap_test_interface"
-#define WACOM_REPORT_RATE_TEST "report_rate_test"
 #define WACOM_VCI_GPIO_TYPE	 "vci_gpio_type"
 #define WACOM_VCI_REGULATOR_TYPE	 "vci_regulator_type"
 #define WACOM_VDDIO_GPIO_TYPE	 "vddio_gpio_type"
 #define WACOM_VDDIO_REGULATOR_TYPE	 "vddio_regulator_type"
-#define WACOM_COVER_FORCE_GLOVE	 "force_glove_in_smart_cover"
 
-#define WACOM_VCI_LDO_VALUE (3100000)
+#define WACOM_VCI_LDO_VALUE (3300000)
 static struct wacom_i2c *wac_data;
 static DEFINE_MUTEX(ts_power_gpio_sem);
 static int ts_power_gpio_ref = 0;
 extern struct ts_data g_ts_data;
+static unsigned int wacom_power_hold = 0;
+static unsigned int wacom_pen_battery_debug = 0;
 
 static void wacom_gpio_free(void);
 static void wacom_regulator_put(void);
@@ -80,22 +74,6 @@ struct ts_device_ops ts_wacom_ops = {
 	.chip_get_info = wacom_chip_get_info,
 	.chip_set_info_flag = wacom_set_info_flag,	
 	.chip_get_rawdata = wacom_get_rawdata,	
-#if 0	
-	.chip_after_resume = wacom_after_resume,
-	.chip_before_suspend = wacom_before_suspend,
-	.chip_glove_switch = wacom_glove_switch,
-	.chip_holster_switch = wacom_holster_switch,
-	.chip_palm_switch = wacom_palm_switch,
-	.chip_regs_operate = wacom_regs_operate,
-#if defined (CONFIG_HUAWEI_DSM)
-	.chip_dsm_debug = wacom_wac_dsm_debug,
-#endif
-	//.chip_reset = wacom_wac_reset_device,
-#ifdef HUAWEI_TOUCHSCREEN_TEST
-	.chip_test = test_dbg_cmd_test,
-#endif
-	.chip_wrong_touch=wacom_wrong_touch,
-#endif
 };
 
 static int wacom_get_rawdata(struct ts_rawdata_info *info, struct ts_cmd_node *out_cmd)
@@ -113,30 +91,39 @@ static int wacom_fw_update_sd(void)
 
 static int wacom_chip_get_info(struct ts_chip_info_param *info)
 {
-	u8 buf[CHIP_INFO_LENGTH];
-	u8 buf1[CHIP_INFO_LENGTH];
-	u8 buf2[CHIP_INFO_LENGTH];
+	int pid;
+	u8 buf_fwv[CHIP_INFO_LENGTH];
+	u8 buf_pid[CHIP_INFO_LENGTH];
+	u8 buf_vid[CHIP_INFO_LENGTH];
 	unsigned char string_id_buf[CHIP_INFO_LENGTH*2] = {0};
 
-	memset(buf, 0, sizeof(buf));
-	memset(buf1, 0, sizeof(buf1));
-	memset(buf2, 0, sizeof(buf2));
+	memset(buf_fwv, 0, sizeof(buf_fwv));
+	memset(buf_pid, 0, sizeof(buf_pid));
+	memset(buf_vid, 0, sizeof(buf_vid));
 	
 	TS_LOG_INFO("wacom_chip_get_info called\n");
 	TS_LOG_INFO("g_ts_data.get_info_flag=%d\n",g_ts_data.get_info_flag);
 
-	snprintf(buf,CHIP_INFO_LENGTH,"%x",wac_data->features->fw_version);
-	snprintf(buf1,CHIP_INFO_LENGTH,"%x",wac_data->features->productId);
-	snprintf(buf2,CHIP_INFO_LENGTH,"%x",wac_data->features->vendorId);
+	snprintf(buf_fwv,CHIP_INFO_LENGTH,"%x",wac_data->features->fw_version);
+	snprintf(buf_pid,CHIP_INFO_LENGTH,"%x",wac_data->features->productId);
+	snprintf(buf_vid,CHIP_INFO_LENGTH,"%x",wac_data->features->vendorId);
 		
 	memcpy(&string_id_buf, "wacom-",strlen("wacom-"));
-	strcat(string_id_buf,buf1);
+	strcat(string_id_buf,buf_vid);
 	strcat(string_id_buf,"-");
-	strcat(string_id_buf,buf2);
+	strcat(string_id_buf,buf_pid);
+
+	pid = wac_data->features->productId;
+	if(pid == 0x4816 || pid == 0x4818 || pid == 0x4827 || pid == 0x4829){
+		memcpy(&info->mod_vendor, "truly", strlen("truly"));
+	}else if(pid == 0x4817 || pid == 0x4819 || pid == 0x4828 || pid == 0x482A){
+		memcpy(&info->mod_vendor, "mutto", strlen("mutto"));
+	}else{
+		memcpy(&info->mod_vendor, "unknown_mod", strlen("unknown_mod"));
+	}
 	
 	memcpy(&info->ic_vendor,string_id_buf, strlen(string_id_buf));
-	memcpy(&info->mod_vendor, "undefined_mod", strlen("undefined_mod"));
-	memcpy(&info->fw_vendor, buf, strlen(buf));
+	memcpy(&info->fw_vendor, buf_fwv, strlen(buf_fwv));
 	return NO_ERR;
 }
 
@@ -146,8 +133,36 @@ static int wacom_set_info_flag(struct ts_data *info)
 	return NO_ERR;
 }
 
+int get_tp_color(u8 *color)
+{
+	int pid;
+	pid = wac_data->features->productId;
+
+	if(pid == 0x4816 || pid == 0x4817 || pid == 0x4818 || pid == 0x4819){
+		memcpy(color, "white", strlen("white"));
+	}else if(pid == 0x4827 || pid == 0x4828 || pid == 0x4829 || pid == 0x482A){
+		memcpy(color, "black", strlen("black"));
+	}else{
+		memcpy(color, "unknown_color", strlen("unknown_color"));
+		return pid;
+	}
+	return NO_ERR;
+}
+EXPORT_SYMBOL(get_tp_color);
+
 static int wacom_suspend(void)
 {
+	struct input_dev *input = wac_data->input;
+	bool *mt_rdy = &wac_data->rdy;
+	if ( !(*mt_rdy) ) {
+		input_mt_sync(input);
+		input_sync(input);
+	}
+
+	if(wacom_power_hold == 1){
+		TS_LOG_INFO("wacom keep power on\n");
+		return NO_ERR;
+	}
 	wacom_power_off();
 	return NO_ERR;
 }
@@ -156,6 +171,7 @@ static int wacom_resume(void)
 {
 	wacom_power_on();
 	wacom_gpio_reset();
+	msleep(300);
 	return NO_ERR;
 }
 
@@ -524,6 +540,7 @@ static void wacom_power_on(void)
 		TS_LOG_INFO("Only vddio was controlled by gpio\n");
 		wacom_ts_power_gpio_enable();
 	}
+	msleep(2);
 	wacom_power_on_gpio_set();
 }
 
@@ -538,6 +555,7 @@ static void wacom_power_off_gpio_set(void)
 static void wacom_power_off(void)
 {	
 	wacom_power_off_gpio_set();
+	msleep(2);
 	/*1 is power supplied by gpio, 0 is power supplied by ldo*/
 	if ((1 == wac_data->wacom_chip_data->vci_gpio_type) && (1 == wac_data->wacom_chip_data->vddio_gpio_type)) {
 		TS_LOG_INFO("Both  vci and vddio were need to output 0\n");
@@ -564,8 +582,6 @@ static int wacom_chip_detect(struct device_node *device,
 {
 	int retval = NO_ERR;
 	
-	/*in g_ts_device_map, wacom's chip_detect is at the back of synpatics and cypress, so just add msleep 100ms here*/
-	msleep(100);
 	TS_LOG_INFO("wacom chip detect called\n");
 
 	if (!device || !chip_data || !ts_dev) {
@@ -619,7 +635,7 @@ static int wacom_chip_detect(struct device_node *device,
 
 	/*reset the chip*/
 	wacom_gpio_reset();
-	msleep(100);
+	msleep(300);
 
 	//Check, first, whether or not there's a device corresponding to the address
 	retval= wacom_query_device(g_ts_data.client, wac_data->features);
@@ -681,31 +697,6 @@ static int wacom_parse_dts(struct device_node * device, struct ts_device_data * 
 		retval = -EINVAL;
 		goto err;
 	}
-
-	retval = of_property_read_u32(device, WACOM_X_MAX, &chip_data->x_max);
-	if (retval) {
-		TS_LOG_ERR("get device x_max failed\n");
-		retval = -EINVAL;
-		goto err;
-	}
-	retval = of_property_read_u32(device, WACOM_Y_MAX, &chip_data->y_max);
-	if (retval) {
-		TS_LOG_ERR("get device y_max failed\n");
-		retval = -EINVAL;
-		goto err;
-	}
-	retval = of_property_read_u32(device, WACOM_X_MAX_MT, &chip_data->x_max_mt);
-	if (retval) {
-		TS_LOG_ERR("get device x_max failed\n");
-		retval = -EINVAL;
-		goto err;
-	}
-	retval = of_property_read_u32(device, WACOM_Y_MAX_MT, &chip_data->y_max_mt);
-	if (retval) {
-		TS_LOG_ERR("get device y_max failed\n");
-		retval = -EINVAL;
-		goto err;
-	}
 	retval = of_property_read_u32(device, WACOM_VCI_GPIO_TYPE, &chip_data->vci_gpio_type);
 	if (retval) {
 		TS_LOG_ERR("get device WACOM_VCI_GPIO_TYPE failed\n");
@@ -744,46 +735,138 @@ static int wacom_parse_dts(struct device_node * device, struct ts_device_data * 
 		}
 	}
 
-	/*0 is cover without glass, 1 is cover with glass that need glove mode*/
-	retval = of_property_read_u32(device, WACOM_COVER_FORCE_GLOVE, &chip_data->cover_force_glove);
-	if (retval) {
-		TS_LOG_ERR("get device WACOM_COVER_FORCE_GLOVE failed,use default!\n");
-		chip_data->cover_force_glove = 0;//if not define in dtsi,set 0 to disable it
-		retval = 0;
-	}
-
-	TS_LOG_INFO("reset_gpio = %d, irq_gpio = %d, irq_config = %d, algo_id = %d, x_max = %d, y_max = %d, x_mt = %d,y_mt = %d\n", \
-		chip_data->reset_gpio, chip_data->irq_gpio, chip_data->irq_config, chip_data->algo_id,
-		chip_data->x_max, chip_data->y_max, chip_data->x_max_mt, chip_data->y_max_mt);
+	TS_LOG_INFO("reset_gpio = %d, irq_gpio = %d, irq_config = %d, algo_id = %d\n", \
+		chip_data->reset_gpio, chip_data->irq_gpio, chip_data->irq_config, chip_data->algo_id);
 err:
 	return retval;
 }
 
-static ssize_t pen_battery_capacity_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t wacom_pen_battery_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	int battery_cap;
-	battery_cap = wac_data->battery_cap * 100 / BATTERY_MAX;
+	if(wacom_pen_battery_debug == 0){
+		battery_cap = wac_data->battery_cap * 100 / BATTERY_MAX;
+	}else{
+		battery_cap = wacom_pen_battery_debug;
+	}
 	return snprintf(buf, CHIP_INFO_LENGTH*2, "pen_battery_capacity = %d%%\n", battery_cap);
 }
 
-static DEVICE_ATTR(pen_battery_capacity, S_IRUSR | S_IRGRP | S_IROTH, pen_battery_capacity_show, NULL);
-
-void pen_batter_cap_read(void)
+static ssize_t wacom_hw_reset_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
-	int ret=0;
-	ret = device_create_file(&g_ts_data.ts_dev->dev, &dev_attr_pen_battery_capacity);
+	unsigned int value;
+	int error;
+
+	if (dev == NULL) {
+		TS_LOG_ERR("dev is null\n");
+		error = -EINVAL;
+		goto out;
+	}
+
+	error = sscanf(buf, "%u", &value);
+	if (!error) {
+		TS_LOG_ERR("sscanf return invaild :%d\n", error);
+		error = -EINVAL;
+		goto out;
+	}
+	if(value == 1){
+		wacom_gpio_reset();
+	}else{
+		TS_LOG_INFO("gpio rest input error.\n");
+	}
+out:
+	TS_LOG_INFO("gpio reset done\n");
+	return error;
+}
+
+static ssize_t wacom_power_hold_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int value;
+	int error;
+
+	if (dev == NULL) {
+		TS_LOG_ERR("dev is null\n");
+		error = -EINVAL;
+		return error;
+	}
+
+	error = sscanf(buf, "%u", &value);
+	if (!error) {
+		TS_LOG_ERR("sscanf return invaild :%d\n", error);
+		error = -EINVAL;
+		return error;
+	}
+
+	wacom_power_hold = value;
+	TS_LOG_INFO("wacom power hold = %u\n",value);
+	return error;
+}
+
+static ssize_t wacom_jni_enable_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	int jni_enable = 1;
+	return snprintf(buf, CHIP_INFO_LENGTH, "%d\n", jni_enable);
+}
+
+static ssize_t wacom_pen_battery_debug_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int value;
+	int error;
+
+	if (dev == NULL) {
+		TS_LOG_ERR("dev is null\n");
+		error = -EINVAL;
+		return error;
+	}
+
+	error = sscanf(buf, "%u", &value);
+	if (!error) {
+		TS_LOG_ERR("sscanf return invaild :%d\n", error);
+		error = -EINVAL;
+		return error;
+	}
+
+	wacom_pen_battery_debug = value;
+	TS_LOG_INFO("wacom_pen_battery_debug = %u\n",value);
+	return error;
+}
+
+static DEVICE_ATTR(pen_battery_capacity, S_IRUSR | S_IRGRP | S_IROTH, wacom_pen_battery_show, NULL);
+static DEVICE_ATTR(gpio_reset,  (S_IWUSR | S_IWGRP), NULL, wacom_hw_reset_store);
+static DEVICE_ATTR(power_switch,  (S_IWUSR | S_IWGRP), NULL, wacom_power_hold_store);
+static DEVICE_ATTR(tp_jni_enable, S_IRUSR | S_IRGRP | S_IROTH, wacom_jni_enable_show, NULL);
+static DEVICE_ATTR(pen_battery_debug,  (S_IWUSR | S_IWGRP), NULL, wacom_pen_battery_debug_store);
+
+static struct attribute *wacom_attributes[] = {
+	&dev_attr_pen_battery_capacity.attr,
+	&dev_attr_gpio_reset.attr,
+      &dev_attr_power_switch.attr,
+      &dev_attr_tp_jni_enable.attr,
+      &dev_attr_pen_battery_debug.attr,
+	NULL
+};
+
+static const struct attribute_group wacom_attr_group = {
+	.attrs = wacom_attributes,
+};
+
+static int wacom_sysfs_create(void)
+{
+	int ret = 0;
+	ret = sysfs_create_group(&g_ts_data.ts_dev->dev.kobj, &wacom_attr_group);
 	if (ret) {
-		TS_LOG_ERR("%s: Error, could not create attr_pen_battery_capacity\n", __func__);
-	}	
+		TS_LOG_ERR("%s: Error, could not create wacom_attr_group\n", __func__);
+	}
+	return ret;
 }
 
 static int wacom_init_chip(void)
 {
 	int retval= NO_ERR;
 
-	pen_batter_cap_read();	
+	wacom_sysfs_create();
 	
-	TS_LOG_INFO("init chip only read battery cap in sysfs\n");
+	TS_LOG_INFO("init chip done.\n");
 	return retval;
 }
 
@@ -802,11 +885,10 @@ static int wacom_input_config(struct input_dev *input)
       __set_bit(INPUT_PROP_DIRECT, input->propbit);
 
 	input_set_capability(input, EV_MSC, MSC_SERIAL);
-	input_set_abs_params(input, ABS_MT_POSITION_Y, 0, wac_data->features->x_max, 0, 0);
-	input_set_abs_params(input, ABS_MT_POSITION_X, 0, wac_data->features->y_max, 0, 0);
-	//input_set_abs_params(input, ABS_MT_POSITION_X, 0, wac_data->wacom_chip_data->x_max_mt-1, 0, 0);
-	//input_set_abs_params(input, ABS_MT_POSITION_Y, 0, wac_data->wacom_chip_data->y_max_mt-1, 0, 0);
-	input_set_abs_params(input, ABS_MT_PRESSURE, 0, wac_data->features->pressure_max, 0, 0);
+	input_set_abs_params(input, ABS_MT_POSITION_Y, 0, REPORT_ABS_Y_MAX, 0, 0);
+	input_set_abs_params(input, ABS_MT_POSITION_X, 0, REPORT_ABS_X_MAX, 0, 0);
+	input_set_abs_params(input, ABS_MT_TRACKING_ID, 0, 15, 0, 0);
+	input_set_abs_params(input, ABS_MT_PRESSURE, 0, WACOM_ABS_PRESSURE, 0, 0);
 	return NO_ERR;
 }
 
@@ -815,41 +897,49 @@ static void set_touch_coord(struct wacom_i2c *wac_i2c, u8 *data, struct ts_cmd_n
 
 	struct input_dev *input = wac_i2c->input;
 	int *finger_num = &wac_i2c->finger_num;
-	int pen_max_x = wac_i2c->features->x_max;
-	int pen_max_y = wac_i2c->features->y_max;
-	int touch_max_x = wac_i2c->features->x_touch;
-	int touch_max_y = wac_i2c->features->y_touch;
-	int pressure_max = wac_i2c->features->pressure_max;
 	int i, tsw;
-	int x, y;
+	int x, y, tmp;
 	bool *mt_rdy = &wac_i2c->rdy;
 
 	/*When data[4] has a value, then it is the first finger packet.*/
 	if (data[4] != 0x00) {
-		*finger_num = data[4] - 1;
+		*finger_num = data[4];	// Martin Chen, fixed Jul 07, 2015
+		if (*finger_num > 10) {
+			TS_LOG_INFO("don't support more than 10 fingers\n");
+			return;
+		}
 		*mt_rdy = false;
 	}
 
 	/*One packet holds the status for two fingers.*/
 	for (i = 0; i < FINGERNUM_IN_PACKET; i++) {
-		tsw = data[5 + (i * TOUCH_DATA_OFFSET)] & 0x01;
-		y =le16_to_cpup((__le16 *)&data[8 + (i * TOUCH_DATA_OFFSET)]);
-		x = le16_to_cpup((__le16 *)&data[10 + (i * TOUCH_DATA_OFFSET)]);
+		if (*finger_num > 0) {
+			tsw = data[5 + (i * TOUCH_DATA_OFFSET)] & 0x01;
+			x =le16_to_cpup((__le16 *)&data[8 + (i * TOUCH_DATA_OFFSET)]);
+			y = le16_to_cpup((__le16 *)&data[10 + (i * TOUCH_DATA_OFFSET)]);
 
-		input_report_abs(input, ABS_MT_POSITION_X, wac_data->features->y_max -x * pen_max_x / touch_max_x);
-		input_report_abs(input, ABS_MT_POSITION_Y, y * pen_max_y / touch_max_y);		
-		input_report_abs(input, ABS_MT_PRESSURE, tsw * pressure_max);
-		input_report_key(input, MT_TOOL_FINGER, tsw);
-		input_mt_sync(input);
-		
-		if (*finger_num != 0) {
+			// x <=====> y
+			tmp = x;
+			x = y;
+			y = tmp;
+
+			x = (int)(x * REPORT_ABS_X_MAX) / WACOM_ABS_X_MAX;
+			y = (int)(y * REPORT_ABS_Y_MAX) / WACOM_ABS_Y_MAX;
+			x = REPORT_ABS_X_MAX - x;
+
+			TS_LOG_DEBUG("report finger coord: x= %d, y= %d, tsw=%d\n", x, y, tsw);
+			input_report_key(input, MT_TOOL_FINGER, tsw);
+			if (tsw){
+				input_report_abs(input, ABS_MT_PRESSURE, tsw * WACOM_ABS_PRESSURE);
+				input_report_abs(input, ABS_MT_POSITION_X, x);
+				input_report_abs(input, ABS_MT_POSITION_Y, y);
+			}
+			input_mt_sync(input);
 			(*finger_num)--;
 		} 
-		else {
-			if (!(*mt_rdy))
-				*mt_rdy = true;
-			else
-				*mt_rdy = false;
+		if (*finger_num <= 0) {
+			*finger_num = 0;
+			*mt_rdy = true;
 			break;
 		}
 	}
@@ -875,7 +965,11 @@ static void set_aes_coord(struct wacom_i2c *wac_i2c, u8 *data, struct ts_cmd_nod
 	f1 = data[3] & 0x02;
 	f2 = data[3] & 0x10;
 	y = le16_to_cpup((__le16 *)&data[4]);
-	x = wac_data->features->y_max -le16_to_cpup((__le16 *)&data[6]);
+	x = WACOM_PEN_ABS_X_MAX -le16_to_cpup((__le16 *)&data[6]);
+
+	x = (int)(x * REPORT_ABS_X_MAX) / WACOM_PEN_ABS_X_MAX;
+	y = (int)(y * REPORT_ABS_Y_MAX) / WACOM_PEN_ABS_Y_MAX;
+
 	pressure = le16_to_cpup((__le16 *)&data[8]);
 	*battery_cap = data[17];	
 
@@ -889,6 +983,7 @@ static void set_aes_coord(struct wacom_i2c *wac_i2c, u8 *data, struct ts_cmd_nod
 	
 	wac_i2c->rdy = data[3] & 0x20;
 	
+	TS_LOG_DEBUG("report pen coord: x= %d, y= %d, stylus=%d, stylus2=%d\n", x, y, f1, f2);
 	//input_report_key(input, BTN_TOUCH, tsw || ers);
 	input_report_key(input, BTN_STYLUS, f1);
 	input_report_key(input, BTN_STYLUS2, f2);
@@ -915,7 +1010,6 @@ static int wacom_irq_bottom_half(struct ts_cmd_node *in_cmd, struct ts_cmd_node 
 	u8 *data = wac_data->data;
      
 	int retval = NO_ERR;
-//	struct ts_fingers *info = &out_cmd->cmd_param.pub_params.algo_param.info;
 
 	out_cmd->command = TS_INPUT_ALGO;
 	out_cmd->cmd_param.pub_params.algo_param.algo_order = wac_data->wacom_chip_data->algo_id;

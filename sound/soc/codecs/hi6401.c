@@ -48,12 +48,11 @@
 #include "hi6401.h"
 
 #ifdef CONFIG_HUAWEI_DSM
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #endif
 #include <linux/huawei/hisi_adc.h>
 #include <linux/timer.h>
 #include <linux/rtc.h>
-#include <linux/dsm_pub.h>
 #include <linux/log_exception.h>
 
 #define GET_VOLTAGE(value)	(value * 2800 / 0xFF)	/* saradc range 0 ~ 2800mV */
@@ -141,6 +140,15 @@ static struct dentry *debug_dir;
 static struct snd_soc_codec *g_codec_for_tool = NULL;
 #endif
 
+#define  ANC_HS_HOOK_MIN                  160
+#define  ANC_HS_HOOK_MAX                  185
+#define  ANC_HS_VOLUME_UP_MIN                  205
+#define  ANC_HS_VOLUME_UP_MAX                  230
+#define  ANC_HS_VOLUME_DOWN_MIN                  240
+#define  ANC_HS_VOLUME_DOWN_MAX                  265
+
+#define NO_BUTTON_PRESS                      (-1)
+
 #ifdef CONFIG_HUAWEI_DSM
 static struct dsm_dev dsm_anc_hs = {
 	.name = "dsm_anc_hs",
@@ -163,6 +171,12 @@ struct anc_hs_data {
 	int channel_pwl_l;
 	int anc_hs_limit_min;
 	int anc_hs_limit_max;
+	int anc_hs_btn_hook_min_voltage;
+	int anc_hs_btn_hook_max_voltage;
+	int anc_hs_btn_volume_up_min_voltage;
+	int anc_hs_btn_volume_up_max_voltage;
+	int anc_hs_btn_volume_down_min_voltage;
+	int anc_hs_btn_volume_down_max_voltage;
 	bool irq_flag;
 	int no_charge_detect_period;
 	int sleep_time;
@@ -431,6 +445,94 @@ void codec_reg_write(unsigned int reg, unsigned int value)
 	hi6401_reg_write(g_codec_for_tool, reg, value);
 }
 #endif
+
+
+static void anc_dsm_report(struct anc_hs_data *p_anc_hs, int anc_errno, int sys_errno);
+/**
+ * anc_hs_get_adc_delta
+ *
+ * get 3 times adc value with 1ms delay and use average value(delta) of it,
+ * charge for it when delta is between anc_hs_limit_min and anc_hs_limit_max
+ **/
+static int anc_hs_get_adc_delta(struct anc_hs_data *anc_hs)
+{
+    int ear_pwr_h = 0, ear_pwr_l = 0;
+    int delta = 0, count, fail_count = 0;
+    int loop = ADC_READ_COUNT;
+    int temp;
+    bool need_report = true;
+
+    while (loop) {
+        loop--;
+        mdelay(1);
+        ear_pwr_h = hisi_adc_get_value(anc_hs->channel_pwl_h);
+        if (ear_pwr_h < 0) {
+            pr_err("%s:get hkadc(h) fail, err:%d\n", __FUNCTION__, ear_pwr_h);
+            fail_count++;
+            continue;
+        }
+        ear_pwr_l = hisi_adc_get_value(anc_hs->channel_pwl_l);
+        if (ear_pwr_l < 0) {
+            pr_err("%s:get hkadc(l) fail, err:%d\n", __FUNCTION__, ear_pwr_l);
+            fail_count++;
+            continue;
+        }
+        pr_info("%s:adc_h:%d,adc_l:%d\n", __FUNCTION__, ear_pwr_h, ear_pwr_l);
+
+        temp = ear_pwr_h - ear_pwr_l - anc_hs->adc_calibration_base;
+
+        /* if the adc value far away from normal value, just abandon it*/
+        if ((temp > ADC_NORMAL_LIMIT_MAX) || (temp < ADC_NORMAL_LIMIT_MIN) ) {
+            fail_count++;
+            need_report = false;
+            continue;
+        }
+
+        delta += temp;
+    }
+
+    /* if adc value is out of rage, we make a dmd report */
+    /*if(ear_pwr_h >= ADC_OUT_OF_RANGE || ear_pwr_l >= ADC_OUT_OF_RANGE) {
+        anc_dsm_report(anc_hs, ANC_HS_ADC_FULL_ERR, 0);
+    }*/
+
+    count = ADC_READ_COUNT - loop - fail_count;
+    if (count == 0) {
+        pr_err("%s:get anc_hs hkadc failed\n", __FUNCTION__);
+        /*if(need_report) {
+            anc_dsm_report(anc_hs, ANC_HS_ADCH_READ_ERR, 0);
+        }*/
+        return false;
+    }
+    /* compute an average value */
+    delta /= count;
+    pr_info("%s:fianal adc value= %d  count=%d\n", __FUNCTION__, delta, count);
+    return delta;
+}
+
+/**
+ * anc_hs_get_btn_value - judge which button is pressed
+ *
+ *
+ **/
+static int anc_hs_get_btn_value(struct anc_hs_data *anc_hs)
+{
+    int delta = 0;
+    delta = anc_hs_get_adc_delta(anc_hs);
+    if ((delta >= anc_hs->anc_hs_btn_hook_min_voltage) &&
+        (delta <= anc_hs->anc_hs_btn_hook_max_voltage)) {
+        return SND_JACK_BTN_0;
+    } else if ((delta >= anc_hs->anc_hs_btn_volume_up_min_voltage) &&
+        (delta <= anc_hs->anc_hs_btn_volume_up_max_voltage)) {
+        return SND_JACK_BTN_1;
+    } else if ((delta >= anc_hs->anc_hs_btn_volume_down_min_voltage) &&
+        (delta <= anc_hs->anc_hs_btn_volume_down_max_voltage)) {
+        return SND_JACK_BTN_2;
+    } else {
+        pr_err("[anc_hs]btn delta not in range delta:%d\n", delta);
+        return NO_BUTTON_PRESS;
+    }
+}
 
 /* VOLUME CONTROLS */
 /*
@@ -3418,53 +3520,11 @@ void hi6401_jack_report(struct hi6401_priv *priv)
 
 static bool need_charging(struct anc_hs_data *anc_hs)
 {
-	int ear_pwr_h = 0,ear_pwr_l = 0;
-	int delta = 0, count, fail_count = 0;
-	int loop = ADC_READ_COUNT;
-	int temp;
-	bool need_report = true;
+	
+	int delta = 0;
 
-	while(loop) {
-		loop--;
-		msleep(1);
-		ear_pwr_h = hisi_adc_get_value(anc_hs->channel_pwl_h);
-		if(ear_pwr_h < 0) {
-			pr_err("%s(%u) : get ear_pwr_h hkadc error err = %d\n", __FUNCTION__, __LINE__, ear_pwr_h);
-			fail_count++;
-			continue;
-		}
-		ear_pwr_l = hisi_adc_get_value(anc_hs->channel_pwl_l);
-		if(ear_pwr_l < 0) {
-			pr_err("%s(%u) : get ear_pwr_h hkadc error err = %d\n", __FUNCTION__, __LINE__, ear_pwr_l);
-			fail_count++;
-			continue;
-		}
-		pr_info("%s(%u) : ear_pwr_h = %d,ear_pwr_l = %d\n", __FUNCTION__, __LINE__, ear_pwr_h, ear_pwr_l);
-
-		temp = ear_pwr_h - ear_pwr_l - anc_hs->adc_calibration_base;
-		if((temp > ADC_NORMAL_LIMIT_MAX) || (temp < ADC_NORMAL_LIMIT_MIN) ){
-			fail_count++;
-			need_report = false;
-			continue;
-		}
-
-		delta += temp;
-	}
-
-      if(ear_pwr_h >= ADC_OUT_OF_RANGE || ear_pwr_l >= ADC_OUT_OF_RANGE) {
-		anc_dsm_report(anc_hs, ANC_HS_ADC_FULL_ERR, 0);
-      }
-
-	count = ADC_READ_COUNT -loop -fail_count;
-	if(count == 0) {
-		pr_err("%s(%u) : get anc_hs hkadc failed \n", __FUNCTION__, __LINE__);
-		if(need_report) {
-			anc_dsm_report(anc_hs, ANC_HS_ADCH_READ_ERR, 0);
-		}
-		return false;
-	}
-	delta /= count;
-	pr_info("%s(%u) : fianal adc value= %d  count=%d\n", __FUNCTION__, __LINE__, delta, count);
+	mdelay(30);
+	delta = anc_hs_get_adc_delta(anc_hs);
 	if((delta >= anc_hs->anc_hs_limit_min) &&
 		(delta <= anc_hs->anc_hs_limit_max))
 		return true;
@@ -3699,6 +3759,7 @@ void anc_hs_btn_judge(struct work_struct *work)
 						p_anc_hs.anc_hs_btn_delay_work.work);
 	struct anc_hs_data *p_anc_hs = &priv->p_anc_hs;
 	struct hi6401_irq *hi6401_irq;
+	int btn_value = 0;
 
 	BUG_ON(NULL == priv);
 	hi6401_irq = priv->p_irq;
@@ -3719,22 +3780,28 @@ void anc_hs_btn_judge(struct work_struct *work)
 		/*button down event*/
 		pr_info("%s(%u) : button down event !\n", __FUNCTION__, __LINE__);
 
-		priv->hs_jack.jack->type = SND_JACK_BTN_0;
-		priv->report |= SND_JACK_BTN_0;
-		priv->button_pressed = 1;
-
-		if (!check_headset_pluged_in(priv->codec)) {
-			pr_info("%s(%u) :anc hs has plug out!\n", __FUNCTION__, __LINE__);
-			anc_hs_disable_irq(p_anc_hs);
-			goto end2;
+		mdelay(50);
+		btn_value = anc_hs_get_btn_value(p_anc_hs);
+		if(NO_BUTTON_PRESS != btn_value) {
+			priv->hs_jack.jack->type = btn_value;
+			priv->report |= btn_value;
+			priv->button_pressed = 1;
+			if (!check_headset_pluged_in(priv->codec)) {
+				pr_info("%s(%u) :anc hs has plug out!\n", __FUNCTION__, __LINE__);
+				anc_hs_disable_irq(p_anc_hs);
+				goto end2;
+			}
+			hi6401_btn_report(priv);
 		}
-		hi6401_btn_report(priv);
 
 	} else if(priv->button_pressed == 1) {
 		/*button up event*/
 		pr_info("%s(%u) : button up event !\n", __FUNCTION__, __LINE__);
 
-		priv->hs_jack.jack->type = SND_JACK_BTN_0;
+		if (1 == priv->hs_btn_num)
+			priv->hs_jack.jack->type = SND_JACK_BTN_0;
+		else
+			priv->hs_jack.jack->type = SND_JACK_BTN_0 | SND_JACK_BTN_1 | SND_JACK_BTN_2;
 		priv->report = 0;
 		priv->button_pressed = 0;
 
@@ -4256,7 +4323,7 @@ static ssize_t hs_info_read(struct file *file, char __user *user_buf,
 					struct hi6401_priv,
 					p_anc_hs);
 
-	#define HS_INFO_SIZE 256
+	#define HS_INFO_SIZE 512
 	int ret = 0;
 	char *buf=(char*)kmalloc(sizeof(char)*HS_INFO_SIZE, GFP_KERNEL);
 	memset(buf, 0, HS_INFO_SIZE);
@@ -4281,6 +4348,12 @@ static ssize_t hs_info_read(struct file *file, char __user *user_buf,
 
 	snprintf(buf, HS_INFO_SIZE, "%sadc_h: %d\n", buf, hisi_adc_get_value(p_anc_hs->channel_pwl_h));
 	snprintf(buf, HS_INFO_SIZE, "%sadc_l: %d\n", buf, hisi_adc_get_value(p_anc_hs->channel_pwl_l));
+	snprintf(buf, HS_INFO_SIZE, "%sanc_hs_btn_hook_min_voltage: %d\n", buf, p_anc_hs->anc_hs_btn_hook_min_voltage);
+	snprintf(buf, HS_INFO_SIZE, "%sanc_hs_btn_hook_max_voltage: %d\n", buf, p_anc_hs->anc_hs_btn_hook_max_voltage);
+	snprintf(buf, HS_INFO_SIZE, "%sanc_hs_btn_volume_up_min_voltage: %d\n", buf, p_anc_hs->anc_hs_btn_volume_up_min_voltage);
+	snprintf(buf, HS_INFO_SIZE, "%sanc_hs_btn_volume_up_max_voltage: %d\n", buf, p_anc_hs->anc_hs_btn_volume_up_max_voltage);
+	snprintf(buf, HS_INFO_SIZE, "%sanc_hs_btn_volume_down_min_voltage: %d\n", buf, p_anc_hs->anc_hs_btn_volume_down_min_voltage);
+	snprintf(buf, HS_INFO_SIZE, "%sanc_hs_btn_volume_down_max_voltage: %d\n", buf, p_anc_hs->anc_hs_btn_volume_down_max_voltage);
 	snprintf(buf, HS_INFO_SIZE, "%sanc_resistence_level: %d\n", buf, p_anc_hs->anc_resistence_level);
 
 	ret = simple_read_from_buffer(user_buf, count, ppos, buf, strlen(buf));
@@ -4650,6 +4723,30 @@ static int anc_hs_init(struct anc_hs_data *p_anc_hs)
 		p_anc_hs->anc_hs_limit_max = temp;
 	else
 		p_anc_hs->anc_hs_limit_max = ANC_HS_LIMIT_MAX;
+	if (!of_property_read_u32(node, "anc_hs_btn_hook_min_voltage", &temp))
+		p_anc_hs->anc_hs_btn_hook_min_voltage = temp;
+	else
+		p_anc_hs->anc_hs_btn_hook_min_voltage = ANC_HS_HOOK_MIN;
+	if (!of_property_read_u32(node, "anc_hs_btn_hook_max_voltage", &temp))
+		p_anc_hs->anc_hs_btn_hook_max_voltage = temp;
+	else
+		p_anc_hs->anc_hs_btn_hook_max_voltage = ANC_HS_HOOK_MAX;
+	if (!of_property_read_u32(node, "anc_hs_btn_volume_up_min_voltage", &temp))
+		p_anc_hs->anc_hs_btn_volume_up_min_voltage = temp;
+	else
+		p_anc_hs->anc_hs_btn_volume_up_min_voltage = ANC_HS_VOLUME_UP_MIN;
+	if (!of_property_read_u32(node, "anc_hs_btn_volume_up_max_voltage", &temp))
+		p_anc_hs->anc_hs_btn_volume_up_max_voltage = temp;
+	else
+		p_anc_hs->anc_hs_btn_volume_up_max_voltage = ANC_HS_VOLUME_UP_MAX;
+	if (!of_property_read_u32(node, "anc_hs_btn_volume_down_min_voltage", &temp))
+		p_anc_hs->anc_hs_btn_volume_down_min_voltage = temp;
+	else
+		p_anc_hs->anc_hs_btn_volume_down_min_voltage = ANC_HS_VOLUME_DOWN_MIN;
+	if (!of_property_read_u32(node, "anc_hs_btn_volume_down_max_voltage", &temp))
+		p_anc_hs->anc_hs_btn_volume_down_max_voltage = temp;
+	else
+		p_anc_hs->anc_hs_btn_volume_down_max_voltage = ANC_HS_VOLUME_DOWN_MAX;
 
 	if (!of_property_read_u32(node, "anc_resistence_level", &temp))
 		p_anc_hs->anc_resistence_level = temp;

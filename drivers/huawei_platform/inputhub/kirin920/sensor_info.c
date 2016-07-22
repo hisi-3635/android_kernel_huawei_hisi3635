@@ -22,6 +22,7 @@
 #include <linux/uaccess.h>
 #include <linux/types.h>
 #include <linux/fs.h>
+#include <linux/ktime.h>
 #include "sensor_info.h"
 #include "sensor_sys_info.h"
 #include <linux/mtd/hisi_nve_interface.h>
@@ -30,7 +31,7 @@
 #ifdef CONFIG_HUAWEI_HW_DEV_DCT
 #include <linux/hw_dev_dec.h>
 #endif
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 
 int hisi_nve_direct_access(struct hisi_nve_info_user *user_info);
 
@@ -65,11 +66,17 @@ bool is_invensense_dmp_exist = false;
 static char sensor_chip_info[SENSOR_MAX][50];
 static int gsensor_offset[3]; //g-sensor校准参数
 static RET_TYPE return_calibration = EXEC_FAIL;
-static struct sensor_status sensor_status;
+struct sensor_status sensor_status;
 static struct sensor_status sensor_status_backup;
 extern int first_start_flag;
 static char buf[MAX_PKT_LENGTH]={0};
 pkt_sys_dynload_req_t *dyn_req = (pkt_sys_dynload_req_t *)buf;
+// Indicates whether or not FingerSense mode is enabled
+static bool fingersense_enabled = false;
+// Indicates if the data requested by the AP was already received
+static bool fingersense_data_ready = false;
+// z-axis data received from the Sensor hub
+static s16 fingersense_data[FINGERSENSE_DATA_NSAMPLES];
 static uint16_t sensorlist[SENSOR_LIST_NUM] = {0};
 static const char *str_soft_para = "softiron_parameter";
 static const char *str_comp = "compass_extend_data";
@@ -130,6 +137,102 @@ static struct ps_platform_data ps_data={
 	.poll_interval = 250,
 	.init_time = 100,
 };
+static int write_customize_cmd_noresp(int tag, int cmd, const void *data, int length)
+{
+	uint8_t buf[MAX_PKT_LENGTH] = {0};//
+
+	((pkt_header_t *)buf)->tag = tag;
+	((pkt_header_t *)buf)->cmd = cmd;
+	((pkt_header_t *)buf)->resp = NO_RESP;
+	((pkt_header_t *)buf)->length = length;
+	memcpy(buf + sizeof(pkt_header_t), data, ((pkt_header_t *)buf)->length);
+	return inputhub_mcu_write_cmd_nolock(&buf, sizeof(pkt_header_t) + ((pkt_header_t *)buf)->length);
+}
+
+void update_fingersense_zaxis_data(s16 *buffer, int nsamples)
+{
+    int i = 0;
+//	hwlog_err("[FINGERSENSE] Read z-axis data from sensorhub: %lums\n", (unsigned long) ktime_to_ms(ktime_get()));
+	memcpy(fingersense_data, buffer, min(nsamples, FINGERSENSE_DATA_NSAMPLES) * sizeof(*buffer));
+    fingersense_data_ready = true;
+}
+
+static int set_fingersense_enable_internal(unsigned long enable, bool lock)
+{
+	int ret = -1;
+	write_info_t pkg_ap;
+	read_info_t pkg_mcu;
+
+	hwlog_err("[FINGERSENSE] Setting FingerSense from %d to %d\n", fingersense_enabled, enable);
+
+	// If FingerSense is activated then open the accel
+	if(enable) {
+		// Open the accel (if needed)
+		if(lock) {
+			ret = inputhub_sensor_enable(TAG_ACCEL, CMD_CMN_OPEN_REQ);
+		} else {
+			ret = inputhub_sensor_enable_nolock(TAG_ACCEL, CMD_CMN_OPEN_REQ);
+		}
+		if(ret) {
+			hwlog_err("[FINGERSENSE] Error when opening accel for Fingersense, ret=%d\n", ret);
+			return -1;
+		}
+        // Set minimum delay (if needed)
+		if(lock) {
+			ret = inputhub_sensor_setdelay(TAG_ACCEL, 200);
+		} else {
+			ret = inputhub_sensor_setdelay_nolock(TAG_ACCEL, 200);
+		}
+		if(ret) {
+			hwlog_err("[FINGERSENSE] Error when setting accel delay for Fingersense, ret=%d\n",\
+					ret);
+			return -1;
+		}
+	}
+
+	if(lock) {
+		// Send enable request command
+		memset(&pkg_ap, 0, sizeof(pkg_ap));
+		memset(&pkg_mcu, 0, sizeof(pkg_mcu));
+		pkg_ap.tag=TAG_ACCEL;
+		pkg_ap.cmd=CMD_ACCEL_FINGERSENSE_ENABLE_REQ;
+		pkg_ap.wr_buf=&enable;
+		pkg_ap.wr_len=sizeof(enable);
+		ret=write_customize_cmd(&pkg_ap, NULL);
+		if(ret) {
+			hwlog_err("[FINGERSENSE] Failed to send FS enable command to mcu, ret=%d\n", ret);
+			return -1;
+		}
+		if(pkg_mcu.errno!=0) {
+			hwlog_err("[FINGERSENSE] Set fingersense enable fail\n");
+			return -1;
+		}
+	} else {
+		ret = write_customize_cmd_noresp(TAG_ACCEL, CMD_ACCEL_FINGERSENSE_ENABLE_REQ, &enable, sizeof(enable));
+		if(ret) {
+			hwlog_err("[FINGERSENSE] Failed to send FS enable command to mcu, ret=%d\n", ret);
+			return -1;
+		}
+	}
+
+    // If FingerSense is disabled then close the accel instance
+    if(!enable) {
+		if(lock) {
+			ret = inputhub_sensor_enable(TAG_ACCEL, CMD_CMN_CLOSE_REQ);
+		} else {
+			ret = inputhub_sensor_enable_nolock(TAG_ACCEL, CMD_CMN_CLOSE_REQ);
+		}
+		if(ret) {
+			hwlog_err("[FINGERSENSE] Error when opening accel for Fingersense, ret=%d\n", ret);
+			return -1;
+		}
+    }
+
+	fingersense_enabled = enable;
+    hwlog_err("[FINGERSENSE] Set fingersense to '%ld' success\n", enable);
+
+    return 0;
+}
 
 static bool should_be_processed_when_sr(int sensor_tag)
 {
@@ -412,19 +515,13 @@ void enable_sensors_when_recovery_iom3(void)
 			inputhub_sensor_setdelay_nolock(tag, sensor_status.delay[tag]);
 		}
 	}
+	if(fingersense_enabled) {
+		fingersense_enabled = false;
+		hwlog_err("[FINGERSENSE] Recovering from sensorhub crash. Enabling FingerSense...\n");
+		set_fingersense_enable_internal(1, false);
+	}
 }
 
-static int write_customize_cmd_noresp(int tag, int cmd, const void *data, int length)
-{
-	uint8_t buf[MAX_PKT_LENGTH] = {0};//
-
-	((pkt_header_t *)buf)->tag = tag;
-	((pkt_header_t *)buf)->cmd = cmd;
-	((pkt_header_t *)buf)->resp = NO_RESP;
-	((pkt_header_t *)buf)->length = length;
-	memcpy(buf + sizeof(pkt_header_t), data, ((pkt_header_t *)buf)->length);
-	return inputhub_mcu_write_cmd_nolock(&buf, sizeof(pkt_header_t) + ((pkt_header_t *)buf)->length);
-}
 void reset_calibrate_when_recovery_iom3(void)
 {
 	write_customize_cmd_noresp(TAG_ACCEL, CMD_ACCEL_OFFSET_REQ, &gsensor_calibrate_data, sizeof(int) * 3);
@@ -954,6 +1051,35 @@ static int fill_extend_data_in_dts(struct device_node *dn, const char *name, uns
 	}
 
 	return 0;
+}
+
+const char *get_sensor_info_by_tag(int tag)
+{
+	enum sensor_name sname = SENSOR_MAX;
+
+	switch (tag) {
+	case TAG_ACCEL:
+		sname = ACC;
+		break;
+	case TAG_MAG:
+		sname = MAG;
+		break;
+	case TAG_GYRO:
+		sname = GYRO;
+		break;
+	case TAG_ALS:
+		sname = ALS;
+		break;
+	case TAG_PS:
+		sname = PS;
+		break;
+
+	default:
+		hwlog_err("tag %d has no chip_info\n", tag);
+		break;
+	}
+
+	return (sname != SENSOR_MAX) ? sensor_chip_info[sname] : "";
 }
 
 static int init_sensors_cfg_data_from_dts(void)
@@ -2302,6 +2428,100 @@ static ssize_t attr_set_sensor_test_mode(struct device *dev, struct device_attri
 }
 static DEVICE_ATTR(sensor_test, 0664, NULL, attr_set_sensor_test_mode);
 #endif
+
+static ssize_t attr_set_fingersense_enable(struct device *dev, struct device_attribute *attr,
+				const char *buf, size_t size)
+{
+	unsigned long val = 0;
+
+	if (strict_strtoul(buf, 10, &val))
+		return -EINVAL;
+
+	if(set_fingersense_enable_internal(val != 0, true) < 0) {
+		return -1;
+	}
+	return size;
+}
+
+static ssize_t attr_get_fingersense_enable(struct device *dev, struct device_attribute *attr,
+				const char *buf, size_t size)
+{
+	return snprintf(buf, MAX_STR_SIZE, "%d\n", fingersense_enabled);
+}
+
+static DEVICE_ATTR(set_fingersense_enable, 0660, attr_get_fingersense_enable, attr_set_fingersense_enable);
+
+static ssize_t attr_fingersense_data_ready(struct device *dev, struct device_attribute *attr,
+				const char *buf, size_t size)
+{
+	return snprintf(buf, MAX_STR_SIZE, "%d\n", fingersense_data_ready);
+}
+
+static DEVICE_ATTR(fingersense_data_ready, 0440, attr_fingersense_data_ready, NULL);
+
+static ssize_t attr_fingersense_latch_data(struct device *dev, struct device_attribute *attr,
+				const char *buf, size_t size)
+{
+    size = min(size, sizeof(fingersense_data));
+    memcpy(buf, (char *) fingersense_data, size);
+    return size;
+}
+
+static DEVICE_ATTR(fingersense_latch_data, 0440, attr_fingersense_latch_data, NULL);
+
+static ssize_t attr_fingersense_req_data(struct device *dev, struct device_attribute *attr,
+				const char *buf, size_t size)
+{
+	int ret = -1;
+	write_info_t pkg_ap;
+
+//	hwlog_err("[FINGERSENSE] Requesting z-axis data: %lums\n", (unsigned long) ktime_to_ms(ktime_get()));
+	fingersense_data_ready = false;
+
+    memset(&pkg_ap, 0, sizeof(pkg_ap));
+    pkg_ap.tag=TAG_ACCEL;
+    pkg_ap.cmd=CMD_ACCEL_FINGERSENSE_REQ_DATA_REQ;
+    pkg_ap.wr_buf=NULL;
+    pkg_ap.wr_len=0;
+    ret=write_customize_cmd(&pkg_ap, NULL);
+    if(ret) {
+        hwlog_err("send fingersense req data cmd to mcu fail,ret=%d\n", ret);
+    }
+
+	return size;
+}
+
+static DEVICE_ATTR(fingersense_req_data, 0220, NULL, attr_fingersense_req_data);
+
+ssize_t sensors_calibrate_show(int tag, struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	switch (tag) {
+	case TAG_ACCEL:
+		return snprintf(buf, PAGE_SIZE, "%d\n", return_calibration != SUC);//flyhorse k: SUC-->"0", OTHERS-->"1"
+
+	default:
+		hwlog_err("tag %d calibrate not implement in %s\n", tag, __func__);
+		break;
+	}
+
+	return 0;
+}
+
+ssize_t sensors_calibrate_store(int tag, struct device *dev,
+				struct device_attribute *attr, const char *buf, size_t count)
+{
+	switch (tag) {
+	case TAG_ACCEL:
+		return attr_acc_calibrate_write(dev, attr, buf, count);
+	default:
+		hwlog_err("tag %d calibrate not implement in %s\n", tag, __func__);
+		break;
+	}
+
+	return count;
+}
+
 static struct attribute *sensor_attributes[] = {
 	&dev_attr_acc_info.attr,
 	&dev_attr_mag_info.attr,
@@ -2320,6 +2540,10 @@ static struct attribute *sensor_attributes[] = {
 	&dev_attr_acc_calibrate.attr,
 	&dev_attr_acc_enable.attr,
 	&dev_attr_acc_setdelay.attr,
+	&dev_attr_set_fingersense_enable.attr,
+	&dev_attr_fingersense_req_data.attr,
+	&dev_attr_fingersense_data_ready.attr,
+	&dev_attr_fingersense_latch_data.attr,
 	&dev_attr_gyro_enable.attr,
 	&dev_attr_gyro_setdelay.attr,
 	&dev_attr_mag_enable.attr,

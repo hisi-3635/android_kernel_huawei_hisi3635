@@ -135,6 +135,16 @@ config HUAWEI_CAMERA_USE_IMX230_PLK
     default y
 	depends on HUAWEI_CAMERA
 
+config HUAWEI_CAMERA_USE_OV13850_LISZT
+	bool "ov13850_liszt"
+    default y
+	depends on HUAWEI_CAMERA
+
+config HUAWEI_CAMERA_USE_AR1335
+	bool "ar1335"
+    default y
+	depends on HUAWEI_CAMERA
+
 config HUAWEI_CAMERA_USE_CAM_NUMBER
 	bool "cam_number"
     default y

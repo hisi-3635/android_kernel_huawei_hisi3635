@@ -87,21 +87,7 @@ NAS_MML_CTX_STRU*  NAS_MML_GetMmlCtx( VOS_VOID )
     return &(g_stNasMmlCtx);
 }
 
-/*****************************************************************************
- 函 数 名  : NAS_MML_InitSimStatusInfoCtx
- 功能描述  : 初始化MML_CTX中SIM 状态相关信息
- 输入参数  : 无
- 输出参数  : pstSimStatusInfo:SIM卡状态相关信息
- 返 回 值  : 无
- 调用函数  :
- 被调函数  :
 
- 修改历史      :
- 1.日    期   : 2011年7月11日
-   作    者   : zhoujun 40661
-   修改内容   : 新生成函数
-
-*****************************************************************************/
 VOS_VOID  NAS_MML_InitSimStatusInfoCtx(
     NAS_MML_SIM_STATUS_STRU             *pstSimStatusInfo
 )
@@ -112,6 +98,8 @@ VOS_VOID  NAS_MML_InitSimStatusInfoCtx(
     pstSimStatusInfo->ucSimPsRegStatus    = VOS_FALSE;
     pstSimStatusInfo->enCsUpdateStatus    = NAS_MML_LOCATION_UPDATE_STATUS_BUTT;
     pstSimStatusInfo->enPsUpdateStatus    = NAS_MML_ROUTING_UPDATE_STATUS_BUTT;
+    /* IMSI REFRESH状态在开关机时都会清除 */
+    pstSimStatusInfo->ucImsiRefreshStatus = VOS_FALSE;
 }
 
 /*****************************************************************************
@@ -2015,6 +2003,45 @@ NAS_MML_LOCATION_UPDATE_STATUS_ENUM_UINT8 NAS_MML_GetCsUpdateStatus(VOS_VOID)
     return NAS_MML_GetMmlCtx()->stSimInfo.stSimStatus.enCsUpdateStatus;
 }
 
+/*****************************************************************************
+ 函 数 名  : NAS_MML_GetImsiRefreshStatus
+ 功能描述  : 获取MML中保存的IMSI REFRESH状态
+ 输入参数  : 无
+ 输出参数  : 无
+ 返 回 值  : IMSI REFRESH状态 VOS_TRUE表示IMSI REFRESH，VOS_FALSE表示非IMSI REFRESH
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+ 1.日    期   : 2015年11月17日
+   作    者   : z00359541
+   修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT8 NAS_MML_GetImsiRefreshStatus(VOS_VOID)
+{
+    return NAS_MML_GetMmlCtx()->stSimInfo.stSimStatus.ucImsiRefreshStatus;
+}
+
+/*****************************************************************************
+ 函 数 名  : NAS_MML_SetImsiRefreshStatus
+ 功能描述  : 将IMSI REFRESH状态写入MML中保存
+ 输入参数  : 无
+ 输出参数  : 无
+ 返 回 值  : 无
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+ 1.日    期   : 2015年11月17日
+   作    者   : z00359541
+   修改内容   : 新生成函数
+*****************************************************************************/
+VOS_VOID NAS_MML_SetImsiRefreshStatus(
+    VOS_UINT8                           ucImsiRefreshStatus
+)
+{
+    NAS_MML_GetMmlCtx()->stSimInfo.stSimStatus.ucImsiRefreshStatus = ucImsiRefreshStatus;
+}
 
 /*****************************************************************************
  函 数 名  : NAS_MML_GetSimMsIdentity

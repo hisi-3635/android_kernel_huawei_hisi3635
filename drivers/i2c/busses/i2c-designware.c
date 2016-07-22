@@ -783,8 +783,8 @@ static void i2c_dw_init(struct dw_i2c_dev *dev)
 	writel(I2C_CONFIGED_SLAVE, dev->base + DW_IC_SAR);
 
 	/* Configure Tx/Rx FIFO threshold levels */
-	writel(dev->tx_fifo_depth - 1, dev->base + DW_IC_TX_TL);
-	writel(16, dev->base + DW_IC_RX_TL);
+	writel(15, dev->base + DW_IC_TX_TL);
+	writel(15, dev->base + DW_IC_RX_TL);
 
 	writel(dev->tx_fifo_depth - 16, dev->base + DW_IC_DMA_TDLR);
 	writel(15, dev->base + DW_IC_DMA_RDLR);
@@ -1699,6 +1699,10 @@ static int dw_i2c_remove(struct platform_device *pdev)
 	struct dw_i2c_dev *dev = platform_get_drvdata(pdev);
 	struct resource *mem;
 
+	if (NULL == dev) {
+		dev_err(&pdev->dev, "platform_get_drvdata(pdev) return  NULL!\n");
+		return -ENODEV;
+	}
 	platform_set_drvdata(pdev, NULL);
 	i2c_del_adapter(&dev->adapter);
 	put_device(&pdev->dev);
@@ -1721,6 +1725,10 @@ static int dw_i2c_remove(struct platform_device *pdev)
 	kfree(dev);
 
 	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!mem) {
+		printk(KERN_ERR "no mem resource?\n");
+		return -EINVAL;
+	}
 	release_mem_region(mem->start, resource_size(mem));
 	return 0;
 }

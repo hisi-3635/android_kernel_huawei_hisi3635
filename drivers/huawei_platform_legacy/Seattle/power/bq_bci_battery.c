@@ -152,6 +152,7 @@ static enum power_supply_property bq_bci_battery_props[] = {
     POWER_SUPPLY_PROP_VOLTAGE_MAX,
     POWER_SUPPLY_PROP_ID_VOLTAGE,
     POWER_SUPPLY_PROP_BRAND,
+    POWER_SUPPLY_PROP_FCP_STATUS,
 };
 
 static enum power_supply_property bq_usb_props[] = {
@@ -362,7 +363,12 @@ static int capacity_changed(struct bq_bci_device_info *di)
     di->prev_capacity = curr_capacity;
     return 1;
 }
-
+static void notify_charge_event_to_sysfs(struct kobject *pCharge_event_sysfs)
+{
+    if(pCharge_event_sysfs) {
+        sysfs_notify(pCharge_event_sysfs, NULL, "poll_charge_start_event");
+    }
+}
 static int bq_charger_event(struct notifier_block *nb, unsigned long event,
             void *_data)
 {
@@ -370,6 +376,7 @@ static int bq_charger_event(struct notifier_block *nb, unsigned long event,
     int ret = 0;
     di = container_of(nb, struct bq_bci_device_info, nb);
     di->event = event;
+
     switch (event) {
     case VCHRG_START_USB_CHARGING_EVENT:
         //pr_jank(JL_USBCHARGING_START, "JL_USBCHARGING_START");
@@ -378,9 +385,7 @@ static int bq_charger_event(struct notifier_block *nb, unsigned long event,
         di->charge_status = POWER_SUPPLY_STATUS_CHARGING;
         di->power_supply_status = POWER_SUPPLY_HEALTH_GOOD;
         di->charge_full_count = 0;
-        if(g_sysfs_bq_bci){
-            sysfs_notify(g_sysfs_bq_bci, NULL, "poll_charge_start_event");
-        }
+        notify_charge_event_to_sysfs(g_sysfs_bq_bci);
         break;
 
     case VCHRG_START_AC_CHARGING_EVENT:
@@ -389,9 +394,7 @@ static int bq_charger_event(struct notifier_block *nb, unsigned long event,
         di->charge_status = POWER_SUPPLY_STATUS_CHARGING;
         di->power_supply_status = POWER_SUPPLY_HEALTH_GOOD;
         di->charge_full_count = 0;
-        if(g_sysfs_bq_bci){
-            sysfs_notify(g_sysfs_bq_bci, NULL, "poll_charge_start_event");
-        }
+        notify_charge_event_to_sysfs(g_sysfs_bq_bci);
         break;
 
     case VCHRG_STOP_CHARGING_EVENT:
@@ -401,6 +404,7 @@ static int bq_charger_event(struct notifier_block *nb, unsigned long event,
         di->charge_status = POWER_SUPPLY_STATUS_DISCHARGING;
         di->power_supply_status = POWER_SUPPLY_HEALTH_UNKNOWN;
         di->charge_full_count = 0;
+        notify_charge_event_to_sysfs(g_sysfs_bq_bci);
         break;
 
     case VCHRG_START_CHARGING_EVENT:
@@ -438,6 +442,9 @@ static int bq_charger_event(struct notifier_block *nb, unsigned long event,
 
     case VCHRG_STATE_WDT_TIMEOUT:
         di->watchdog_timer_status = POWER_SUPPLY_HEALTH_WATCHDOG_TIMER_EXPIRE;
+        break;
+    case VCHRG_START_OTG_EVENT:
+        notify_charge_event_to_sysfs(g_sysfs_bq_bci);
         break;
 
     default:
@@ -925,6 +932,16 @@ static int bq_bci_battery_get_property(struct power_supply *psy,
         break;
     case POWER_SUPPLY_PROP_CYCLE_COUNT:
         val->intval = hisi_battery_cycle_count();
+        break;
+    case POWER_SUPPLY_PROP_FCP_STATUS:
+        if(FCP_STAGE_SUCESS <= fcp_get_stage_status() && di->ac_online)
+        {
+            val->intval = 1;
+        }
+        else
+        {
+            val->intval = 0;
+        }
         break;
     default:
         return -EINVAL;

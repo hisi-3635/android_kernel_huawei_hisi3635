@@ -1194,6 +1194,51 @@ static ssize_t mipi_samsung_s6e3fa3x01_lcd_test_config_store(struct platform_dev
 	return count;
 }
 
+static int g_support_mode = 0;
+static ssize_t mipi_jdi_panel_lcd_support_mode_show(struct platform_device *pdev,
+     char *buf)
+{
+       struct hisi_fb_data_type *hisifd = NULL;
+       ssize_t ret = 0;
+
+
+       BUG_ON(pdev == NULL);
+       hisifd = platform_get_drvdata(pdev);
+       BUG_ON(hisifd == NULL);
+
+       HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
+
+       ret = snprintf(buf, PAGE_SIZE, "%d\n", g_support_mode);
+
+       HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
+
+       return ret;
+}
+
+static ssize_t mipi_jdi_panel_lcd_support_mode_store(struct platform_device *pdev,
+       const char *buf, size_t count)
+{
+       int ret = 0;
+       unsigned long val = 0;
+       int flag = -1;
+       struct hisi_fb_data_type *hisifd = NULL;
+       BUG_ON(pdev == NULL);
+       hisifd = platform_get_drvdata(pdev);
+       BUG_ON(hisifd == NULL);
+
+       ret = strict_strtoul(buf, 0, &val);
+       if (ret)
+               return ret;
+
+       HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
+
+       flag = (int)val;
+
+       g_support_mode = flag;
+       HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
+      return snprintf((char *)buf, count, "%d\n", g_support_mode);
+}
+
 static struct hisi_panel_info samsung_s6e3fa3x01_panel_info = {0};
 static struct hisi_fb_panel_data samsung_s6e3fa3x01_panel_data = {
 	.panel_info = &samsung_s6e3fa3x01_panel_info,
@@ -1214,6 +1259,8 @@ static struct hisi_fb_panel_data samsung_s6e3fa3x01_panel_data = {
 	.lcd_test_config_show = mipi_samsung_s6e3fa3x01_lcd_test_config_show,
 	.lcd_test_config_store = mipi_samsung_s6e3fa3x01_lcd_test_config_store,
 	.lcd_filter_show = mipi_samsung_s6e3fa3x01_lcd_filter_show,
+	.lcd_support_mode_show = mipi_jdi_panel_lcd_support_mode_show,
+	.lcd_support_mode_store = mipi_jdi_panel_lcd_support_mode_store,
 	.set_display_resolution = NULL,
 };
 
@@ -1249,8 +1296,8 @@ static int mipi_samsung_s6e3fa3x01_probe(struct platform_device *pdev)
 	memset(pinfo, 0, sizeof(struct hisi_panel_info));
 	pinfo->xres = 1080;
 	pinfo->yres = 1920;
-	pinfo->width  = 65;  //mm
-	pinfo->height = 115; //mm
+	pinfo->width  = 68;  //mm
+	pinfo->height = 121; //mm
 	pinfo->type = PANEL_MIPI_CMD;
 	pinfo->orientation = LCD_PORTRAIT;
 	pinfo->bpp = LCD_RGB888;
@@ -1266,7 +1313,7 @@ static int mipi_samsung_s6e3fa3x01_probe(struct platform_device *pdev)
 	pinfo->frc_enable = 0;
 	pinfo->esd_enable = 0;
 	pinfo->dirty_region_updt_support = 0;
-	pinfo->grayscale_support = 1;
+	pinfo->grayscale_support = 0;
 
 	if(runmode_is_factory()) {
 		pinfo->sbl_support = 0;
@@ -1277,6 +1324,8 @@ static int mipi_samsung_s6e3fa3x01_probe(struct platform_device *pdev)
 	}
 
 	pinfo->color_temperature_support = 1;
+	pinfo->comform_mode_support = 1;
+	g_support_mode = 1;
 	pinfo->smart_bl.strength_limit = 128;
 	pinfo->smart_bl.calibration_a = 60;
 	pinfo->smart_bl.calibration_b = 95;

@@ -38,7 +38,7 @@
 #include <linux/kthread.h>
 #include <linux/ioport.h>
 #include <linux/acpi.h>
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 
 extern void print_spi_registers(struct spi_master * master);
 extern void cleanup_spi(struct spi_master *master);

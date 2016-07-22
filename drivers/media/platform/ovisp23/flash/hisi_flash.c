@@ -200,6 +200,7 @@ static struct device_attribute hisi_flash_led_fault =
 
 static int hisi_flash_register_attribute(struct hisi_flash_ctrl_t *flash_ctrl, struct device *dev)
 {
+#ifdef DEBUG_HISI_CAMERA
 	int rc = 0;
 
 	if ((NULL == flash_ctrl) || (NULL == dev)) {
@@ -225,7 +226,7 @@ static int hisi_flash_register_attribute(struct hisi_flash_ctrl_t *flash_ctrl, s
 		cam_err("%s failed to create flash led fault attribute.", __func__);
 		return rc;
 	}
-
+#endif
 	return 0;
 }
 
@@ -292,6 +293,11 @@ static struct hisi_flash_ctrl_t *get_sctrl(struct v4l2_subdev *sd)
 
 int hisi_flash_config(struct hisi_flash_ctrl_t *flash_ctrl, void *arg)
 {
+    if (NULL == arg) {
+        cam_err("%s: arg is NULL", __func__);
+        return -EFAULT;
+    }
+
 	struct flash_cfg_data *cdata = (struct flash_cfg_data *)arg;
 	int rc = 0;
 	unsigned int state;
@@ -319,6 +325,7 @@ int hisi_flash_config(struct hisi_flash_ctrl_t *flash_ctrl, void *arg)
 		break;
 	case CFG_FLASH_GET_FLASH_NAME:
 		mutex_lock(flash_ctrl->hisi_flash_mutex);
+        memset(cdata->cfg.name, 0, sizeof(cdata->cfg.name));
 		strncpy(cdata->cfg.name, flash_ctrl->flash_info.name,
 			sizeof(cdata->cfg.name) - 1);
 		mutex_unlock(flash_ctrl->hisi_flash_mutex);
@@ -460,7 +467,6 @@ int32_t hisi_flash_platform_probe(struct platform_device *pdev,
 		cam_err("%s failed to register hisi flash attribute node.", __func__);
 		return rc;
 	}
-
 	hisi_set_flash_ctrl(flash_ctrl);
 	return rc;
 }

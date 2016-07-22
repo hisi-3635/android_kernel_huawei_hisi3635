@@ -660,6 +660,7 @@ VOS_VOID ADS_DL_ProcIpfResult(VOS_VOID)
 #if(FEATURE_OFF == FEATURE_SKB_EXP)
     IMM_ZC_STRU                        *pstImmZc = VOS_NULL_PTR;
 #endif
+    VOS_UINT32                          ulRxTimeout;
 
 #ifdef CONFIG_ARM64
     struct device                       dev;
@@ -671,6 +672,8 @@ VOS_VOID ADS_DL_ProcIpfResult(VOS_VOID)
 #endif
 
     ucInstanceIndex = 0;
+    ulRxTimeout     = 0;
+
     /*
     IPF_RD_DESC_S中u16Result含义
     [15]Reserve
@@ -703,7 +706,6 @@ VOS_VOID ADS_DL_ProcIpfResult(VOS_VOID)
     {
         /* 增加RD获取个数为0的统计个数 */
         ADS_DBG_DL_RECV_RD_ZERO_NUM(1);
-
         return;
     }
 
@@ -757,6 +759,7 @@ VOS_VOID ADS_DL_ProcIpfResult(VOS_VOID)
                 ADS_DBG_DL_IPF_ERR_PKT_NUM(ucInstanceIndex, 1);
             }
 
+            ulRxTimeout = ADS_DL_RX_WAKE_LOCK_TMR_LEN;
             ADS_DL_ProcRd(pstRdDesc);
         }
         /* BearId 19: NDClient包，需要转发给NDClient */
@@ -786,7 +789,7 @@ VOS_VOID ADS_DL_ProcIpfResult(VOS_VOID)
     }
     /*lint +e771*/
 
-
+    ADS_DL_EnableRxWakeLockTimeout(ulRxTimeout);
     return;
 }
 

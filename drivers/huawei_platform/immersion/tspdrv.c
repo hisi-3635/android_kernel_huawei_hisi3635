@@ -50,7 +50,7 @@ static int g_nTimerPeriodMs = 5;
 #define NUM_ACTUATORS 1
 
 /* Device name and version information */
-#define VERSION_STR " v5.0.36.6\n"                  /* DO NOT CHANGE - this is auto-generated */
+#define VERSION_STR " v5.1.71.6\n"                  /* DO NOT CHANGE - this is auto-generated */
 #define VERSION_STR_LEN 16                          /* account extra space for future extra digits in version number */
 static char g_szDeviceName[  (VIBE_MAX_DEVICE_NAME_LENGTH
                             + VERSION_STR_LEN)

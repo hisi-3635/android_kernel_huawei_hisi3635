@@ -21256,6 +21256,35 @@ VOS_VOID TAF_MMA_RatFrequentlySwitchRecord(VOS_VOID)
 }
 #endif
 /* Added by zwx247453 for CHR optimize, 2015-3-13 End */
+
+/*****************************************************************************
+ 函 数 名  : TAF_MMA_CheckImsiRefresh
+ 功能描述  : 判断是IMSI REFRESH场景则通知MMC
+ 输入参数  : 无
+ 输出参数  : 无
+ 返 回 值  : VOS_VOID
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年11月19日
+    作    者   : z00359541
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_VOID TAF_MMA_ProcImsiRefresh(
+    USIMM_CARD_SERVIC_ENUM_UINT32       enCardStatus,
+    VOS_UINT32                          ulImsiChg
+)
+{
+    /* IMSI Change前后卡状态都是AVAILABLE则认为是IMSI REFRESH */
+    if ((TAF_SDC_USIM_STATUS_VALID == TAF_SDC_GetSimStatus())
+     && (USIMM_CARD_SERVIC_AVAILABLE == enCardStatus)
+     && (VOS_TRUE == ulImsiChg))
+    {
+        TAF_MMA_SndMmcImsiRefreshInd();
+    }
+}
+
 /*lint -restore */
 
 #ifdef  __cplusplus

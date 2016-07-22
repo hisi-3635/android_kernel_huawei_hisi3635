@@ -98,6 +98,7 @@ struct hifi_misc_priv {
 
 	unsigned char*	hifi_priv_base_virt;
 	unsigned char*	hifi_priv_base_phy;
+    struct device   *dev;
 
 #if 1 /*debug*/
 	unsigned int	debug_level;
@@ -133,6 +134,14 @@ static struct hifi_dsp_dump_info g_dsp_dump_info[4] = {
 	{DSP_PANIC,  DUMP_DSP_LOG, FILE_NAME_DUMP_DSP_PANIC_LOG, UNCONFIRM_ADDR, (DRV_DSP_UART_TO_MEM_SIZE-DRV_DSP_UART_TO_MEM_RESERVE_SIZE)},
 	{DSP_PANIC,  DUMP_DSP_BIN, FILE_NAME_DUMP_DSP_PANIC_BIN, UNCONFIRM_ADDR, HIFI_RUN_SIZE},
 };
+
+void sochifi_watchdog_send_event(void)
+{
+    hifi_dump_panic_log();
+    logi("soc hifi watchdog coming, now reset mediaserver\n");
+    char *envp[2] = {"hifi_watchdog", NULL};
+    kobject_uevent_env(&g_misc_data.dev->kobj, KOBJ_CHANGE, envp);
+}
 
 static int hifi_create_dir(char *path)
 {
@@ -356,7 +365,7 @@ static int hifi_dump_dsp_thread(void *p)
 		time_now = (unsigned int)readl(g_misc_data.dsp_time_stamp);
 		time_diff = time_now - g_misc_data.pre_dump_timestamp;
 		g_misc_data.pre_dump_timestamp = time_now;
-		exception_no = *(g_misc_data.dsp_exception_no);
+		exception_no = g_misc_data.dsp_exception_no;
 		logi("errno:%x pre_errno:%x is_first:%d is_force:%d time_diff:%d ms\n", exception_no, g_misc_data.pre_exception_no, g_misc_data.first_dump_log, g_misc_data.force_dump_log, (time_diff * 1000) / HIFI_TIME_STAMP_1S);
 
 		if (exception_no < 40 && (exception_no != g_misc_data.pre_exception_no || time_diff > HIFI_DUMPLOG_TIMESPAN)) {
@@ -1622,7 +1631,7 @@ static int hifi_misc_probe (struct platform_device *pdev)
 
 	g_misc_data.debug_level = 2; /*info level*/
 	g_misc_data.dsp_debug_level = 2; /*info level*/
-
+    g_misc_data.dev = &pdev->dev;
 	g_misc_data.dsp_time_stamp = (unsigned int*)ioremap(SYS_TIME_STAMP_REG, 0x4);
 	if (NULL == g_misc_data.dsp_time_stamp) {
 		printk("time stamp reg ioremap Error!\n");//can't use logx

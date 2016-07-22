@@ -2472,6 +2472,11 @@ VOS_VOID TAF_MMA_RatFrequentlySwitchRecord(VOS_VOID);
 #endif
 /* Added by zwx247453 for CHR optimize, 2015-3-13 End */
 
+VOS_VOID TAF_MMA_ProcImsiRefresh(
+    USIMM_CARD_SERVIC_ENUM_UINT32   enCardStatus,
+    VOS_UINT32                          ulImsiChg
+);
+
 #if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))
 #pragma pack()
 #else

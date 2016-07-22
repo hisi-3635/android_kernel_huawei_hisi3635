@@ -91,10 +91,6 @@ extern VOS_UINT32 TAF_MTA_SearchMsgProcTab(
 extern  VOS_VOID TAF_MTA_RcvWrrMsg(struct MsgCB *pstMsg);
 
 extern  VOS_VOID TAF_MTA_RcvApmMsg(struct MsgCB *pstMsg);
-
-/* Added by zwx247453 for Refclkfreq, 2015-06-17, begin */
-VOS_VOID TAF_MTA_RcvRttAgentMsg(struct MsgCB *pstMsg);
-/* Added by zwx247453 for Refclkfreq, 2015-06-17, end */
 #if (FEATURE_ON == FEATURE_MULTI_MODEM)
 extern VOS_VOID TAF_MTA_RcvMtcMsg(struct MsgCB *pstMsg);
 #endif

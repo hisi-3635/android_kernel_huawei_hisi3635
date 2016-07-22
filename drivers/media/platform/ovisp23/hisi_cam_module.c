@@ -269,8 +269,10 @@ register_fail:
 #if defined(CONFIG_MEDIA_CONTROLLER)
 media_fail:
 	kfree(hisi_v4l2_dev->mdev);
+    hisi_v4l2_dev->mdev = NULL;
 mdev_fail:
 	kfree(hisi_v4l2_dev);
+    hisi_v4l2_dev = NULL;
 #endif
 
 probe_end:
@@ -384,8 +386,12 @@ static int __init hisi_camera_init(void)
 
 static void __exit hisi_camera_exit(void)
 {
-	kfree(hisi_v4l2_dev->mdev);
-	kfree(hisi_v4l2_dev);
+    if (NULL != hisi_v4l2_dev->mdev)
+        kfree(hisi_v4l2_dev->mdev);
+
+    if (NULL != hisi_v4l2_dev)
+        kfree(hisi_v4l2_dev);
+
 	platform_driver_unregister(&hisi_camera_driver);
 }
 

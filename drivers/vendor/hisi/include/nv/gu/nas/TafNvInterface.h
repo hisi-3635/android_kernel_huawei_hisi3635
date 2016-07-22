@@ -1693,6 +1693,14 @@ typedef struct
 
 typedef struct
 {
+    VOS_UINT32                          ulEnable;           /* 使能标识 */
+    VOS_UINT32                          ulTxWakeTimeout;    /* 上行发送唤醒超时保护 */
+    VOS_UINT32                          ulRxWakeTimeout;    /* 下行接收唤醒超时保护 */
+    VOS_UINT32                          ulReserved;
+
+} TAF_NV_ADS_WAKE_LOCK_CFG_STRU;
+typedef struct
+{
     VOS_UINT8                           ucSecType;
     VOS_UINT8                           ucBlackListNum;
     VOS_UINT16                          ausBlackList[TAF_NV_BLACK_LIST_MAX_NUM];

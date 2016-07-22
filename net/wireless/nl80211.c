@@ -850,8 +850,10 @@ static int nl80211_key_allowed(struct wireless_dev *wdev)
 		break;
 	case NL80211_IFTYPE_STATION:
 	case NL80211_IFTYPE_P2P_CLIENT:
-		if (wdev->sme_state != CFG80211_SME_CONNECTED)
+		if (wdev->sme_state != CFG80211_SME_CONNECTED) {
+			printk("current sme_state is not CFG80211_SME_CONNECTED\n");
 			return -ENOLINK;
+		}
 		break;
 	default:
 		return -EINVAL;

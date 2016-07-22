@@ -970,6 +970,8 @@ VOS_UINT32 TAF_MMA_RcvPihUsimStatusInd_PreProc(
     ulUsimStaChg    = TAF_MMA_IsUsimStatusChanged(pstUsimMsg->enCardStatus);
     ulImsiChg       = TAF_MMA_IsImsiChanged(pstUsimMsg);
 
+    TAF_MMA_ProcImsiRefresh(pstUsimMsg->enCardStatus, ulImsiChg);
+
     if (VOS_TRUE == ulImsiChg)
     {
         TAF_SDC_SetSimImsi(pstUsimMsg->aucIMSI);

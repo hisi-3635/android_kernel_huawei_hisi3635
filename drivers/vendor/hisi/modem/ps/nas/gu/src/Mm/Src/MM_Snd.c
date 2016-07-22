@@ -1803,6 +1803,13 @@ VOS_VOID Mm_SndAgentUsimUpdateFileReq( VOS_UINT16 usEfId )
         NAS_USIMMAPI_SetFileReq(WUEPS_PID_MM, 0, &stSetFileInfo);
         break;
     case MM_READ_LOCA_INFO_FILE_ID:
+        /* IMSI Refresh, 不更新卡文件，直接返回 */
+        if (VOS_TRUE == NAS_MML_GetImsiRefreshStatus())
+        {
+            NAS_LOG(WUEPS_PID_MM, MM_ORIGIN, PS_PRINT_INFO,
+                     "Mm_SndAgentUsimUpdateFileReq: IMSI Refresh, do not write EFLOCI file" );
+            return;
+        }
 
         pucFileContent = (VOS_UINT8*)MM_MEM_ALLOC(
                                              VOS_MEMPOOL_INDEX_MM,
@@ -1898,9 +1905,6 @@ VOS_VOID Mm_SndAgentUsimUpdateFileReq( VOS_UINT16 usEfId )
     }
     return;
 }
-
-
-
 
 VOS_VOID Mm_SndAgentUsimAuthenReq()
 {
@@ -2001,6 +2005,8 @@ VOS_VOID NAS_MM_SndMmcDetachCnf(VOS_UINT8 ucServiceStatus)
 
     return;
 }
+
+
 
 VOS_VOID Mm_SndMmcPowerOffCnf()
 {

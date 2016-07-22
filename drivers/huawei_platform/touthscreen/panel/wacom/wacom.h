@@ -53,7 +53,7 @@
 #include <huawei_platform/log/log_jank.h>
 #include "../../huawei_touchscreen_algo.h"
 #if defined (CONFIG_HUAWEI_DSM)
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #endif
 
 #include <huawei_platform/touthscreen/huawei_touchscreen.h>
@@ -100,6 +100,15 @@
 #define USAGE_X                 0x30
 #define USAGE_TIPPRESSURE       0x30
 #define USAGE_Y                 0x31
+
+#define REPORT_ABS_X_MAX	1199
+#define REPORT_ABS_Y_MAX	1919
+#define WACOM_ABS_X_MAX		5415
+#define WACOM_ABS_Y_MAX		8663
+#define WACOM_PEN_ABS_X_MAX	13535
+#define WACOM_PEN_ABS_Y_MAX	21657
+#define WACOM_ABS_PRESSURE     2047
+
 
 /*For battery usage*/
 #define BATTERY_MAX             255

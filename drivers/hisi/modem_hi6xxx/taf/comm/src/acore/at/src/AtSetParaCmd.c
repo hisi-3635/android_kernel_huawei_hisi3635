@@ -8586,6 +8586,51 @@ TAF_UINT32 At_SetCardATRPara(TAF_UINT8 ucIndex)
     }
 }
 
+/* Modified by c00318887 for file refreshÐèÒª´¥·¢±³¾°ËÑ, 2015-4-28, begin */
+
+VOS_UINT32 At_SetRefreshStub(VOS_UINT8 ucIndex)
+{
+    TAF_MMA_REFRESH_STUB_SET_REQ_STRU                       stRefreshStub;
+    VOS_UINT8                                               i;
+    VOS_UINT32                                              ulTotalNum;
+    VOS_UINT32                                              ulRefreshFileType;
+    VOS_UINT32                                              ulReceivePid;
+    VOS_UINT32                                              ulFileId;
+
+    ulTotalNum        = 0;
+    ulRefreshFileType = 0;
+    ulReceivePid      = 0;
+    ulFileId          = 0;
+    PS_MEM_SET(&stRefreshStub, 0, sizeof(stRefreshStub));
+
+
+    At_String2Hex(gastAtParaList[0].aucPara, gastAtParaList[0].usParaLen, &ulReceivePid);
+    At_String2Hex(gastAtParaList[1].aucPara, gastAtParaList[1].usParaLen, &ulRefreshFileType);
+    At_String2Hex(gastAtParaList[2].aucPara, gastAtParaList[2].usParaLen, &ulTotalNum);
+
+    stRefreshStub.ulReceivePid      = ulReceivePid;
+    stRefreshStub.ucTotalNum        = (VOS_UINT8)ulTotalNum;
+    stRefreshStub.usRefreshFileType = (VOS_UINT8)ulRefreshFileType;
+
+    if (stRefreshStub.ucTotalNum > TAF_MMA_MAX_FILE_ID_NUM)
+    {
+        stRefreshStub.ucTotalNum = TAF_MMA_MAX_FILE_ID_NUM;
+    }
+
+    for (i = 0; i < stRefreshStub.ucTotalNum; i++)
+    {
+        At_String2Hex(gastAtParaList[i+3].aucPara, gastAtParaList[i+3].usParaLen, &ulFileId);
+        stRefreshStub.ausEfId[i] = (VOS_UINT16)ulFileId;
+    }
+
+    TAF_SetRefreshStub(gastAtClientTab[ucIndex].usClientId,
+                    gastAtClientTab[ucIndex].opId,
+                    &stRefreshStub);
+
+    return AT_OK;
+}
+
+
 
 #if ( VOS_WIN32 == VOS_OS_VER )
 /*****************************************************************************

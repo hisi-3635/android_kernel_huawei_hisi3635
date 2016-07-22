@@ -287,6 +287,16 @@ typedef enum {
 
 
 typedef enum {
+    CAMERA_B_SHUTTER_MODE_OFF = 0,
+    CAMERA_B_SHUTTER_MODE_ON
+} camera_b_shutter_mode;
+
+typedef enum {
+    CAMERA_AEC_NONE_STABLE = 0,
+    CAMERA_AEC_STABLE
+} camera_aec_stable_state;
+
+typedef enum {
     CAMERA_ZSL_OFF = 0,
     CAMERA_ZSL_ON
 } camera_zsl;

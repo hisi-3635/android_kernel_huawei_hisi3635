@@ -19,6 +19,7 @@
 #define LCD_TYPE_STR_JDI_OTM1902B_LCD		"JDI_OTM1902B_LCD"
 #define LCD_TYPE_STR_JDI_NT35695_LCD			"JDI_NT35695_LCD"
 #define LCD_TYPE_STR_JDI_NT35695B_LCD			"JDI_NT35695B_LCD"
+#define LCD_TYPE_STR_TIANMA_OTM1906_LCD			"TIANMA_OTM1906_LCD"
 
 
 static unsigned char lcd_type_buf[LCD_TYPE_BUF_SIZE];
@@ -29,5 +30,6 @@ static unsigned char tp_color_buf[TP_COLOR_BUF_SIZE];
 #define JDI_OTM1902B_LCD        2
 #define JDI_NT35695_LCD         3
 #define JDI_NT35695B_LCD        4
+#define TIANMA_OTM1906_LCD   5
 int get_lcd_type(void);
 #endif

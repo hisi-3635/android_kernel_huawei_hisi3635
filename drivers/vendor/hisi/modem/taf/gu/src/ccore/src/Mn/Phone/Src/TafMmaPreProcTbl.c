@@ -331,6 +331,12 @@ TAF_ACT_STRU        g_astTafMmaPreProcessActTbl[]   =
                       TAF_MSG_MMA_ABORT_NET_SCAN_REQ,
                       MMA_DbProc),
 
+    /* Modified by c00318887 for file refresh需要触发背景搜, 2015-3-9, begin */
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      TAF_MSG_MMA_REFRESH_STUB_SET_REQ,
+                      TAF_MMA_RcvRefreshStubSetReq_PreProc),
+    /* Modified by c00318887 for file refresh需要触发背景搜, 2015-3-9, end */
+
     TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
                       TAF_MSG_MMA_AUTO_RESEL_STUB_SET_REQ,
                       TAF_MMA_RcvAutoReselStubSetReq_PreProc),

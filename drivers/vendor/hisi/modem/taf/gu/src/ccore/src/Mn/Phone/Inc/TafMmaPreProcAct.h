@@ -221,6 +221,13 @@ VOS_UINT32 TAF_MMA_RcvTiWaitMmcPowerSaveExpired_PreProc(
 
 
 
+/* Added by c00318887 for file refresh需要触发背景搜, 2015-2-16, begin */
+VOS_UINT32 TAF_MMA_RcvRefreshStubSetReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+/* Added by c00318887 for file refresh需要触发背景搜, 2015-2-16, end */
+
 VOS_UINT32 TAF_MMA_RcvAutoReselStubSetReq_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg

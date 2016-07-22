@@ -113,16 +113,21 @@ typedef struct _tag_hwcam_buf_status32
 #define HWCAM_V4L2_IOCTL_PUT_BUF32   _IOW('A', BASE_VIDIOC_PRIVATE + 0x07, hwcam_buf_status_t32)
 #define HWCAM_V4L2_IOCTL_BUF_DONE32   _IOW('A', BASE_VIDIOC_PRIVATE + 0x08, hwcam_buf_status_t32)
 
-long compat_get_v4l2_event_data(struct v4l2_event *kp, struct v4l2_event32 __user *up);
-long compat_put_v4l2_event_data(struct v4l2_event *kp, struct v4l2_event32 __user *up);
+long compat_get_v4l2_event_data(struct v4l2_event __user *pdata, struct v4l2_event32 __user *pdata32);
+long compat_put_v4l2_event_data(struct v4l2_event __user *pdata, struct v4l2_event32 __user *pdata32);
 long compat_get_v4l2_format_data(struct v4l2_format *kp, struct v4l2_format32 __user *up);
 long compat_put_v4l2_format_data(struct v4l2_format *kp, struct v4l2_format32 __user *up);
 
-long compat_get_hwisp_stream_buf_info(hwisp_stream_buf_info_t *kp, hwisp_stream_buf_info_t32 __user *up);
-long compat_put_hwisp_stream_buf_info(hwisp_stream_buf_info_t *kp, hwisp_stream_buf_info_t32 __user *up);
 
-long compat_get_hwcam_buf_status_data(hwcam_buf_status_t *kp, hwcam_buf_status_t32 __user *up);
-long compat_put_hwcam_buf_status_data(hwcam_buf_status_t *kp, hwcam_buf_status_t32 __user *up);
+long compat_get_hwcam_buf_status_data(hwcam_buf_status_t __user *pdata, hwcam_buf_status_t32 __user *pdata32);
+long compat_put_hwcam_buf_status_data(hwcam_buf_status_t __user *pdata, hwcam_buf_status_t32 __user *pdata32);
 
+
+//long compat_get_v4l2_event_data(struct v4l2_event *kp, struct v4l2_event32 __user *up);
+//long compat_put_v4l2_event_data(struct v4l2_event *kp, struct v4l2_event32 __user *up);
+
+long compat_get_hwisp_stream_buf_info(hwisp_stream_buf_info_t __user *pdata, hwisp_stream_buf_info_t32 *pdata32);
+long compat_put_hwisp_stream_buf_info(hwisp_stream_buf_info_t __user *pdata, hwisp_stream_buf_info_t32 *pdata32);
 
 #endif
+

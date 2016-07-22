@@ -443,9 +443,21 @@ VOS_UINT32 NAS_EMM_MsRegSsNormalMsgEsmDataReq(VOS_UINT32  ulMsgId,
         return NAS_LMM_MSG_DISCARD;
     }
 
+    #if 0
     if (VOS_TRUE == pstEsmDataReq->ulIsEmcType)
     {
         NAS_LMM_SetEmmInfoIsEmerPndEsting(VOS_TRUE);
+    }
+    #endif
+
+    if(NAS_EMM_CONN_RELEASING == NAS_EMM_GetConnState())
+    {
+        if (VOS_TRUE == pstEsmDataReq->ulIsEmcType)
+        {
+            NAS_LMM_SetEmmInfoIsEmerPndEsting(VOS_TRUE);
+        }
+
+        return NAS_EMMC_STORE_HIGH_PRIO_MSG;
     }
 
     /*CONN态，转发ESM消息*/
@@ -554,9 +566,21 @@ VOS_UINT32  NAS_EMM_MsRegSsRegAttemptUpdateMmMsgEsmDataReq
         return NAS_LMM_MSG_DISCARD;
     }
 
+    #if 0
     if (VOS_TRUE == pstEsmDataReq->ulIsEmcType)
     {
         NAS_LMM_SetEmmInfoIsEmerPndEsting(VOS_TRUE);
+    }
+    #endif
+
+    if(NAS_EMM_CONN_RELEASING == NAS_EMM_GetConnState())
+    {
+        if (VOS_TRUE == pstEsmDataReq->ulIsEmcType)
+        {
+            NAS_LMM_SetEmmInfoIsEmerPndEsting(VOS_TRUE);
+        }
+
+        return NAS_EMMC_STORE_HIGH_PRIO_MSG;
     }
 
     /*CONN态，转发ESM消息*/

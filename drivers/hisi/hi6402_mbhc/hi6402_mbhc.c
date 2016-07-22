@@ -27,7 +27,7 @@
 #include <sound/jack.h>
 #include <linux/switch.h>
 #include <linux/wakelock.h>
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #include <linux/input.h>
 #include <hi6402_algo_interface.h>
 

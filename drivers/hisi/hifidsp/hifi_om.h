@@ -86,6 +86,8 @@ struct hifi_om_s {
 	unsigned int*	dsp_log_cur_addr;
 	char*			dsp_log_addr;
 	char*			dsp_bin_addr;
+	char*			dsp_ocram_bin_addr;
+	char*			dsp_tcm_bin_addr;
 	char			cur_dump_time[HIFI_DUMP_FILE_NAME_MAX_LEN];
 	bool			first_dump_log;
 	bool			force_dump_log;

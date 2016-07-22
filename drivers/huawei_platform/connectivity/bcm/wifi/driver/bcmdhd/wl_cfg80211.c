@@ -5272,6 +5272,7 @@ static s32 wl_cfg80211_resume(struct wiphy *wiphy)
 #endif
 	if (unlikely(!wl_get_drv_status(cfg, READY, ndev))) {
 		WL_INFORM(("device is not ready\n"));
+		HW_PRINT((WIFI_TAG"%s -\n", __FUNCTION__));
 		return 0;
 	}
 
@@ -5279,6 +5280,7 @@ static s32 wl_cfg80211_resume(struct wiphy *wiphy)
 	hw_resched_dpc_ifneed(ndev);
 #endif
 
+	HW_PRINT((WIFI_TAG"%s -\n", __FUNCTION__));
 	return err;
 }
 
@@ -5288,6 +5290,7 @@ static s32 wl_cfg80211_suspend(struct wiphy *wiphy, struct cfg80211_wowlan *wow)
 static s32 wl_cfg80211_suspend(struct wiphy *wiphy)
 #endif
 {
+	HW_PRINT((WIFI_TAG"%s +\n", __FUNCTION__));
 #ifdef DHD_CLEAR_ON_SUSPEND
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	struct net_info *iter, *next;
@@ -5297,6 +5300,7 @@ static s32 wl_cfg80211_suspend(struct wiphy *wiphy)
 	if (unlikely(!wl_get_drv_status(cfg, READY, ndev))) {
 		WL_INFORM(("device is not ready : status (%d)\n",
 			(int)cfg->status));
+		HW_PRINT((WIFI_TAG"%s -\n", __FUNCTION__));
 		return 0;
 	}
 	for_each_ndev(cfg, iter, next)

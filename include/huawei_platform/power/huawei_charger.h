@@ -15,7 +15,7 @@
 #include <linux/notifier.h>    /*for struct charge_device_info*/
 #include <linux/workqueue.h>    /*for struct charge_device_info*/
 #include <linux/power_supply.h>    /*for struct charge_device_info*/
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #ifndef _HUAWEI_CHARGER
 #define _HUAWEI_CHARGER
 
@@ -129,6 +129,7 @@ enum charge_sysfs_type{
     CHARGE_SYSFS_IBUS,
     CHARGE_SYSFS_HIZ,
     CHARGE_SYSFS_CHARGE_TYPE,
+    CHARGE_SYSFS_BOOTLOADER_CHARGER_INFO,
 };
 
 enum fcp_check_stage_type{
@@ -167,8 +168,10 @@ struct charge_sysfs_data{
     int ibus;
     struct mutex dump_reg_lock;
     struct mutex dump_reg_head_lock;
+    struct mutex bootloader_info_lock;
     char reg_value[CHARGELOG_SIZE];
     char reg_head[CHARGELOG_SIZE];
+    char bootloader_info[CHARGELOG_SIZE];
 };
 
 struct charge_core_data{

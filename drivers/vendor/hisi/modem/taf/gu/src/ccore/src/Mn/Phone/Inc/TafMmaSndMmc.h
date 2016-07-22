@@ -181,6 +181,8 @@ VOS_VOID TAF_MMA_SndMmcAutoReselSetReq(
     VOS_UINT8                           ucActiveFlg
 );
 
+VOS_VOID TAF_MMA_SndMmcImsiRefreshInd(VOS_VOID);
+
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()
 #else

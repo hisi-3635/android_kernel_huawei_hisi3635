@@ -185,11 +185,22 @@ int hisi_overlay_pan_display(struct hisi_fb_data_type *hisifd)
 	int hal_format = 0;
 	uint8_t ovl_type = 0;
 
-	BUG_ON(hisifd == NULL);
+	if (NULL == hisifd) {
+		HISI_FB_ERR("NULL Pointer.\n");
+		return 0;
+	}
+
 	fbi = hisifd->fbi;
-	BUG_ON(fbi == NULL);
+	if (NULL == fbi) {
+		HISI_FB_ERR("NULL Pointer.\n");
+		return 0;
+	}
+
 	pov_req = &(hisifd->ov_req);
-	BUG_ON(pov_req == NULL);
+	if (NULL == pov_req) {
+		HISI_FB_ERR("NULL Pointer.\n");
+		return 0;
+	}
 
 	if (!hisifd->panel_power_on) {
 		HISI_FB_DEBUG("fb%d, panel is power off!", hisifd->index);

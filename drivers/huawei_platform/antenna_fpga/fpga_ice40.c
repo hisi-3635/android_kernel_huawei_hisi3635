@@ -61,7 +61,7 @@
 #include <linux/workqueue.h>
 #include <asm/atomic.h>
 #include <linux/of_gpio.h>
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #include "fpga_ice40.h"
 #include <linux/kernel.h>
 #ifdef CONFIG_HUAWEI_HW_DEV_DCT

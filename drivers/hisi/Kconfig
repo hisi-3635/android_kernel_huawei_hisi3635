@@ -44,6 +44,7 @@ source "drivers/hisi/watchpoint/Kconfig"
 source "drivers/hisi/misc/Kconfig"
 source "drivers/hisi/hmpthresholds/Kconfig"
 source "drivers/hisi/memory_dump/Kconfig"
+source "drivers/hisi/perfhub/Kconfig"
 endif #HISILICON_PLATFORM
 
 if HISI_BALONG_MODEM_HI3XXX

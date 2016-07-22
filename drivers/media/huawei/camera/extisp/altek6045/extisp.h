@@ -273,7 +273,7 @@
 #define T_TAKEPIC_STOP			2
 
 //AE metering mode
-#define T_AE_AUTO				0 
+#define T_AE_AUTO				0
 #define T_AE_AVERAGE 			1
 #define T_AE_CENTRWEIGHT		2
 #define T_AE_SPOT				3

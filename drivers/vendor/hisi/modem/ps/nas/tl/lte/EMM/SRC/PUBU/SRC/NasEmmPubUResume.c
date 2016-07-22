@@ -1473,8 +1473,8 @@ VOS_UINT32  NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgAreaLostInd
     /*清除BAR标识*/
     NAS_EMM_ClearBarResouce();
 
-    /* 关闭当前EMM的状态定时器*/
-    NAS_LMM_StopAllEmmStateTimer();
+    /* 关闭当前EMM的除Del Forb Ta Proid之外的状态定时器, Del Forb Ta Proid只能在关机时停止*/
+    NAS_LMM_StopAllStateTimerExceptDelForbTaProidTimer();
 
     switch(NAS_EMM_GetResumeType())
     {
@@ -2912,8 +2912,8 @@ VOS_UINT32  NAS_EMM_MsResumeSsMmcOriWaitSysInfoIndMsgAreaLostInd
     NAS_EMM_PUBU_LOG1_NORM("NAS_EMM_MsResumeSsMmcOriWaitSysInfoIndMsgAreaLostInd:NAS_EMM_GetMsBefResume() =",
                             NAS_EMM_GetMsBefResume());
 
-    /* 关闭当前EMM的状态定时器*/
-    NAS_LMM_StopAllEmmStateTimer();
+    /* 关闭当前EMM的除Del Forb Ta Proid之外的状态定时器, Del Forb Ta Proid只能在关机时停止*/
+    NAS_LMM_StopAllStateTimerExceptDelForbTaProidTimer();
 
     /*根据RESUME前的状态进行状态迁移*/
     if(EMM_MS_DEREG == NAS_EMM_GetMsBefResume())

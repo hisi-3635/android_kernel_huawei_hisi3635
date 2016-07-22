@@ -888,16 +888,8 @@ MTA_AT_RESULT_ENUM_UINT32 TAF_MTA_CodeGasEcidStrEx(
 
 VOS_VOID TAF_MTA_RcvMtcGsmCellInfoQryCnf(VOS_VOID *pMsg);
 
-/* Added by zwx247453 for Refclkfreq, 2015-06-17, begin */
-VOS_VOID TAF_MTA_SndTlphyAfclockStatusNtf(
-    VOS_UINT16                          enRptFlg,
-    VOS_UINT16                          usReportCount
-);
-VOS_VOID TAF_MTA_RcvTlPhyAfclockStatusInd(VOS_VOID *pMsg);
-VOS_VOID TAF_MTA_RcvTiWaitAgentQryAfclockExpired(VOS_VOID *pMsg);
-VOS_VOID TAF_MTA_RcvTiWaitAgentRefclockIndExpired(VOS_VOID *pMsg);
-VOS_UINT32 TAF_MTA_CheckTLMode(VOS_VOID);
-/* Added by zwx247453 for Refclkfreq, 2015-06-17, end */
+
+
 
 #if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))
 #pragma pack()

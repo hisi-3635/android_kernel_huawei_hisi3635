@@ -2317,7 +2317,18 @@ VOS_UINT32  NAS_EMM_JudgeStableState(   VOS_VOID)
         {
             return  NAS_LMM_STATE_IS_UNSTABLE;
         }
-
+        /* 解决NORMAL_SERVICE、UPDATE和UPDATE_MM态下LRRC REL搜小区驻留前收到ESM紧急承载建立请求，由于空口发送失败，
+           本地detach,发起紧急ATTACH问题
+           方案:这三个子状态下，且当前Conn State为Release过程中，收到ESM紧急承载建立请求，先高优先级缓存，
+           等到收到LRRC系统消息后处理(收到系统消息后CONN State会转到idle态)*/
+        if((NAS_EMM_CONN_RELEASING == NAS_EMM_GetConnState())
+            /*&&(VOS_TRUE == NAS_LMM_GetEmmInfoIsEmerPndEsting())*/
+            &&((EMM_SS_REG_NORMAL_SERVICE == NAS_LMM_GetEmmCurFsmSS())
+                ||(EMM_SS_REG_ATTEMPTING_TO_UPDATE == NAS_LMM_GetEmmCurFsmSS())
+                ||(EMM_SS_REG_ATTEMPTING_TO_UPDATE_MM == NAS_LMM_GetEmmCurFsmSS())))
+         {
+            return  NAS_LMM_STATE_IS_TRANSIENT;
+         }
         return  NAS_LMM_STATE_IS_STABLE;
     }
     else
@@ -2325,6 +2336,11 @@ VOS_UINT32  NAS_EMM_JudgeStableState(   VOS_VOID)
         return  NAS_LMM_STATE_IS_UNSTABLE;
     }
 }
+
+
+
+
+
 VOS_VOID  NAS_LMM_PUBM_Init_FidInit( VOS_VOID )
 {
 
@@ -3075,8 +3091,8 @@ VOS_VOID    NAS_LMM_DeregReleaseResource(VOS_VOID)
 
     NAS_LMM_PUBM_LOG_NORM("NAS_LMM_DeregReleaseResource: enter.");
 
-    /* 停止所有EMM状态定时器*/
-    NAS_LMM_StopAllEmmStateTimer();
+    /* 关闭当前EMM的除Del Forb Ta Proid之外的状态定时器, Del Forb Ta Proid只能在关机时停止*/
+    NAS_LMM_StopAllStateTimerExceptDelForbTaProidTimer();
 
     /* 停止所有EMM协议定时器*/
     NAS_LMM_StopAllEmmPtlTimer();

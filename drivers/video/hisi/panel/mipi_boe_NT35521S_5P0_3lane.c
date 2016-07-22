@@ -43,12 +43,13 @@
 #include <linux/lcd_tuning.h>
 
 #if defined (CONFIG_HUAWEI_DSM)
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #endif
 
 #include <huawei_platform/log/log_jank.h>
 
 #define PWM_LEVEL 100
+#define BRIGHTNESS_MIN 7
 
 #define BOE_CABC_ENABLED  1
 //As the reg 0x55 used for CABC and IE/SRE, so add a global variables to mark CE and SRE status.
@@ -2315,9 +2316,9 @@ static int mipi_boe_panel_set_backlight(struct platform_device* pdev)
     { level = 255; }
 
     //backlight may turn off when bl_level is below 4.
-    if (level < 7 && level != 0)
+    if (level < BRIGHTNESS_MIN && level != 0)
     {
-        level = 7;
+        level = BRIGHTNESS_MIN;
     }
 
     bl_level_adjust[1] = level;
@@ -2481,9 +2482,9 @@ static int mipi_boe_panel_write_backlight(struct balong_fb_data_type *balongfd)
         level = 255;
     }
     //backlight may turn off when bl_level is below 6.
-    if (level < 6 && level != 0)
+    if (level < BRIGHTNESS_MIN && level != 0)
     {
-        level = 6;
+        level = BRIGHTNESS_MIN;
     }
 
     bl_level_adjust[1] = level;

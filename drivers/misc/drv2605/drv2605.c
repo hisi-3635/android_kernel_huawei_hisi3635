@@ -31,6 +31,8 @@
 #ifdef CONFIG_HUAWEI_HW_DEV_DCT
 #include <linux/hw_dev_dec.h>
 #endif
+#include <linux/switch.h>
+#include <linux/regmap.h>
 
 #define GPIO_LEVEL_LOW 0
 #define GPIO_LEVEL_HIGH 1
@@ -41,7 +43,6 @@
 
 #define MAX_REVISION_STRING_SIZE 20
 #define GUARANTEE_AUTOTUNE_BRAKE_TIME  1
-static struct i2c_client* client_temp = NULL;
 static bool g_bAmpEnabled = false;
 
 #ifndef ACTUATOR_NAME
@@ -118,6 +119,7 @@ int hisi_nve_direct_access(struct hisi_nve_info_user *user_info);
 #define NO  0
 
 #define VB_NAME_LENGTH	(20)
+#define MAX_READ_BYTES	 0xff
 
 struct drv2605_data {
 	int gpio_enable;
@@ -129,8 +131,18 @@ struct drv2605_data {
 	struct hrtimer timer;
 	struct mutex lock;
 	struct work_struct work;
-	struct work_struct work_play_eff;
 	unsigned char sequence[8];
+	struct regmap *regmap;
+	struct class* class;
+	struct device* device;
+	dev_t version;
+	struct cdev cdev;
+	struct switch_dev sw_dev;
+	char ReadBuff[MAX_READ_BYTES];
+	int ReadLen;
+	volatile char work_mode;
+	char dev_mode;
+	volatile int vibrator_is_playing;
 };
 
 struct drv2605_pdata {
@@ -140,7 +152,7 @@ struct drv2605_pdata {
 	char *name;
 };
 
-static struct drv2605_pdata *pdata = NULL;
+static struct drv2605_data *data = NULL;
 
 static char g_effect_bank = EFFECT_LIBRARY;
 static int device_id = -1;
@@ -229,69 +241,94 @@ static void drv2605_write_reg_val(struct i2c_client *client, const unsigned char
 	}
 }
 
-static void drv2605_set_go_bit(struct i2c_client *client, char val)
+static int drv2605_reg_read(struct drv2605_data *data, unsigned int reg)
 {
-	char go[] = {
-		GO_REG, val
-	};
+	unsigned int val;
+	int ret;
 
-	drv2605_write_reg_val(client, go, sizeof(go));
+	ret = regmap_read(data->regmap, reg, &val);
+
+	if (ret < 0)
+		return ret;
+	else
+		return val;
 }
 
-static unsigned char drv2605_read_reg(struct i2c_client *client, unsigned char reg)
+static int drv2605_reg_write(struct drv2605_data *data, unsigned char reg, char val)
 {
-	return i2c_smbus_read_byte_data(client, reg);
+    return regmap_write(data->regmap, reg, val);
 }
 
-static void drv2605_poll_go_bit(struct i2c_client *client)
+static int drv2605_bulk_read(struct drv2605_data *data, unsigned char reg, unsigned int count, u8 *buf)
 {
-	while (drv2605_read_reg(client, GO_REG) == GO) {
-		schedule_timeout_interruptible(msecs_to_jiffies(GO_BIT_POLL_INTERVAL));
+	return regmap_bulk_read(data->regmap, reg, buf, count);
+}
+
+static int drv2605_bulk_write(struct drv2605_data *data, unsigned char reg, unsigned int count, const u8 *buf)
+{
+	return regmap_bulk_write(data->regmap, reg, buf, count);
+}
+
+static int drv2605_set_bits(struct drv2605_data *data, unsigned char reg, unsigned char mask, unsigned char val)
+{
+	return regmap_update_bits(data->regmap, reg, mask, val);
+}
+
+static int drv2605_set_go_bit(struct drv2605_data *data, unsigned char val)
+{
+	return drv2605_reg_write(data, GO_REG, (val&0x01));
+}
+
+static void drv2605_poll_go_bit(struct drv2605_data *data)
+{
+    while (drv2605_reg_read(data, GO_REG) == GO)
+      schedule_timeout_interruptible(msecs_to_jiffies(GO_BIT_POLL_INTERVAL));
+}
+
+static int drv2605_select_library(struct drv2605_data *data, unsigned char lib)
+{
+	return drv2605_reg_write(data, LIBRARY_SELECTION_REG, (lib&0x07));
+}
+
+static int drv2605_set_rtp_val(struct drv2605_data *data, char value)
+{
+	/* please be noted: in unsigned mode, maximum is 0xff, in signed mode, maximum is 0x7f */
+	dev_info(&(data->client->dev), "Strength: %02X value: \n", value);
+	return drv2605_reg_write(data, REAL_TIME_PLAYBACK_REG, value);
+}
+
+static int drv2605_set_waveform_sequence(struct drv2605_data *data, unsigned char* seq, unsigned int size)
+{
+	return drv2605_bulk_write(data, WAVEFORM_SEQUENCER_REG, (size>WAVEFORM_SEQUENCER_MAX)?WAVEFORM_SEQUENCER_MAX:size, seq);
+}
+
+static void drv2605_change_mode(struct drv2605_data *data, char work_mode, char dev_mode)
+{
+	/* please be noted : LRA open loop cannot be used with analog input mode */
+	if(dev_mode == DEV_IDLE){
+		data->dev_mode = dev_mode;
+		data->work_mode = work_mode;
+	}else if(dev_mode == DEV_STANDBY){
+		if(data->dev_mode != DEV_STANDBY){
+			data->dev_mode = DEV_STANDBY;
+			drv2605_reg_write(data, MODE_REG, MODE_STANDBY);
+			schedule_timeout_interruptible(msecs_to_jiffies(WAKE_STANDBY_DELAY));
+		}
+		data->work_mode = WORK_IDLE;
+	}else if(dev_mode == DEV_READY){
+		if((work_mode != data->work_mode)||(dev_mode != data->dev_mode)){
+			data->work_mode = work_mode;
+			data->dev_mode = dev_mode;
+			if((data->work_mode == WORK_VIBRATOR)||(data->work_mode == WORK_RTP)){
+				drv2605_reg_write(data, MODE_REG, MODE_REAL_TIME_PLAYBACK);
+			}else{
+				drv2605_reg_write(data, MODE_REG, MODE_INTERNAL_TRIGGER);
+				schedule_timeout_interruptible(msecs_to_jiffies(STANDBY_WAKE_DELAY));
+			}
+		}
 	}
 }
 
-static void drv2605_select_library(struct i2c_client *client, char lib)
-{
-	char library[] = {
-		LIBRARY_SELECTION_REG, lib
-	};
-	drv2605_write_reg_val(client, library, sizeof(library));
-}
-
-static void drv2605_set_rtp_val(struct i2c_client *client, char value)
-{
-	char rtp_val[] = {
-		REAL_TIME_PLAYBACK_REG, value
-	};
-	drv2605_write_reg_val(client, rtp_val, sizeof(rtp_val));
-
-	dev_info(&client->dev, "Strength: %02X value: \n", value);
-}
-
-static void drv2605_set_waveform_sequence(struct i2c_client *client, unsigned char *seq,
-		unsigned int size)
-{
-	unsigned char data[WAVEFORM_SEQUENCER_MAX + 1];
-
-	if (size > WAVEFORM_SEQUENCER_MAX) {
-		return;
-	}
-
-	memset(data, 0, sizeof(data));
-	memcpy(&data[1], seq, size);
-	data[0] = WAVEFORM_SEQUENCER_REG;
-
-	i2c_master_send(client, data, sizeof(data));
-}
-
-static void drv2605_change_mode(struct i2c_client *client, char mode)
-{
-	unsigned char tmp[] = {
-		MODE_REG, mode
-	};
-
-	drv2605_write_reg_val(client, tmp, sizeof(tmp));
-}
 
 /*******************************************************************************************
 Function:	read_vibrator_calib_value_from_nv
@@ -316,14 +353,14 @@ static int read_vibrator_calib_value_from_nv(void)
 	user_info.nv_name[sizeof(user_info.nv_name) - 1] = '\0';
 	if ((ret = hisi_nve_direct_access(&user_info))!=0)
 	{
-		dev_err(&client_temp->dev, "nve_direct_access read error(%d)\n", ret);
+		dev_err(&(data->client->dev), "nve_direct_access read error(%d)\n", ret);
 		return -1;
 	}
 
 	vib_calib[0] = (int8_t)user_info.nv_data[0];
 	vib_calib[1] = (int8_t)user_info.nv_data[1];
 	vib_calib[2] = (int8_t)user_info.nv_data[2];
-	dev_info(&client_temp->dev, "read vib_calib (0x%x  0x%x  0x%x )\n", vib_calib[0],vib_calib[1],vib_calib[2]);
+	dev_info(&(data->client->dev), "read vib_calib (0x%x  0x%x  0x%x )\n", vib_calib[0],vib_calib[1],vib_calib[2]);
 
 	return 0;
 }
@@ -344,7 +381,7 @@ static int write_vibrator_calib_value_to_nv(char* temp)
 
 	if(temp==NULL)
 	{
-		dev_err(&client_temp->dev, "write_vibrator_calib_value_to_nv fail, invalid para!\n", ret);
+		dev_err(&(data->client->dev), "write_vibrator_calib_value_to_nv fail, invalid para!\n", ret);
 		return -1;
 	}
 	memset(&user_info, 0, sizeof(user_info));
@@ -353,16 +390,16 @@ static int write_vibrator_calib_value_to_nv(char* temp)
 	user_info.valid_size = VIB_CALIDATA_NV_SIZE;
 	strncpy(user_info.nv_name, "VIBCAL", sizeof(user_info.nv_name));
 	user_info.nv_name[sizeof(user_info.nv_name) - 1] = '\0';
-       dev_info(&client_temp->dev, "nve_direct_access write temp (0x%x  0x%x  0x%x )\n",temp[0],temp[1],temp[2]);
+       dev_info(&(data->client->dev), "nve_direct_access write temp (0x%x  0x%x  0x%x )\n",temp[0],temp[1],temp[2]);
 	user_info.nv_data[0] = temp[0];
 	user_info.nv_data[1] = temp[1];
 	user_info.nv_data[2] = temp[2];
 	if ((ret = hisi_nve_direct_access(&user_info))!=0)
 	{
-		dev_err(&client_temp->dev, "nve_direct_access write error(%d)\n", ret);
+		dev_err(&(data->client->dev), "nve_direct_access write error(%d)\n", ret);
 		return -1;
 	}
-	dev_info(&client_temp->dev, "nve_direct_access write nv_data (0x%x  0x%x  0x%x )\n",user_info.nv_data[0],user_info.nv_data[1],user_info.nv_data[2]);
+	dev_info(&(data->client->dev), "nve_direct_access write nv_data (0x%x  0x%x  0x%x )\n",user_info.nv_data[0],user_info.nv_data[1],user_info.nv_data[2]);
 
 	return ret;
 }
@@ -379,42 +416,64 @@ Return:         成功或者失败信息: 0->成功, -1->失败
 static int save_vibrator_calib_value_to_reg(void)
 {
 	int ret = 0;
-	char acalComp[2]={0}, acalBEMF[2]={0}, BEMFGain[2]={0};
+	char acalComp = 0, acalBEMF = 0, BEMFGain = 0;
 
-	acalComp[1] = drv2605_read_reg(client_temp, AUTO_CALI_RESULT_REG);
-	acalBEMF[1] = drv2605_read_reg(client_temp, AUTO_CALI_BACK_EMF_RESULT_REG);
-	BEMFGain[1]= drv2605_read_reg(client_temp, FEEDBACK_CONTROL_REG);
-	dev_info(&client_temp->dev, "acalComp:0x%x, acalBEMF:0x%x, BEMFGain:0x%x.\n",
-				acalComp[1], acalBEMF[1], BEMFGain[1]);
-	BEMFGain[1] = 0x03 & BEMFGain[1];
-	dev_info(&client_temp->dev, "BEMFGain:0x%x.\n", BEMFGain[1]);
+	acalComp = drv2605_reg_read(data, AUTO_CALI_RESULT_REG);
+	acalBEMF = drv2605_reg_read(data, AUTO_CALI_BACK_EMF_RESULT_REG);
+	BEMFGain = drv2605_reg_read(data, FEEDBACK_CONTROL_REG);
+	dev_info(&(data->client->dev), "acalComp:0x%x, acalBEMF:0x%x, BEMFGain:0x%x.\n",
+				acalComp, acalBEMF, BEMFGain);
 
-	if((acalComp[1] == 0x0D) && (acalBEMF[1] == 0x6D) && (BEMFGain[1] == 0x02)){
+	BEMFGain = 0x03 & BEMFGain;
+
+	dev_info(&(data->client->dev), "BEMFGain:0x%x.\n", BEMFGain);
+
+	if((acalComp == 0x0D) && (acalBEMF == 0x6D) && (BEMFGain == 0x02)){
 		ret=read_vibrator_calib_value_from_nv();
 		if(ret){
-			dev_err(&client_temp->dev, "drv2605 read vibrator calib value from nv:fail.\n");
+			dev_err(&(data->client->dev), "drv2605 read vibrator calib value from nv:fail.\n");
 			return -1;
 		}else{
-			acalComp[0]=AUTO_CALI_RESULT_REG;
-			acalComp[1]=vib_calib[0];
-			dev_err(&client_temp->dev, "acalComp: 0x%x, 0x%x .\n",acalComp[0],acalComp[1]);
+			BEMFGain = drv2605_reg_read(data, FEEDBACK_CONTROL_REG);
 
-			acalBEMF[0]=AUTO_CALI_BACK_EMF_RESULT_REG;
-			acalBEMF[1]=vib_calib[1];
-			dev_err(&client_temp->dev, "acalBEMF: 0x%x, 0x%x .\n",acalBEMF[0],acalBEMF[1]);
+			dev_err(&(data->client->dev), "original BEMFGain: 0x%x.\n",BEMFGain);
 
-			BEMFGain[0] = FEEDBACK_CONTROL_REG;
-			BEMFGain[1]=drv2605_read_reg(client_temp, FEEDBACK_CONTROL_REG);
-			dev_err(&client_temp->dev, "BEMFGain[1]: 0x%x.\n",BEMFGain[1]);
-			BEMFGain[1]=(BEMFGain[1] & 0xFC)|(vib_calib[2] & 0x03);
-			dev_err(&client_temp->dev, "BEMFGain[1]: 0x%x.\n",BEMFGain[1]);
+			BEMFGain = (BEMFGain & 0xFC)|(vib_calib[2] & 0x03);
 
-			drv2605_write_reg_val(client_temp, acalComp, sizeof(acalComp));
-			drv2605_write_reg_val(client_temp, acalBEMF, sizeof(acalBEMF));
-			drv2605_write_reg_val(client_temp, BEMFGain, sizeof(BEMFGain));
+			dev_info(&(data->client->dev), "acalComp:0x%x, acalBEMF:0x%x, BEMFGain:0x%x.\n",
+				vib_calib[0], vib_calib[1], BEMFGain);
+
+			drv2605_reg_write(data, AUTO_CALI_RESULT_REG, vib_calib[0]);
+			drv2605_reg_write(data, AUTO_CALI_BACK_EMF_RESULT_REG, vib_calib[1]);
+			drv2605_reg_write(data, FEEDBACK_CONTROL_REG, BEMFGain);
 		}
 	}
 	return 0;
+}
+
+static void play_effect(struct drv2605_data *data)
+{
+	vibrator_shake = 1;
+	switch_set_state(&data->sw_dev, SW_STATE_SEQUENCE_PLAYBACK);
+
+	drv2605_change_mode(data, WORK_SEQ_PLAYBACK, DEV_READY);
+	msleep(1);
+	drv2605_set_waveform_sequence(data, data->sequence, WAVEFORM_SEQUENCER_MAX);
+	data->vibrator_is_playing = YES;
+	drv2605_set_go_bit(data, GO);
+
+	while((drv2605_reg_read(data, GO_REG) == GO) && (data->should_stop == NO)){
+		schedule_timeout_interruptible(msecs_to_jiffies(GO_BIT_POLL_INTERVAL));
+	}
+
+	if(data->should_stop == YES){
+		drv2605_set_go_bit(data, STOP);
+	}
+
+	drv2605_change_mode(data, WORK_IDLE, DEV_STANDBY);
+	switch_set_state(&data->sw_dev, SW_STATE_IDLE);
+	data->vibrator_is_playing = NO;
+	vibrator_shake = 0;
 }
 
 static int vibrator_get_time(struct timed_output_dev *dev)
@@ -433,13 +492,25 @@ static int vibrator_get_time(struct timed_output_dev *dev)
 
 static void vibrator_off(struct drv2605_data *data)
 {
-	if (vibrator_is_playing) {
-		vibrator_is_playing = NO;
-		drv2605_change_mode(data->client, MODE_STANDBY);
+	if (data->vibrator_is_playing) {
+		data->vibrator_is_playing = NO;
+		drv2605_change_mode(data, WORK_IDLE, DEV_STANDBY);
 		vibrator_shake = 0;
 	}
 
 	dev_info(&(data->client->dev), "drv2605 off!");
+}
+
+static void drv2605_stop(struct drv2605_data *data)
+{
+	if(data->vibrator_is_playing){
+		if((data->work_mode == WORK_VIBRATOR)||(data->work_mode == WORK_RTP)){
+			vibrator_off(data);
+		}else if(data->work_mode == WORK_SEQ_PLAYBACK){
+		}else{
+			printk("%s, err mode=%d \n", __FUNCTION__, data->work_mode);
+		}
+	}
 }
 
 static void vibrator_enable(struct timed_output_dev *dev, int value)
@@ -452,11 +523,16 @@ static void vibrator_enable(struct timed_output_dev *dev, int value)
 
 	mutex_lock(&data->lock);
 	hrtimer_cancel(&data->timer);
+
+	if(data->vibrator_is_playing == YES){
+		drv2605_set_go_bit(data, STOP);
+	}
+
 	cancel_work_sync(&data->work);
 
 	if (value) {
-		drv2605_change_mode(data->client, MODE_DEVICE_READY);
-		udelay(1000);
+		drv2605_change_mode(data, WORK_IDLE, DEV_READY);
+		msleep(1);
 		if(vib_init_calibdata == 0){
 			ret = save_vibrator_calib_value_to_reg();
 			vib_init_calibdata = 1;
@@ -466,12 +542,12 @@ static void vibrator_enable(struct timed_output_dev *dev, int value)
 			}
 		}
 		/* Only change the mode if not already in RTP mode; RTP input already set at init */
-		if ((drv2605_read_reg(data->client, MODE_REG) & DRV260X_MODE_MASK)
+		if ((drv2605_reg_read(data, MODE_REG) & DRV260X_MODE_MASK)
 			!= MODE_REAL_TIME_PLAYBACK) {
 			vibrator_shake = 1;
-			drv2605_set_rtp_val(data->client, REAL_TIME_PLAYBACK_STRENGTH);
-			drv2605_change_mode(data->client, MODE_REAL_TIME_PLAYBACK);
-			vibrator_is_playing = YES;
+			drv2605_set_rtp_val(data, REAL_TIME_PLAYBACK_STRENGTH);
+			drv2605_change_mode(data, WORK_VIBRATOR, DEV_READY);
+			data->vibrator_is_playing = YES;
 		}
 
 		if (value > 0) {
@@ -503,26 +579,15 @@ static void vibrator_work(struct work_struct *work)
 	struct drv2605_data *data;
 
 	data = container_of(work, struct drv2605_data, work);
-	vibrator_off(data);
-}
 
-static void play_effect(struct work_struct *work)
-{
-	struct drv2605_data *data;
-
-	data = container_of(work, struct drv2605_data, work_play_eff);
-
-	drv2605_change_mode(data->client, MODE_DEVICE_READY);
-	udelay(1000);
-	drv2605_set_waveform_sequence(data->client, data->sequence, sizeof(data->sequence));
-	drv2605_set_go_bit(data->client, GO);
-
-	while((drv2605_read_reg(data->client, GO_REG) == GO) && (!data->should_stop)) {
-		schedule_timeout_interruptible(msecs_to_jiffies(GO_BIT_POLL_INTERVAL));
+	if(data->work_mode == WORK_VIBRATOR){
+		vibrator_off(data);
+	}else if(data->work_mode == WORK_SEQ_PLAYBACK){
+		play_effect(data);
 	}
-
-	drv2605_change_mode(data->client, MODE_STANDBY);
 }
+
+
 
 #if GUARANTEE_AUTOTUNE_BRAKE_TIME
 #define AUTOTUNE_BRAKE_TIME 25
@@ -536,7 +601,7 @@ static void autotune_brake_complete(struct work_struct *work)
 		return;
 
 	/* Put hardware in standby */
-	drv2605_change_mode(client_temp,MODE_STANDBY);
+	drv2605_change_mode(data, WORK_IDLE, DEV_STANDBY);
 }
 
 DECLARE_DELAYED_WORK(g_brake_complete, autotune_brake_complete);
@@ -549,11 +614,10 @@ int ImmVibeSPI_ForceOut_AmpDisable(VibeUInt8 nActuatorIndex)
 {
 	if (g_bAmpEnabled)
 	{
-		dev_info(&client_temp->dev, "tspdrv:ImmVibeSPI_ForceOut_AmpDisable.\n");
+		dev_info(&(data->client->dev), "tspdrv:ImmVibeSPI_ForceOut_AmpDisable.\n");
 
 		/* Set the force to 0 */
-		drv2605_set_rtp_val(client_temp,0);
-
+		drv2605_set_rtp_val(data,0);
 #if GUARANTEE_AUTOTUNE_BRAKE_TIME
 		/* if a brake signal arrived from daemon, let the chip stay on
 		* extra time to allow it to brake */
@@ -567,7 +631,7 @@ int ImmVibeSPI_ForceOut_AmpDisable(VibeUInt8 nActuatorIndex)
 #endif
 		{
 			/* Put hardware in standby via i2c */
-			drv2605_change_mode(client_temp,MODE_STANDBY);
+			drv2605_change_mode(data, WORK_IDLE, DEV_STANDBY);
 		}
 
 		g_bAmpEnabled = false;
@@ -586,25 +650,25 @@ int ImmVibeSPI_ForceOut_AmpEnable(VibeUInt8 nActuatorIndex)
 
 	if (!g_bAmpEnabled)
 	{
-		dev_info(&client_temp->dev, "tspdrv:ImmVibeSPI_ForceOut_AmpEnable.\n");
+		dev_info(&(data->client->dev), "tspdrv:ImmVibeSPI_ForceOut_AmpEnable.\n");
 
 #if GUARANTEE_AUTOTUNE_BRAKE_TIME
 		cancel_delayed_work_sync(&g_brake_complete);
 #endif
 
-		drv2605_change_mode(client_temp,MODE_DEVICE_READY);
-		udelay(1000);
+		drv2605_change_mode(data, WORK_IDLE, DEV_READY);
+		msleep(1);
 
 		if(vib_init_calibdata == 0){
 			ret = save_vibrator_calib_value_to_reg();
 			vib_init_calibdata = 1;
 			if(ret){
-				dev_info(&client_temp->dev, "save vibrator calib value fail:%d.\n", ret);
+				dev_info(&(data->client->dev), "save vibrator calib value fail:%d.\n", ret);
 				vib_init_calibdata = 0;
 			}
 		}
 
-		drv2605_change_mode(client_temp, MODE_REAL_TIME_PLAYBACK);
+		drv2605_change_mode(data, WORK_RTP, DEV_READY);
 		g_bAmpEnabled = true;
 	}
 	return 0;
@@ -632,11 +696,11 @@ int ImmVibeSPI_ForceOut_SetSamples(VibeUInt8 nActuatorIndex, VibeUInt16 nOutputS
 	{
 		/* AmpDisable sets force to zero, so need to here */
 		if (force > 0)
-			drv2605_set_rtp_val(client_temp, pForceOutputBuffer[0]);
+			drv2605_set_rtp_val(data, pForceOutputBuffer[0]);
 		g_lastForce = force;
 	}
 #else
-	drv2605_set_rtp_val(client_temp, pForceOutputBuffer[0]);
+	drv2605_set_rtp_val(data, pForceOutputBuffer[0]);
 #endif
 	return 0;
 }
@@ -691,10 +755,10 @@ int ImmVibeSPI_Device_GetName(VibeUInt8 nActuatorIndex, char *szDevName, int nSi
 	if ((!szDevName) || (nSize < 1))
 		return -1;
 
-	dev_info(&client_temp->dev, "ImmVibeSPI_Device_GetName.\n");
+	dev_info(&(data->client->dev), "ImmVibeSPI_Device_GetName.\n");
 
 	/* Append revision number to the device name */
-	snprintf(szRevision, MAX_REVISION_STRING_SIZE, "r%d %s", (drv2605_read_reg(client_temp, SILICON_REVISION_REG) & SILICON_REVISION_MASK), ACTUATOR_NAME);
+	snprintf(szRevision, MAX_REVISION_STRING_SIZE, "r%d %s", (drv2605_reg_read(data, SILICON_REVISION_REG) & SILICON_REVISION_MASK), ACTUATOR_NAME);
 	if ((strlen(szRevision) + strlen(szDevName)) < nSize-1)
 		strcat(szDevName, szRevision);
 
@@ -738,67 +802,42 @@ static ssize_t vibrator_dbc_test_store(struct device *dev, struct device_attribu
 	char device_ready[2]={0}, erm_select[2] = {0}, erm_openloop[2]={0}, overdriver_val[2] = {0};
 	char rtp_out1[2]={0}, rtp_out2[2] = {0}, mode_open[2]={0}, mode_close[2] = {0};
 
+	dev_info(&(data->client->dev), "start vibrator_dbc_test!\n");
 
-	dev_info(&client_temp->dev, "start vibrator_dbc_test!\n");
+	drv2605_change_mode(data, WORK_IDLE, DEV_READY);
+	msleep(1);
 
-	drv2605_change_mode(client_temp, MODE_DEVICE_READY);
-	udelay(1000);
-
-	erm_mode = drv2605_read_reg(client_temp, FEEDBACK_CONTROL_REG);
-	erm_loop = drv2605_read_reg(client_temp, Control3_REG);
-	dev_info(&client_temp->dev, "ERM default erm_mode:%d,erm_loop:%d\n",erm_mode,erm_loop);
+	erm_mode = drv2605_reg_read(data, FEEDBACK_CONTROL_REG);
+	erm_loop = drv2605_reg_read(data, Control3_REG);
+	dev_info(&(data->client->dev), "ERM default erm_mode:%d,erm_loop:%d\n",erm_mode,erm_loop);
 	erm_mode = 0x7f&erm_mode;
 	erm_loop = 0x20|erm_loop;
-	dev_info(&client_temp->dev, "ERM set erm_mode:%d,erm_loop:%d\n",erm_mode,erm_loop);
+	dev_info(&(data->client->dev), "ERM set erm_mode:%d,erm_loop:%d\n",erm_mode,erm_loop);
 
-	device_ready[0] = MODE_REG;
-	device_ready[1] = 0x00;
-
-	erm_select[0] = FEEDBACK_CONTROL_REG;
-	erm_select[1] = erm_mode;
-
-	erm_openloop[0] = Control3_REG;
-	erm_openloop[1] = erm_loop;
-
-	overdriver_val[0] = OVERDRIVE_CLAMP_VOLTAGE_REG;
-	overdriver_val[1] = 0xff;
-
-	rtp_out1[0] = REAL_TIME_PLAYBACK_REG;
-	rtp_out1[1] = 0x7f;
-
-	rtp_out2[0] = REAL_TIME_PLAYBACK_REG;
-	rtp_out2[1] = 0x81;
-
-	mode_open[0] = MODE_REG;
-	mode_open[1] = 0x05;
-
-	mode_close[0] = MODE_REG;
-	mode_close[1] = 0x00;
-
-	drv2605_write_reg_val(client_temp, erm_select, sizeof(erm_select));
-	drv2605_write_reg_val(client_temp, erm_openloop, sizeof(erm_openloop));
-	drv2605_write_reg_val(client_temp, overdriver_val, sizeof(overdriver_val));
+	drv2605_reg_write(data, FEEDBACK_CONTROL_REG, erm_mode);
+	drv2605_reg_write(data, Control3_REG, erm_loop);
+	drv2605_reg_write(data, OVERDRIVE_CLAMP_VOLTAGE_REG, 0xff);
 
 	if (strict_strtoull(buf, 16, &value)){
-		dev_info(&client_temp->dev, "vibrator dbc test read value error\n");
+		dev_info(&(data->client->dev), "vibrator dbc test read value error\n");
 		error = -EINVAL;
 		goto out;
 	}
 
 	if (value == 1) {
-		dev_info(&client_temp->dev, "vibrator dbc test out+\n");
-		drv2605_write_reg_val(client_temp, rtp_out1, sizeof(rtp_out1));
-		drv2605_write_reg_val(client_temp, mode_open, sizeof(mode_open));
+		dev_info(&(data->client->dev), "vibrator dbc test out+\n");
+		drv2605_reg_write(data, REAL_TIME_PLAYBACK_REG, 0x7f);
+		drv2605_reg_write(data, MODE_REG, 0x05);
 	}else if(value == 0){
-		dev_info(&client_temp->dev, "vibrator dbc test close\n");
-		drv2605_write_reg_val(client_temp, mode_close, sizeof(mode_close));
-		drv2605_change_mode(client_temp, MODE_STANDBY);
+		dev_info(&(data->client->dev), "vibrator dbc test close\n");
+		drv2605_reg_write(data, MODE_REG, 0x00);
+		drv2605_change_mode(data, WORK_IDLE, DEV_STANDBY);
 	}else if(value == 2){
-		dev_info(&client_temp->dev, "vibrator dbc test out-\n");
-		drv2605_write_reg_val(client_temp, rtp_out2, sizeof(rtp_out2));
-		drv2605_write_reg_val(client_temp, mode_open, sizeof(mode_open));
+		dev_info(&(data->client->dev), "vibrator dbc test out-\n");
+		drv2605_reg_write(data, REAL_TIME_PLAYBACK_REG, 0x81);
+		drv2605_reg_write(data, MODE_REG, 0x05);
 	}else{
-		dev_info(&client_temp->dev, "vibrator dbc test value is invalid:%d\n",value);
+		dev_info(&(data->client->dev), "vibrator dbc test value is invalid:%d\n",value);
 	}
 	error = count;
 out:
@@ -811,52 +850,47 @@ static ssize_t vibrator_calib_store(struct device *dev, struct device_attribute 
 	unsigned char lra_mode = 0;
 	int ret = 0;
 	char calib_value[3] = {0}, lra_select[2]={0}, vib_autocalib[2]={0};
-	dev_info(&client_temp->dev, "start vibrator auto calibrate!\n");
+	dev_info(&(data->client->dev), "start vibrator auto calibrate!\n");
 
-	drv2605_change_mode(client_temp, MODE_DEVICE_READY);
-	udelay(1000);
+	drv2605_change_mode(data, WORK_IDLE, DEV_READY);
+	msleep(1);
 
-	lra_mode = drv2605_read_reg(client_temp, FEEDBACK_CONTROL_REG);
+	lra_mode = drv2605_reg_read(data, FEEDBACK_CONTROL_REG);
 	lra_mode = 0x80|lra_mode;
 
-	lra_select[0]=FEEDBACK_CONTROL_REG;
-	lra_select[1]=lra_mode;
-	vib_autocalib[0]=MODE_REG;
-	vib_autocalib[1]=0x07;
-
-	drv2605_write_reg_val(client_temp, lra_select, sizeof(lra_select));
-	drv2605_write_reg_val(client_temp, vib_autocalib, sizeof(vib_autocalib));
-	drv2605_set_go_bit(client_temp, GO);
+	drv2605_reg_write(data, FEEDBACK_CONTROL_REG, lra_mode);
+	drv2605_reg_write(data, MODE_REG, 0x07);
+	drv2605_set_go_bit(data, GO);
 
 	/* Wait until the procedure is done */
-	drv2605_poll_go_bit(client_temp);
+	drv2605_poll_go_bit(data);
 
 	/* Read calibration result */
-	status = drv2605_read_reg(client_temp, STATUS_REG);
-	dev_info(&client_temp->dev,"calibration status =0x%x\n", status);
+	status = drv2605_reg_read(data, STATUS_REG);
+	dev_info(&(data->client->dev),"calibration status =0x%x\n", status);
 	status = 0x08 & status;
 	if(status == 1){
 		vib_calib_result = 0;
-		dev_info(&client_temp->dev,"vibrator calibration fail!\n");
+		dev_info(&(data->client->dev),"vibrator calibration fail!\n");
 		return count;
 	}else{
 		vib_calib_result = 1;
 	}
 
 	/* Read calibration value*/
-	calib_value[0] = drv2605_read_reg(client_temp, AUTO_CALI_RESULT_REG);
-	calib_value[1] = drv2605_read_reg(client_temp, AUTO_CALI_BACK_EMF_RESULT_REG);
-	calib_value[2] = drv2605_read_reg(client_temp, FEEDBACK_CONTROL_REG);
+	calib_value[0] = drv2605_reg_read(data, AUTO_CALI_RESULT_REG);
+	calib_value[1] = drv2605_reg_read(data, AUTO_CALI_BACK_EMF_RESULT_REG);
+	calib_value[2] = drv2605_reg_read(data, FEEDBACK_CONTROL_REG);
 	calib_value[2] = 0x03 & calib_value[2];
-	dev_info(&client_temp->dev,"calibration value =0x%x, 0x%x, 0x%x\n", calib_value[0],calib_value[1],calib_value[2]);
+	dev_info(&(data->client->dev),"calibration value =0x%x, 0x%x, 0x%x\n", calib_value[0],calib_value[1],calib_value[2]);
 	/*write calibration value to nv*/
 	ret = write_vibrator_calib_value_to_nv(calib_value);
 	if(ret){
 		vib_calib_result = 0;
-		dev_info(&client_temp->dev,"vibrator calibration result write to nv fail!\n");
+		dev_info(&(data->client->dev),"vibrator calibration result write to nv fail!\n");
 	}
 
-	drv2605_change_mode(client_temp,MODE_STANDBY);
+	drv2605_change_mode(data, WORK_IDLE, DEV_STANDBY);
 
 	return count;
 }
@@ -872,12 +906,12 @@ static ssize_t vibrator_get_reg_store(struct device *dev, struct device_attribut
 	uint64_t value = 0;
 	char reg_address = 0;
 	if (strict_strtoull(buf, 16, &value)){
-		dev_info(&client_temp->dev, "vibrator_get_reg_store read value error\n");
+		dev_info(&(data->client->dev), "vibrator_get_reg_store read value error\n");
 		goto out;
 	}
 	reg_address = (char)value;
-	reg_value = drv2605_read_reg(client_temp, reg_address);
-	dev_info(&client_temp->dev, "reg_address is 0x%x, reg_value is 0x%x.\n",reg_address,reg_value);
+	reg_value = drv2605_reg_read(data,reg_address);
+	dev_info(&(data->client->dev), "reg_address is 0x%x, reg_value is 0x%x.\n",reg_address,reg_value);
 
 out:
 	return count;
@@ -904,21 +938,216 @@ static const struct attribute_group vb_attr_group = {
 	.attrs = vb_attributes,
 };
 
+static int dev2605_open(struct inode * i_node, struct file * filp)
+{
+	if(data == NULL){
+		return -ENODEV;
+	}
+
+	filp->private_data = data;
+	return 0;
+}
+
+static ssize_t dev2605_read(struct file* filp, char* buff, size_t length, loff_t* offset)
+{
+	struct drv2605_data *data = (struct drv2605_data *)filp->private_data;
+	int ret = 0;
+
+	if(data->ReadLen > 0){
+		ret = copy_to_user(buff, data->ReadBuff, data->ReadLen);
+		if (ret != 0){
+			printk("%s, copy_to_user err=%d \n", __FUNCTION__, ret);
+		}else{
+			ret = data->ReadLen;
+		}
+		data->ReadLen = 0;
+	}
+
+	return ret;
+}
+
+static bool isforDebug(int cmd){
+	return ((cmd == HAPTIC_CMDID_REG_WRITE)
+		||(cmd == HAPTIC_CMDID_REG_READ)
+		||(cmd == HAPTIC_CMDID_REG_SETBIT));
+}
+
+static ssize_t dev2605_write(struct file* filp, const char* buff, size_t len, loff_t* off)
+{
+	struct drv2605_data *data = (struct drv2605_data *)filp->private_data;
+
+	if(!isforDebug(buff[0])){
+		data->should_stop = YES;
+		hrtimer_cancel(&data->timer);
+		cancel_work_sync(&data->work);
+	}
+
+	mutex_lock(&data->lock);
+
+	if(!isforDebug(buff[0])){
+		drv2605_stop(data);
+	}
+
+	switch(buff[0])
+	{
+		case HAPTIC_CMDID_PLAY_SINGLE_EFFECT:
+		case HAPTIC_CMDID_PLAY_EFFECT_SEQUENCE:
+		{
+			if(len > 9){
+				printk("%s, play effect len (%d) error,\n", __FUNCTION__,len);
+				break;
+			}
+			memset(&data->sequence, 0, WAVEFORM_SEQUENCER_MAX);
+			if (!copy_from_user(&data->sequence, &buff[1], len - 1))
+			{
+				data->should_stop = NO;
+				drv2605_change_mode(data, WORK_SEQ_PLAYBACK, DEV_IDLE);
+				schedule_work(&data->work);
+			}
+			break;
+		}
+
+		case HAPTIC_CMDID_REG_READ:
+		{
+			if(len == 2){
+				data->ReadLen = 1;
+				data->ReadBuff[0] = drv2605_reg_read(data, buff[1]);
+			}else if(len == 3){
+				data->ReadLen = (buff[2]>MAX_READ_BYTES)?MAX_READ_BYTES:buff[2];
+				drv2605_bulk_read(data, buff[1], data->ReadLen, data->ReadBuff);
+			}else{
+				printk("%s, reg_read len error\n", __FUNCTION__);
+			}
+			break;
+		}
+
+		case HAPTIC_CMDID_REG_WRITE:
+		{
+			if((len-1) == 2){
+				drv2605_reg_write(data, buff[1], buff[2]);
+			}else if((len-1)>2){
+				unsigned char *value = (unsigned char *)kzalloc(len-2, GFP_KERNEL);
+				if(value != NULL){
+					if(copy_from_user(value, &buff[2], len-2) != 0){
+						printk("%s, reg copy err\n", __FUNCTION__);
+					}else{
+						drv2605_bulk_write(data, buff[1], len-2, value);
+					}
+					kfree(value);
+				}
+			}else{
+				printk("%s, reg_write len error\n", __FUNCTION__);
+			}
+			break;
+		}
+
+		case HAPTIC_CMDID_REG_SETBIT:
+		{
+			int i=1;
+			for(i=1; i< len; ){
+				drv2605_set_bits(data, buff[i], buff[i+1], buff[i+2]);
+				i += 3;
+			}
+			break;
+		}
+		case HAPTIC_CMDID_STOP:
+		{
+			break;
+		}
+		default:
+			printk("%s, unknown HAPTIC cmd\n", __FUNCTION__);
+			break;
+	}
+
+	mutex_unlock(&data->lock);
+
+	return len;
+}
+
+static struct file_operations fops =
+{
+	.open = dev2605_open,
+	.read = dev2605_read,
+	.write = dev2605_write,
+};
+
+static int Haptics_init(struct drv2605_data *data)
+{
+	int ret = -ENOMEM;
+
+	data->version = MKDEV(0,0);
+	ret = alloc_chrdev_region(&data->version, 0, 1, DEVICE_NAME);
+	if (ret < 0)
+	{
+		dev_info(&(data->client->dev), "drv2605: error getting major number %d\n", ret);
+		goto fail0;
+	}
+
+	data->class = class_create(THIS_MODULE, DEVICE_NAME);
+	if (!data->class)
+	{
+		dev_info(&(data->client->dev), "drv2605: error creating class\n");
+		goto fail1;
+	}
+
+	data->device = device_create(data->class, NULL, data->version, NULL, DEVICE_NAME);
+	if (!data->device)
+	{
+		dev_info(&(data->client->dev), "drv2605: error creating device 2605\n");
+		goto fail2;
+	}
+
+	cdev_init(&data->cdev, &fops);
+	data->cdev.owner = THIS_MODULE;
+	data->cdev.ops = &fops;
+	ret = cdev_add(&data->cdev, data->version, 1);
+	if (ret)
+	{
+		dev_info(&(data->client->dev), "drv2605: fail to add cdev\n");
+		goto fail3;
+	}
+
+	data->sw_dev.name = "haptics";
+	ret = switch_dev_register(&data->sw_dev);
+	if (ret < 0) {
+		dev_info(&(data->client->dev), "drv2605: fail to register switch\n");
+		goto fail4;
+	}
+
+	return 0;
+
+fail4:
+	switch_dev_unregister(&data->sw_dev);
+fail3:
+	device_destroy(data->class, data->version);
+fail2:
+	class_destroy(data->class);
+fail1:
+	unregister_chrdev_region(data->version, 1);
+fail0:
+	return ret;
+}
+
+static struct regmap_config drv2605_i2c_regmap = {
+	.reg_bits = 8,
+	.val_bits = 8,
+	.cache_type = REGCACHE_NONE,
+};
+
 static int drv2605_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	char status = 0;
-	int rc = 0,ret = 0;
+	int ret = 0;
 	unsigned char lra_mode = 0, lra_select[2]={0};
 	vib_init_calibdata = 0;
-	struct drv2605_data *data;
 
+	struct drv2605_pdata *pdata = NULL;
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		dev_err(&client->dev, "i2c is not supported\n");
 		return -EIO;
 	}
 
-       client_temp = client;
 	if (client->dev.of_node) {
 		pdata = devm_kzalloc(&client->dev, sizeof(struct drv2605_pdata), GFP_KERNEL);
 		if (!pdata) {
@@ -927,8 +1156,8 @@ static int drv2605_probe(struct i2c_client *client, const struct i2c_device_id *
 		}
 
 		/* parse DT */
-		rc = drv2605_parse_dt(&client->dev, pdata);
-		if (rc) {
+		ret = drv2605_parse_dt(&client->dev, pdata);
+		if (ret) {
 			devm_kfree(&client->dev, pdata);
 			dev_err(&client->dev, "DT parsing failed\n");
 			return -EIO;
@@ -942,6 +1171,12 @@ static int drv2605_probe(struct i2c_client *client, const struct i2c_device_id *
 		dev_err(&client->dev, "unable to allocate memory\n");
 		devm_kfree(&client->dev, pdata);
 		return -ENOMEM;
+	}
+
+	data->regmap = devm_regmap_init_i2c(client, &drv2605_i2c_regmap);
+	if (IS_ERR(data->regmap)) {
+		ret = PTR_ERR(data->regmap);
+		dev_err(&client->dev, "Failed to allocate register map: %d\n",ret);
 	}
 
 	mutex_init(&data->lock);
@@ -967,7 +1202,6 @@ static int drv2605_probe(struct i2c_client *client, const struct i2c_device_id *
 	hrtimer_init(&data->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	data->timer.function = vibrator_timer_func;
 	INIT_WORK(&data->work, vibrator_work);
-	INIT_WORK(&data->work_play_eff, play_effect);
 
 	data->dev.name = pdata->name;
 	data->dev.get_time = vibrator_get_time;
@@ -975,8 +1209,8 @@ static int drv2605_probe(struct i2c_client *client, const struct i2c_device_id *
 
 	mutex_unlock(&data->lock);
 
-	rc = timed_output_dev_register(&data->dev);
-	if (rc) {
+	ret = timed_output_dev_register(&data->dev);
+	if (ret) {
 		dev_err(&client->dev, "unable to register with timed_output\n");
 		goto unregister_timed_output_dev;
 	}
@@ -1004,17 +1238,15 @@ static int drv2605_probe(struct i2c_client *client, const struct i2c_device_id *
 	}
 #endif
 
-	lra_mode = drv2605_read_reg(data->client, FEEDBACK_CONTROL_REG);
+	lra_mode = drv2605_reg_read(data, FEEDBACK_CONTROL_REG);
 	lra_mode = ((0x03&lra_mode)|0xFC)&0xD3;
        dev_info(&client->dev, "lra_mode:0x%x.\n",lra_mode);
-	lra_select[0]=FEEDBACK_CONTROL_REG;
-	lra_select[1]=lra_mode;
-	drv2605_write_reg_val(data->client, lra_select, sizeof(lra_select));
+	drv2605_reg_write(data, FEEDBACK_CONTROL_REG, lra_mode);
 
 	/* Choose default effect library */
-	drv2605_select_library(data->client, g_effect_bank);
-
-	drv2605_change_mode(data->client, MODE_STANDBY);
+	drv2605_select_library(data, g_effect_bank);
+	drv2605_change_mode(data, WORK_IDLE, DEV_STANDBY);
+	Haptics_init(data);
 
 #if GUARANTEE_AUTOTUNE_BRAKE_TIME
     g_workqueue = create_workqueue("tspdrv_workqueue");
@@ -1039,7 +1271,7 @@ destroy_mutex:
 	devm_kfree(&client->dev, data);
 	devm_kfree(&client->dev, pdata);
 
-	return rc;
+	return ret;
 }
 
 static int drv2605_remove(struct i2c_client *client)
@@ -1059,7 +1291,6 @@ static int drv2605_remove(struct i2c_client *client)
 	timed_output_dev_unregister(&data->dev);
 	hrtimer_cancel(&data->timer);
 	cancel_work_sync(&data->work);
-	cancel_work_sync(&data->work_play_eff);
 
 	return 0;
 }

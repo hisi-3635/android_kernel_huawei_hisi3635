@@ -32,13 +32,27 @@
 
 #define CLUSTER0_RESUME_BIT 	0xfff0A334
 #define CLUSTER1_RESUME_BIT 	0xfff0A338
-#define CLUSTER1_CPU4    	1 << 4
 
 static struct ion_device *idev;
 static int num_heaps;
 static struct ion_heap **heaps;
 static void __iomem * cluster0_resume_bit;
 static void __iomem * cluster1_resume_bit;
+
+#ifdef CONFIG_ARCH_HI3630
+void hisi_ionsysinfo(struct sysinfo *si)
+{
+	__kernel_ulong_t ion_free_memory = 0;
+	struct ion_heap *heap = NULL;
+	int i;
+	for (i = 0; i < num_heaps; i++) {
+		heap = heaps[i];
+		if (heap->free_memory)
+			ion_free_memory += heap->free_memory(heap);
+	}
+	si->freeram += ion_free_memory;
+}
+#endif
 
 static void ion_pm_init(void)
 {
@@ -65,7 +79,11 @@ void ion_flush_cache_all(void)
 
 	stat = ~(cluster0_stat | cluster1_stat << 4) & 0xff;
 	if(cluster1_stat == 0x0f) {
-		stat = stat | CLUSTER1_CPU4;
+		stat |= BIT(4);
+	}
+
+	if(cluster0_stat == 0x0f) {
+		stat |= BIT(0);
 	}
 
 	cpumask_clear(&mask);

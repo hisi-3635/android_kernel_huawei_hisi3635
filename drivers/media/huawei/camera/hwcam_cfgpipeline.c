@@ -15,8 +15,9 @@
 #include <media/v4l2-event.h>
 #include <media/v4l2-fh.h>
 #include <media/v4l2-ioctl.h>
+#ifdef CONFIG_COMPAT
 #include "hwcam_compat32.h"
-
+#endif
 #include "hwcam_intf.h"
 
 typedef struct _tag_hwcam_cfgpipeline_mount_req
@@ -493,7 +494,7 @@ hwcam_cfgpipeline_mount_buf_req_create_instance(
     }
 
     mbr->buf = dma_buf_get(buf->fd); 
-    if (!mbr->buf) {
+    if (IS_ERR_OR_NULL(mbr->buf)) {
         kzfree(mbr);
         HWCAM_CFG_ERR("invalid file handle(%d)! \n", buf->fd);
         rc = -EBADF; 
@@ -945,7 +946,11 @@ hwcam_cfgpipeline_vo_do_ioctl(
 {
     hwcam_cfgpipeline_t* pl = I2PL(filep->private_data);
 	int rc = -EINVAL;
-	BUG_ON(!pl);
+    if (!pl) {
+        HWCAM_CFG_ERR("%s(%d): pl is NULL!", __func__, __LINE__);
+        return -EINVAL;
+    }
+
     switch (cmd)
     {
     case VIDIOC_DQEVENT:

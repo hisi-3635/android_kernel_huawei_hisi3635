@@ -31,10 +31,11 @@ static int tsp_keycodes[] = {KEY_MENU, KEY_HOMEPAGE, KEY_BACK};
 static DEFINE_MUTEX(ts_power_gpio_sem);
 static int ts_power_gpio_ref = 0;
 static u16 pre_status = 0;
-extern int TP_weigh_mode;
+
 //#define HIDEEP_REPEAT_START
 
 static void apple_weight_timeout_func(struct work_struct *work);
+static int hideep_holster_switch(struct ts_holster_info *info);
 
 static int hideep_regulator_get(void)
 {
@@ -871,6 +872,7 @@ static int hideep_chip_detect(struct device_node *device, struct ts_device_data 
 	g_istxxxx_data->holster_mode = 0;
 	g_istxxxx_data->z_status = false;
 	g_istxxxx_data->apple_weight_flag = false;
+	g_istxxxx_data->gesture_enable = false;
 
 	mutex_init(&g_istxxxx_data->i2c_mutex);
 	mutex_init(&g_istxxxx_data->dev_mutex);
@@ -1017,11 +1019,12 @@ static int hideep_irq_bottom_half(struct ts_cmd_node *in_cmd, struct ts_cmd_node
 	struct ist510e_touch_evt *finger;
 	u16 temp_status;
 	struct ts_easy_wakeup_info *gesture_info;
-#ifdef ROI
-	char roi_buf[49];
-#endif
 
-	out_cmd->cmd_param.pub_params.algo_param.algo_order = ts->huawei_ts_data->algo_id;
+	char roi_buf[49] ;
+	memset(gesture,0,sizeof(gesture));
+	memset(roi_buf,0,sizeof(roi_buf));
+
+	out_cmd->cmd_param.pub_params.algo_param.algo_order = 0;//ts->huawei_ts_data->algo_id;
 	if(ts->dev_state != ISTCORE_PWR_NORMAL){
 		out_cmd->command = TS_INVAILD_CMD;
 		goto ret;
@@ -1103,15 +1106,15 @@ static int hideep_irq_bottom_half(struct ts_cmd_node *in_cmd, struct ts_cmd_node
 			}
 		}
 		TS_LOG_DEBUG("info->gesture_wakeup_value = %d\n",info->gesture_wakeup_value);
-		if((true == gesture_info->off_motion_on)&&(info->gesture_wakeup_value!=0)){
+		if((true == gesture_info->off_motion_on)&&(info->gesture_wakeup_value!=0)&&(g_istxxxx_data->gesture_enable)){
 			wake_lock_timeout(&g_ts_data.ts_wake_lock, 5*HZ);
 			gesture_info->off_motion_on = false;
 			ps = (s16 *)&gesture[2];
 			for(i = 0;i<report_coordinate;i++){	
 				x = *ps++;
 				y = *ps++;
-				TS_LOG_DEBUG("x[%d] = %d, y[%d] = %d\n",i,x,i,y);
-				gesture_info->easywake_position[i] = (x<<16)+y;
+				gesture_info->easywake_position[i] = (x<<16)|y;
+				TS_LOG_DEBUG("x[%d] = %d, y[%d] = %d pos[%d] = 0x%x\n",i,x,i,y,i,gesture_info->easywake_position[i]);
 			}
 			//out_cmd->cmd_param.pub_params.algo_param.algo_order  = 0;
 			ts->input_touch_nr = 0;
@@ -1120,6 +1123,7 @@ static int hideep_irq_bottom_half(struct ts_cmd_node *in_cmd, struct ts_cmd_node
 			//hideep_item_switch(TS_ACTION_WRITE, IST_RESET, 1, &command);
 		}else if(true == gesture_info->off_motion_on){
 			//incorrect gesture wake up ID. let IC sleep again.
+			TS_LOG_DEBUG("re-enter gesture mode \n");
 			out_cmd->command = TS_INVAILD_CMD;
 			command = 1;
 			hideep_item_switch(TS_ACTION_WRITE, VR_LPWU, 1, &command);
@@ -1133,7 +1137,19 @@ static int hideep_irq_bottom_half(struct ts_cmd_node *in_cmd, struct ts_cmd_node
 	}
 	finger = ts->input_evt;
 	temp_status = 0;
-	if(info->cur_finger_number){
+	if((ts->z_flag_calib2)&&(info->cur_finger_number)&&(!ts->z_flag_ready)){
+		TS_LOG_DEBUG("z = 0x%x, index = %d\n", finger[0].z, ts->z_index);
+		if(ts->z_index>=ts->z_calib_start){
+			TS_LOG_DEBUG("reading\n");
+			ts->z_data[ts->z_index] = finger[0].z;
+			if(ts->z_index >= ts->z_calib_end){
+				TS_LOG_DEBUG("ready\n");
+				ts->z_flag_ready = true;
+			}
+		}
+		if(!ts->z_flag_ready)
+			ts->z_index++;
+	}else if(info->cur_finger_number){
 		TS_LOG_DEBUG("z_buffer, %d\n",finger[0].z);
 		mutex_lock  (&ts->dev_mutex);
 		ts->z_buffer = finger[0].z;
@@ -1154,10 +1170,12 @@ static int hideep_irq_bottom_half(struct ts_cmd_node *in_cmd, struct ts_cmd_node
 			if(btn_dn | btn_mv)
 				finger[i].z = 2;
 		if(btn_up){
+			TS_LOG_DEBUG("id = %d up.\n",id);
 			info->fingers[id].status = TS_FINGER_RELEASE;
 			info->fingers[id].x = finger[i].x;
 			info->fingers[id].y = finger[i].y;
 		}else if(btn_dn | btn_mv){
+			TS_LOG_DEBUG("id = %d down.\n",id);
 			info->fingers[id].status = TS_FINGER_PRESS;
 			info->fingers[id].x = finger[i].x;
 			info->fingers[id].y = finger[i].y;
@@ -1225,13 +1243,14 @@ static int hideep_before_suspend(void)
 	if(ts->apple_weight_init){
 		TS_LOG_DEBUG("still in apple weight mode\n");
 		ts->apple_weight_init=0;
-		TP_weigh_mode = 0;
 		cancel_work_sync(&ts->apple_weight_work);
 		cmd=0;
 		if(hideep_item_switch(TS_ACTION_WRITE, VR_SINGLE_TOUCH, 1, &cmd)<0){
 			hideep_reset_ic();
+			return NO_ERR;
 		}
 	}
+	return  -EINVAL;
 }
 
 static int hideep_suspend(void)
@@ -1306,12 +1325,29 @@ static int hideep_resume(void)
 			return -EINVAL;
 	}
 	TS_LOG_INFO("resume end.\n");
-	hideep_item_switch(TS_ACTION_WRITE, VR_GLOVE, 1, &ts->glove_mode);
 	//---------------------------------
 ret:
 	return NO_ERR;
 }
 
+static int hideep_after_resume(void *feature_info)
+{
+	int retval = NO_ERR;
+	struct ist510e *ts = g_istxxxx_data;
+	struct ts_feature_info *info = (struct ts_feature_info *)feature_info;
+
+	TS_LOG_INFO("hideep_after_resume enter\n");
+	//glove mode;
+	hideep_item_switch(TS_ACTION_WRITE, VR_GLOVE, 1, &ts->glove_mode);
+	//holster mode.
+	retval = hideep_holster_switch(&info->holster_info);
+	if (retval < 0) {
+		TS_LOG_ERR("Failed to set holster switch(%d), err: %d\n",
+			info->holster_info.holster_switch, retval);
+	}
+	TS_LOG_INFO("hideep_after_resume exit\n");
+	return retval;
+}
 
 static int hideep_fw_update_sd(void)
 {
@@ -1969,39 +2005,47 @@ int hideep_get_image_by_cmd(u16 command)
 {
 	struct ist510e *ts   = g_istxxxx_data;
 	struct ist510e_debug_dev *dev = &ts->debug_dev;
-	int retry;
 	int time_out;
 	int ret=0;
 	unsigned char value;
 	
 	TS_LOG_DEBUG("hideep_get_image_by_cmd enter\n");
-	for(retry = 0;retry<3;retry++){
+	hideep_reset_ic();
+	msleep(500);
+	for(time_out = 0; time_out <2; time_out++){
+		TS_LOG_INFO("time_out = %d\n", time_out);
+		hideep_get_image(ts);
+		if(dev->im_buff[0] != 'G')
+			break;
+	}
+	if(time_out>=2){
+		TS_LOG_ERR("time_out = %d err\n", time_out);
+		goto hideep_get_image_command_err;
+	}
 		ret = hideep_i2c_write(ts,0,1,(u8*)&command);
 		if(ret<0)
 			goto hideep_get_image_command_err;
-		time_out = 0;
-		do{
-			mdelay(20);
+	mdelay(100);
 			value = 1;
-			hideep_i2c_write(ts,VR_SCAN_SWITCH,1,&value);
-			mdelay(100);
+	ret = hideep_i2c_write(ts,VR_SCAN_SWITCH,1,&value);
+	if(ret<0)
+		goto hideep_get_image_command_err;
+	mdelay(150);
 			hideep_get_image(ts);
 			mdelay(5);
 			value = 0;
-			hideep_i2c_write(ts, VR_SCAN_SWITCH, 1, &value);
+	ret = hideep_i2c_write(ts,0,1,&value);
+	if(ret<0)
+		goto hideep_get_image_command_err;
 			mdelay(5);
-			time_out++;
-			TS_LOG_DEBUG("time count %d, dev->im_buff[0] = 0x%02x\n",time_out,dev->im_buff[0]);
-			if(time_out>10000)
-				goto hideep_get_image_timeout_err;
-		}while(dev->im_buff[0]!='G');
-		//if(dev->im_buf[0]=='G')
-		//	break;
-	}
+	value = 0;
+	ret = hideep_i2c_write(ts, VR_SCAN_SWITCH, 1, &value);
+	if(ret<0)
+		goto hideep_get_image_command_err;
+	mdelay(10);
+	TS_LOG_INFO("dev->im_buff[0] = 0x%02x\n",dev->im_buff[0]);
 	return 0;
-hideep_get_image_timeout_err:
-	TS_LOG_ERR("get image time out\n");
-	return -1;
+
 hideep_get_image_command_err:
 	TS_LOG_ERR("send command error\n");
 	return -1;
@@ -2371,7 +2415,6 @@ static void apple_weight_timeout_func(struct work_struct *work)
 	if(hideep_item_switch(TS_ACTION_WRITE, VR_SINGLE_TOUCH, 1, &cmd)<0)
 			hideep_reset_ic();
 	g_istxxxx_data->apple_weight_init = 0;
-	TP_weigh_mode = 0;
 	TS_LOG_DEBUG("apple_weight_timeout_func end\n");
 	return 0;
 }
@@ -2388,7 +2431,6 @@ static int hideep_single_touch_switch(struct ts_single_touch_info *info)
 			TS_LOG_DEBUG("apple weight STOP\n");
 			//cancel_work_sync(&g_istxxxx_data->apple_weight_work);
 			g_istxxxx_data->apple_weight_init = 0;
-			TP_weigh_mode = 0;
 			g_istxxxx_data->apple_weight_timeout = 0;
 			hideep_item_switch(info->op_action, VR_SINGLE_TOUCH, 1, &info->single_touch_switch);
 			break;
@@ -2396,7 +2438,6 @@ static int hideep_single_touch_switch(struct ts_single_touch_info *info)
 			if(!g_istxxxx_data->apple_weight_init){
 				TS_LOG_DEBUG("apple weight INIT\n");
 				g_istxxxx_data->apple_weight_init = 1;
-				TP_weigh_mode = 1;
 				g_istxxxx_data->apple_weight_timeout = 0;
 				if(g_istxxxx_data->apple_weight_workqueue)
 					queue_work(g_istxxxx_data->apple_weight_workqueue, &g_istxxxx_data->apple_weight_work);
@@ -2505,6 +2546,27 @@ static unsigned char* hideep_roi_rawdata(void)
 #endif
 }
 
+static int hideep_wakeup_gesture_enable_switch(struct ts_wakeup_gesture_enable_info *info)
+{
+	int retval = NO_ERR;
+
+	TS_LOG_INFO("%s, op_action = %d enter\n",__FUNCTION__, info->op_action);
+	if (!info) {
+		TS_LOG_ERR("%s: info is Null\n", __func__);
+		retval = -ENOMEM;
+		goto exit;
+	}
+	if (info->op_action == TS_ACTION_WRITE){
+		g_istxxxx_data->gesture_enable = !!(info->switch_value);
+		retval = NO_ERR;
+	}else {
+		TS_LOG_INFO("invalid deep_sleep switch(%d) action: %d\n", info->switch_value, info->op_action);
+		retval = NO_ERR;
+	}
+exit:
+	return retval;
+}
+
 struct ts_device_ops ts_hideep_ops =
 {
     .chip_parse_config = hideep_parse_config,
@@ -2520,7 +2582,9 @@ struct ts_device_ops ts_hideep_ops =
     .chip_suspend = hideep_suspend,
     .chip_before_suspend = hideep_before_suspend,
     .chip_resume = hideep_resume,
+	.chip_after_resume = hideep_after_resume,
 
+	.chip_wakeup_gesture_enable_switch = hideep_wakeup_gesture_enable_switch,
     .chip_fw_update_sd = hideep_fw_update_sd,
     .chip_fw_update_boot = hideep_fw_update_boot,
     .chip_get_info = hideep_get_info,

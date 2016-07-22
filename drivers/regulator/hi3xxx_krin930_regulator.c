@@ -459,6 +459,9 @@ static void hisi_pctrl_regu_rmw(int reg, u32 bits, u32 flags)
 {
 	u32 data;
 
+	if (NULL == g_regu.pctrl_reg)
+		return;
+
 	data = readl(g_regu.pctrl_reg + reg);
 	if (1 == flags)
 		data |= (0x01 << bits);
@@ -1762,6 +1765,11 @@ static int hisi_regulator_hi3630_probe(struct platform_device *pdev)
 		BUG_ON(!np);
 		g_regu.pmic_reg = of_iomap(np, 0);
 		BUG_ON(!g_regu.pmic_reg);
+
+		np = of_find_node_by_name(NULL, "pctrl");
+		BUG_ON(!np);
+		g_regu.pctrl_reg = of_iomap(np, 0);
+		BUG_ON(!g_regu.pctrl_reg);
 
 		g_regu.vdec_qos_reg = devm_ioremap(&pdev->dev, VDEC_QOS_BASE_ADDR, reg_size);
 		if (g_regu.vdec_qos_reg == NULL) {

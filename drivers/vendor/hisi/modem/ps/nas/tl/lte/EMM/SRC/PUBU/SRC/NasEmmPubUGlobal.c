@@ -3198,8 +3198,8 @@ VOS_VOID NAS_LMM_ClearEmmInfoMmcAttachReason( VOS_VOID )
 
 VOS_VOID  NAS_EMM_LocalDetachProc( VOS_VOID )
 {
-    /* 停止所有EMM状态定时器 */
-    NAS_LMM_StopAllEmmStateTimer();
+    /* 关闭当前EMM的除Del Forb Ta Proid之外的状态定时器, Del Forb Ta Proid只能在关机时停止*/
+    NAS_LMM_StopAllStateTimerExceptDelForbTaProidTimer();
 
     /* 停止所有协议定时器 */
     NAS_LMM_StopAllPtlTimer();

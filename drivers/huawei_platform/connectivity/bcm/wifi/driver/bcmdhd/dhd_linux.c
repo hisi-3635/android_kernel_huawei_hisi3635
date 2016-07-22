@@ -742,7 +742,7 @@ static int dhd_toe_get(dhd_info_t *dhd, int idx, uint32 *toe_ol);
 static int dhd_toe_set(dhd_info_t *dhd, int idx, uint32 toe_ol);
 #endif /* TOE */
 
-static int dhd_wl_host_event(dhd_info_t *dhd, int *ifidx, void *pktdata,
+static int dhd_wl_host_event(dhd_info_t *dhd, int *ifidx, void *pktdata, uint pktlen,
                              wl_event_msg_t *event_ptr, void **data_ptr);
 #ifdef DHD_UNICAST_DHCP
 static const uint8 llc_snap_hdr[SNAP_HDR_LEN] = {0xaa, 0xaa, 0x03, 0x00, 0x00, 0x00};
@@ -2792,6 +2792,7 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 #else
 			skb->mac.raw,
 #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 22) */
+			len - 2,
 			&event,
 			&data);
 
@@ -4423,9 +4424,9 @@ dhd_allocate_if(dhd_pub_t *dhdpub, int ifidx, char *name,
 	if (ifp != NULL) {
 		if (ifp->net != NULL) {
 			DHD_ERROR(("%s: free existing IF %s\n", __FUNCTION__, ifp->net->name));
-
+#ifndef HW_WIFI_ALLOC_IF_PANIC
 			dhd_dev_priv_clear(ifp->net); /* clear net_device private */
-
+#endif
 			/* in unregister_netdev case, the interface gets freed by net->destructor
 			 * (which is set to free_netdev)
 			 */
@@ -4438,6 +4439,9 @@ dhd_allocate_if(dhd_pub_t *dhdpub, int ifidx, char *name,
 				else
 					unregister_netdevice(ifp->net);
 			}
+#ifdef HW_WIFI_ALLOC_IF_PANIC
+			dhd_dev_priv_clear(ifp->net); /* clear net_device private */
+#endif
 			ifp->net = NULL;
 		}
 	} else {
@@ -5721,6 +5725,11 @@ static int dhd_preinit_config(dhd_pub_t *dhd, int ifidx)
 
 	buf[stat.size] = '\0';
 	for (p = buf; *p; p++) {
+#ifdef HW_WIFI_CONFIG_FROM_FILE_BUG
+		if ((p-buf) > stat.size) {
+			break;
+		}
+#endif
 		if (isspace(*p))
 			continue;
 		for (name = p++; *p && !isspace(*p); p++) {
@@ -5810,7 +5819,10 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 #if defined(CUSTOMER_HW2) && defined(USE_WL_CREDALL)
 	uint32 credall = 1;
 #endif
-#if defined(VSDB) || defined(ROAM_ENABLE)
+
+#if defined(HW_DOCOMO_FEATURE)
+	uint bcn_timeout = 5;
+#elif defined(VSDB) || defined(ROAM_ENABLE)
 	uint bcn_timeout = 10;
 #else
 	uint bcn_timeout = 4;
@@ -7770,16 +7782,16 @@ dhd_get_wireless_stats(struct net_device *dev)
 #endif /* defined(WL_WIRELESS_EXT) */
 
 static int
-dhd_wl_host_event(dhd_info_t *dhd, int *ifidx, void *pktdata,
+dhd_wl_host_event(dhd_info_t *dhd, int *ifidx, void *pktdata, uint pktlen,
 	wl_event_msg_t *event, void **data)
 {
 	int bcmerror = 0;
 	ASSERT(dhd != NULL);
 
 #ifdef SHOW_LOGTRACE
-		bcmerror = wl_host_event(&dhd->pub, ifidx, pktdata, event, data, &dhd->event_data);
+		bcmerror = wl_host_event(&dhd->pub, ifidx, pktdata, pktlen, event, data, &dhd->event_data);
 #else
-		bcmerror = wl_host_event(&dhd->pub, ifidx, pktdata, event, data, NULL);
+		bcmerror = wl_host_event(&dhd->pub, ifidx, pktdata, pktlen, event, data, NULL);
 #endif /* SHOW_LOGTRACE */
 
 	if (bcmerror != BCME_OK)

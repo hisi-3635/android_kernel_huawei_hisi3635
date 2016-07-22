@@ -331,6 +331,7 @@ struct ist510e
 	DWZ_INFO_T dwz_info;
 	long tch_bit;
 	u8 glove_mode;
+	u8 gesture_enable;
 	u8 holster_mode;
 	u16 addr;
 	struct  i2c_client *client;
@@ -339,6 +340,14 @@ struct ist510e
 	struct  work_struct work;
 	u16 z_buffer;
 	bool z_status;
+	
+	u32 z_calib_start;
+	u32 z_calib_end;
+	bool z_flag_calib2;
+	bool z_flag_ready;
+	u16 z_data[4096];
+	u32 z_index;
+
 	u32 flags;
 	s32 irq;
 	s32 dev_state;

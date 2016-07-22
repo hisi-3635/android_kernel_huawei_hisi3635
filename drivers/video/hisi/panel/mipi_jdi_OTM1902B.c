@@ -15,6 +15,7 @@
 #include <linux/huawei/hisi_adc.h>
 #include <huawei_platform/log/log_jank.h>
 #include <linux/hisi/hi3xxx-lcd_type.h>
+#include <huawei_platform/touthscreen/huawei_touchscreen.h>
 
 #define DTS_COMP_JDI_OTM1902B "hisilicon,mipi_jdi_OTM1902B"
 #define LCD_VDDIO_TYPE_NAME	"lcd-vddio-type"
@@ -1252,6 +1253,10 @@ static int mipi_jdi_OTM1902B_panel_off(struct platform_device *pdev)
 	if (g_vddio_type)
 		ts_power_gpio_disable();
 
+	if (hisifd->hisi_fb_shutdown) {
+		ts_thread_stop_notify();
+	}
+
 	HISI_FB_INFO("fb%d, -!\n", hisifd->index);
 
 	return 0;
@@ -1299,7 +1304,7 @@ static int mipi_jdi_panel_set_backlight(struct platform_device *pdev)
 	hisifd = platform_get_drvdata(pdev);
 	BUG_ON(hisifd == NULL);
 
-	HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
+	HISI_FB_INFO("fb%d, level: %u.\n", hisifd->index, hisifd->bl_level);
 
 	if (unlikely(g_debug_enable)) {
 		LOG_JANK_D(JLID_KERNEL_LCD_BACKLIGHT_ON, "JL_KERNEL_LCD_BACKLIGHT_ON,%u", hisifd->bl_level);
@@ -1319,7 +1324,6 @@ static int mipi_jdi_panel_set_backlight(struct platform_device *pdev)
 		;
 	}
 
-	HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
 
 	return ret;
 }
@@ -1635,6 +1639,51 @@ static int mipi_jdi_panel_set_display_resolution(struct platform_device *pdev)
 
 	return retval;
 }
+static int g_support_mode = 0;
+static ssize_t mipi_jdi_panel_lcd_support_mode_show(struct platform_device *pdev,
+     char *buf)	
+{
+       struct hisi_fb_data_type *hisifd = NULL;
+       ssize_t ret = 0;
+
+
+       BUG_ON(pdev == NULL);
+       hisifd = platform_get_drvdata(pdev);
+       BUG_ON(hisifd == NULL);
+
+       HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
+
+       ret = snprintf(buf, PAGE_SIZE, "%d\n", g_support_mode);
+
+       HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
+
+       return ret;
+}
+
+static ssize_t mipi_jdi_panel_lcd_support_mode_store(struct platform_device *pdev,
+       const char *buf, size_t count)
+{
+       int ret = 0;
+       unsigned long val = 0;
+       int flag = -1;
+       struct hisi_fb_data_type *hisifd = NULL;
+       BUG_ON(pdev == NULL);
+       hisifd = platform_get_drvdata(pdev);
+       BUG_ON(hisifd == NULL);
+
+       ret = strict_strtoul(buf, 0, &val);	
+       if (ret)
+               return ret;
+
+       HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
+
+       flag = (int)val;
+
+       g_support_mode = flag;
+       HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
+      return snprintf((char *)buf, count, "%d\n", g_support_mode);
+}
+
 
 static struct hisi_panel_info jdi_panel_info = {0};
 static struct hisi_fb_panel_data jdi_panel_data = {
@@ -1654,6 +1703,8 @@ static struct hisi_fb_panel_data jdi_panel_data = {
 	.lcd_gram_check_show = mipi_jdi_panel_lcd_gram_check_show,
 	.set_display_region = mipi_jdi_panel_set_display_region,
 	.set_display_resolution = mipi_jdi_panel_set_display_resolution,
+	.lcd_support_mode_show = mipi_jdi_panel_lcd_support_mode_show,
+	.lcd_support_mode_store = mipi_jdi_panel_lcd_support_mode_store,
 };
 
 
@@ -1737,6 +1788,8 @@ static int mipi_jdi_OTM1902B_probe(struct platform_device *pdev)
 
 	pinfo->sbl_support = 0;
 	pinfo->color_temperature_support = 1;
+	pinfo->comform_mode_support = 1;
+	g_support_mode = 1;
 	pinfo->smart_bl.strength_limit = 128;
 	pinfo->smart_bl.calibration_a = 60;
 	pinfo->smart_bl.calibration_b = 95;

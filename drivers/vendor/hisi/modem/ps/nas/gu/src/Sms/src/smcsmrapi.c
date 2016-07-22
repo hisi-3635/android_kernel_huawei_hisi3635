@@ -588,9 +588,19 @@ VOS_VOID SMC_SmrApiAbortReq(
                 /* g_SmcPsEnt.SmcMo.TimerInfo.ucTimerSta    = SMS_TIMER_STATUS_STOP; */
                 g_SmcPsEnt.SmcMo.TimerInfo.ucExpireTimes = 0;
 
-                SMC_SndGmmDataReq( SMC_DATA_TYPE_CP_ERR,
-                                   SMS_CP_ERR_PROT_ERR_UNSPEC,
-                                   g_SmcPsEnt.SmcMo.ucTi );                     /* 向网侧指示错误                           */
+#if (FEATURE_ON == FEATURE_LTE)
+                if (NAS_GMM_NET_RAT_TYPE_LTE == GMM_GetCurNetwork())
+                {
+                    /* 当前驻留在L模,构造SMS_LMM_DATA_REQ消息，通过NAS_SMS_SndLmmDataReq发送 */
+                    NAS_SMS_SndLmmDataReq(SMC_DATA_TYPE_CP_ERR, SMS_CP_ERR_PROT_ERR_UNSPEC, g_SmcPsEnt.SmcMo.ucTi);
+                }
+                else
+#endif
+                {
+                    SMC_SndGmmDataReq( SMC_DATA_TYPE_CP_ERR,
+                                       SMS_CP_ERR_PROT_ERR_UNSPEC,
+                                       g_SmcPsEnt.SmcMo.ucTi );                     /* 向网侧指示错误                           */
+                }
 
             }
             PS_LOG(WUEPS_PID_SMS, VOS_NULL, PS_PRINT_NORMAL, "SMC_SmrApiAbortReq:NORMAL:SMS state = SMC_MO_IDLE");
@@ -643,7 +653,6 @@ VOS_VOID SMC_SmrApiAbortReq(
 
     }
 }
-
 VOS_VOID SMC_SmrApiRelReq(
                       VOS_UINT8     ucRelCause,                                     /* 释放原因                                 */
                       VOS_UINT8     ucMtFlg                                         /* 是MT过程                                 */

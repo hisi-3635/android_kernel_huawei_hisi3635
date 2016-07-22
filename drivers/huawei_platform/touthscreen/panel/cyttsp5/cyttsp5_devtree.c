@@ -743,6 +743,13 @@ static struct cyttsp5_core_platform_data *create_and_get_core_pdata(
         pdata->dtz_y1 = 0xFFFF;
     }
 
+    rc = of_property_read_u32(core_node, "cy,fw_uptate_logic", &value);
+    if (!rc) {
+        pdata->fw_update_logic = value;
+    } else {
+        pdata->fw_update_logic = 0;
+    }
+
     pdata->wakeup_keys = create_and_get_wakeup_keys(core_node);
 
     rc = of_property_read_u32(core_node, "cy,upgrade_ttconfig", &value);

@@ -3165,10 +3165,7 @@ TAF_VOID At_CsIndProc(
         case MN_CALL_EVT_RELEASED:
 
             /* 记录cause值 */
-            if (TAF_CS_CAUSE_SUCCESS != pstCallInfo->enCause)
-            {
-                AT_SetCsCallErrCause(ucIndex, pstCallInfo->enCause);
-            }
+            AT_SetCsCallErrCause(ucIndex, pstCallInfo->enCause);
 
             /* 如果是可视电话，因为在INCOMING的时候拉高了DCD的管脚信号，现在拉低DCD的管脚信号 */
             if (AT_EVT_IS_CS_VIDEO_CALL(pstCallInfo->enCallType, pstCallInfo->enVoiceDomain))

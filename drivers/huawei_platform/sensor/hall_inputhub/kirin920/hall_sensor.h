@@ -82,6 +82,7 @@ struct hall_dev {
 	void *hall_device;
 	struct platform_device *hall_dev;
 	struct work_struct hall_work;
+	struct delayed_work hall_delay_work;
 	struct wake_lock hall_lock;
 	struct hall_ops *ops;
 	struct irq_info irq_info[HALL_IRQ_NUM];
@@ -98,5 +99,6 @@ struct hall_ops {
 };
 
 extern struct hall_ops hall_device_ops;
+int ak8789_register_report_data(int ms);
 int hall_first_report(bool enable);
 #endif

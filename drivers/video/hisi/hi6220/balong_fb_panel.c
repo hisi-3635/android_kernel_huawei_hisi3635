@@ -126,7 +126,10 @@ int panel_next_set_backlight(struct platform_device *pdev)
     struct balong_fb_panel_data *next_pdata = NULL;
     struct platform_device *next_pdev = NULL;
 
-    BUG_ON(pdev == NULL);
+    if (NULL == pdev) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
 
     pdata = (struct balong_fb_panel_data *)pdev->dev.platform_data;
     if (pdata) {
@@ -201,7 +204,10 @@ int panel_next_check_esd(struct platform_device *pdev)
     struct balong_fb_panel_data *next_pdata = NULL;
     struct platform_device *next_pdev = NULL;
 
-    BUG_ON(pdev == NULL);
+    if (NULL == pdev) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
 
     pdata = (struct balong_fb_panel_data *)pdev->dev.platform_data;
     if (pdata) {

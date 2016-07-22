@@ -189,6 +189,9 @@ int ispv1_get_actual_iso(void);
 
 int ispv1_get_exposure_time(void);
 
+/* only use for b shutter  try ae  duing preview*/
+int ispv1_set_b_shutter_ecgc(b_shutter_ae_iso_s* b_shutter_tryae_ecgc);
+
 u32 ispv1_get_awb_gain(int withShift);
 u32 ispv1_get_focus_code(void);
 u32 ispv1_get_focus_rect(camera_rect_s *rect);
@@ -243,6 +246,8 @@ int ispv1_get_current_fps(camera_sensor *sensor);
 int ispv1_get_band_threshold(camera_sensor *sensor, camera_anti_banding banding);
 void ispv1_set_fps_lock(int lock);
 void ispv1_preview_done_do_tune(void);
+void ispv1_capture_done_do_tune(void);
+void ispv1_preview_done_do_tryae_tune(void);
 void ispv1_cmd_id_do_ecgc(struct work_struct *work);
 void ispv1_set_aecagc_mode(aecagc_mode_t mode);
 void ispv1_set_awb_mode(awb_mode_t mode);

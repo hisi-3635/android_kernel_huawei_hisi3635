@@ -131,7 +131,7 @@ void TEEK_FinalizeContext (
 #endif
 
     TEEC_Debug("close device\n");
-    TC_NS_ClientClose(context->dev);
+    TC_NS_ClientClose(context->dev, 0);
 #endif
 }
 
@@ -164,6 +164,7 @@ TEEC_Result TEEK_OpenSession (
     uint32_t origin = TEEC_ORIGIN_API;
     TC_NS_ClientContext cli_context;
     TC_NS_ClientLogin cli_login = {0, 0};
+    TC_NS_DEV_File *dev_file;
     //char linkc[MAX_APP_INFO], path[MAX_APP_INFO];
     //char linkj[MAX_APP_INFO];/*, pathj[MAX_APP_INFO];*/
     //int32_t retz;
@@ -191,6 +192,18 @@ TEEC_Result TEEK_OpenSession (
             cli_login.mdata = *(uint32_t*)connectionData;
             break;
         case TEEC_LOGIN_IDENTIFY:
+            cli_login.method = connectionMethod;
+            dev_file = (TC_NS_DEV_File *)(context->dev);
+            dev_file->pkg_name_len = (uint32_t)(operation->params[3].tmpref.size);
+            if (operation->params[3].tmpref.size > MAX_PACKAGE_NAME_LEN) {
+                goto error;
+            }
+            else {
+                memcpy(dev_file->pkg_name, operation->params[3].tmpref.buffer, operation->params[3].tmpref.size);
+            }
+            dev_file->pub_key_len = 0;
+	    dev_file->login_setup = 1;
+
 #if 0
             if (connectionData != NULL)
                 goto error;

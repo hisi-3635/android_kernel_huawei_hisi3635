@@ -50,6 +50,10 @@ void rdr_hung_task_hook_delete(void)
 }
 #endif
 
+#ifdef CONFIG_HUAWEI_NFF
+extern void nff_log_event_hungtask(char *taskname);
+#endif
+
 /*
  * The number of tasks checked:
  */
@@ -376,6 +380,9 @@ static void check_hung_task(struct task_struct *t, unsigned long timeout)
 #endif
 */
 	if (sysctl_hung_task_panic) {
+#ifdef CONFIG_HUAWEI_NFF
+		nff_log_event_hungtask(t->comm);
+#endif
 		trigger_all_cpu_backtrace();
 		panic("hung_task: blocked tasks");
 	}

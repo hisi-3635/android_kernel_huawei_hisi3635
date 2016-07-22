@@ -98,6 +98,8 @@ enum MMA_MMC_MSG_ID_ENUM
     ID_MMA_MMC_IMS_SWITCH_STATE_IND       = 54,                                 /* _H2ASN_MsgChoice MMA_MMC_IMS_SWITCH_STATE_IND_STRU */
     ID_MMA_MMC_VOICE_DOMAIN_CHANGE_IND    = 56,                                 /* _H2ASN_MsgChoice MMA_MMC_VOICE_DOMAIN_CHANGE_IND_STRU */
 
+    ID_MMA_MMC_IMSI_REFRESH_IND           = 58,                                /* _H2ASN_MsgChoice MMA_MMC_IMSI_REFRESH_IND_STRU */
+
     /* MMC发送给MMA的消息原语*/
     ID_MMC_MMA_START_CNF                  = 1,                                  /* _H2ASN_MsgChoice MMC_MMA_START_CNF_STRU */
     ID_MMC_MMA_SYS_INFO_IND               = 3,                                  /* _H2ASN_MsgChoice MMC_MMA_SYS_INFO_IND_STRU */
@@ -152,6 +154,8 @@ enum MMA_MMC_MSG_ID_ENUM
     ID_MMA_MMC_MSG_ID_ENUM_BUTT
 };
 typedef VOS_UINT32 MMA_MMC_MSG_ID_ENUM_UINT32;
+
+
 enum MMA_MMC_CARD_STATUS_ENUM
 {
     MMA_MMC_CARD_STATUS_SIM_PRESENT      = 0,                                   /* sim present */
@@ -1304,6 +1308,19 @@ typedef struct
     MMA_MMC_VOICE_DOMAIN_ENUM_UINT32            enVoiceDomain;                  /* 语音优选域 */
 }MMA_MMC_VOICE_DOMAIN_CHANGE_IND_STRU;
 
+
+/*****************************************************************************
+ 结构名    : MMA_MMC_IMSI_REFRESH_IND_STRU
+ 结构说明  : ID_MMA_MMC_IMSI_REFRESH_IND的结构体
+  1.日    期   : 2015年11月17日
+    作    者   : z00359541
+    修改内容   : 新建
+*****************************************************************************/
+typedef struct
+{
+    MSG_HEADER_STRU                             stMsgHeader;
+    VOS_UINT8                                   aucReserve[4];
+}MMA_MMC_IMSI_REFRESH_IND_STRU;
 
 /*****************************************************************************
   8 UNION定义

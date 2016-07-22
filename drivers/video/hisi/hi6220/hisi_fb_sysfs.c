@@ -34,9 +34,16 @@ static ssize_t lcd_info_show(struct device *dev,
     struct balong_fb_data_type *hisifd = NULL;
 
     fbi = dev_get_drvdata(dev);
-    BUG_ON(fbi == NULL);
+    if (NULL == fbi) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
+
     hisifd = (struct balong_fb_data_type *)fbi->par;
-    BUG_ON(hisifd == NULL);
+    if (NULL == hisifd) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
 
     snprintf(buf, PAGE_SIZE, "%s %d x %d\n", g_lcd_name_buf,
             hisifd->panel_info.xres, hisifd->panel_info.yres);
@@ -54,11 +61,22 @@ static ssize_t hisifb_sbl_ctrl_store(struct device* dev,
     struct balong_fb_panel_data *pdata = NULL;
 
     fbi = dev_get_drvdata(dev);
-    BUG_ON(fbi == NULL);
+    if (NULL == fbi) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
+
     hisifd = (struct balong_fb_data_type *)fbi->par;
-    BUG_ON(hisifd == NULL);
+    if (NULL == hisifd) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
+
     pdata = dev_get_platdata(&hisifd->pdev->dev);
-    BUG_ON(pdata == NULL);
+    if (NULL == pdata) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
 
     val = (int)simple_strtoul(buf, NULL, 0);
     if (hisifd->panel_info.sbl_enable) {
@@ -88,9 +106,16 @@ static ssize_t hisifb_sbl_ctrl_show(struct device *dev,
     struct balong_fb_data_type *hisifd = NULL;
 
     fbi = dev_get_drvdata(dev);
-    BUG_ON(fbi == NULL);
+    if (NULL == fbi) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
+
     hisifd = (struct balong_fb_data_type *)fbi->par;
-    BUG_ON(hisifd == NULL);
+    if (NULL == hisifd) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
 
     snprintf(buf, PAGE_SIZE, "sbl_lsensor_value = %d, sbl_enable = %d\n",
             hisifd->sbl_lsensor_value, hisifd->sbl_enable);
@@ -110,11 +135,23 @@ static ssize_t hisifb_lcd_cabc_mode_store(struct device* dev,
     struct balong_fb_panel_data *pdata = NULL;
 
     fbi = dev_get_drvdata(dev);
-    BUG_ON(fbi == NULL);
+    if (NULL == fbi) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
+
     hisifd = (struct balong_fb_data_type *)fbi->par;
-    BUG_ON(hisifd == NULL);
+    if (NULL == hisifd) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
+
     pdata = dev_get_platdata(&hisifd->pdev->dev);
-    BUG_ON(pdata == NULL);
+    if (NULL == pdata) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
+
     val = (int)simple_strtoul(buf, NULL, 0);
     if (pdata->lcd_cabc_mode_store) {
         down(&balong_fb_blank_sem);
@@ -137,9 +174,15 @@ static ssize_t hisifb_lcd_cabc_mode_show(struct device *dev,
     struct balong_fb_data_type *hisifd = NULL;
 
     fbi = dev_get_drvdata(dev);
-    BUG_ON(fbi == NULL);
+    if (NULL == fbi) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
     hisifd = (struct balong_fb_data_type *)fbi->par;
-    BUG_ON(hisifd == NULL);
+    if (NULL == hisifd) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
     snprintf(buf, PAGE_SIZE, "cabc_mode = %d\n", hisifd->g_CABC_mode);
     ret = strlen(buf) + 1;
     return ret;
@@ -154,11 +197,23 @@ static ssize_t hisifb_lcd_check_reg_show(struct device *dev,
     struct balong_fb_panel_data *pdata = NULL;
 
     fbi = dev_get_drvdata(dev);
-    BUG_ON(fbi == NULL);
+    if (NULL == fbi) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
+
     hisifd = (struct balong_fb_data_type *)fbi->par;
-    BUG_ON(hisifd == NULL);
+    if (NULL == hisifd) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
+
     pdata = dev_get_platdata(&hisifd->pdev->dev);
-    BUG_ON(pdata == NULL);
+    if (NULL == pdata) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
+
     if (pdata->lcd_gram_check_show) {
         if (!hisifd->panel_power_on){
             balongfb_loge("system is now power off !\n");
@@ -180,9 +235,17 @@ static ssize_t hisifb_lcd_inversion_mode_show(struct device *dev,
     struct balong_fb_data_type *hisifd = NULL;
 
     fbi = dev_get_drvdata(dev);
-    BUG_ON(fbi == NULL);
+    if (NULL == fbi) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
+
     hisifd = (struct balong_fb_data_type *)fbi->par;
-    BUG_ON(hisifd == NULL);
+    if (NULL == hisifd) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
+
     snprintf(buf, PAGE_SIZE, "lcd_inversion_mode =  0x%x\n", hisifd->lcd_inversion_mode);
     ret = strlen(buf) + 1;
     return ret;
@@ -197,11 +260,23 @@ static ssize_t hisifb_lcd_inversion_mode_store(struct device* dev,
     struct balong_fb_panel_data *pdata = NULL;
 
     fbi = dev_get_drvdata(dev);
-    BUG_ON(fbi == NULL);
+    if (NULL == fbi) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
+
     hisifd = (struct balong_fb_data_type *)fbi->par;
-    BUG_ON(hisifd == NULL);
+    if (NULL == hisifd) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
+
     pdata = dev_get_platdata(&hisifd->pdev->dev);
-    BUG_ON(pdata == NULL);
+    if (NULL == pdata) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
+
     hisifd->lcd_inversion_mode = (int)simple_strtoul(buf, NULL, 0);
     if (pdata->lcd_inversion_mode_store) {
         down(&balong_fb_blank_sem);
@@ -265,9 +340,16 @@ static ssize_t hisifb_lcd_region_limit_show(struct device* dev,
     struct balong_fb_data_type *hisifd = NULL;
 
     fbi = dev_get_drvdata(dev);
-    BUG_ON(fbi == NULL);
+    if (NULL == fbi) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
+
     hisifd = (struct balong_fb_data_type *)fbi->par;
-    BUG_ON(hisifd == NULL);
+    if (NULL == hisifd) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
 
     snprintf(buf, PAGE_SIZE, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
                 hisifd->panel_info.dirty_region_info.left_align, hisifd->panel_info.dirty_region_info.right_align,
@@ -289,9 +371,16 @@ static ssize_t hisifb_lcd_region_limit_store(struct device* dev,
     struct balong_fb_data_type *hisifd = NULL;
 
     fbi = dev_get_drvdata(dev);
-    BUG_ON(fbi == NULL);
+    if (NULL == fbi) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
+
     hisifd = (struct balong_fb_data_type *)fbi->par;
-    BUG_ON(hisifd == NULL);
+    if (NULL == hisifd) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
 
     cur = buf;
     while (token = strsep(&cur, ",")) {
@@ -312,6 +401,77 @@ static ssize_t hisifb_lcd_region_limit_store(struct device* dev,
     return count;
 }
 
+static ssize_t hisifb_lcd_scan_mode_show(struct device *dev,
+        struct device_attribute *attr, char *buf)
+{
+    int ret = 0;
+    struct fb_info *fbi = NULL;
+    struct balong_fb_data_type *hisifd = NULL;
+
+    fbi = dev_get_drvdata(dev);
+    if (NULL == fbi) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
+
+    hisifd = (struct balong_fb_data_type *)fbi->par;
+    if (NULL == hisifd) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
+
+    snprintf(buf, PAGE_SIZE, "lcd_scan_mode =  0x%x\n", hisifd->lcd_scan_mode);
+    ret = strlen(buf) + 1;
+    return ret;
+}
+
+static ssize_t hisifb_lcd_scan_mode_store(struct device* dev,
+        struct device_attribute* attr, const char* buf, size_t count)
+{
+    int ret = 0;
+    struct fb_info *fbi = NULL;
+    struct balong_fb_data_type *hisifd = NULL;
+    struct balong_fb_panel_data *pdata = NULL;
+
+    fbi = dev_get_drvdata(dev);
+    if (NULL == fbi) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
+
+    hisifd = (struct balong_fb_data_type *)fbi->par;
+    if (NULL == hisifd) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
+
+    pdata = dev_get_platdata(&hisifd->pdev->dev);
+    if (NULL == pdata) {
+        balongfb_loge("NULL Pointer\n");
+        return -EINVAL;
+    }
+
+    hisifd->lcd_scan_mode = (int)simple_strtoul(buf, NULL, 0);
+    if (NULL != strstr(saved_command_line, "androidboot.swtype=factory"))
+    {
+    if (pdata->lcd_scan_mode_store)
+    {
+        down(&balong_fb_blank_sem);
+        if (!hisifd->panel_power_on)
+        {
+            balongfb_loge("system is now power off !\n");
+            up(&balong_fb_blank_sem);
+            return 0;
+        }
+        down(&hisifd->sem);
+        ret = pdata->lcd_scan_mode_store(hisifd->pdev, hisifd->lcd_scan_mode);
+        up(&hisifd->sem);
+        up(&balong_fb_blank_sem);
+    }
+    }
+    return count;
+}
+
 /*lint -e665*/
 static DEVICE_ATTR(sbl_ctrl, S_IRUGO|S_IWUSR, hisifb_sbl_ctrl_show, hisifb_sbl_ctrl_store);
 static DEVICE_ATTR(lcd_model, S_IRUGO, lcd_info_show, NULL);
@@ -320,6 +480,7 @@ static DEVICE_ATTR(lcd_check_reg, S_IRUGO, hisifb_lcd_check_reg_show,NULL);
 static DEVICE_ATTR(lcd_inversion_mode, S_IRUGO|S_IWUSR, hisifb_lcd_inversion_mode_show,hisifb_lcd_inversion_mode_store);
 static DEVICE_ATTR(lcd_color_temperature, S_IRUGO|S_IWUSR, hisifb_color_temperature_show,hisifb_color_temperature_store);
 static DEVICE_ATTR(lcd_region_limit, S_IRUGO|S_IWUSR, hisifb_lcd_region_limit_show,hisifb_lcd_region_limit_store);
+static DEVICE_ATTR(lcd_scan_mode, S_IRUGO|S_IWUSR, hisifb_lcd_scan_mode_show, hisifb_lcd_scan_mode_store);
 /*lint +e665*/
 
 static struct attribute *hisi_fb_attrs[] = {
@@ -330,6 +491,7 @@ static struct attribute *hisi_fb_attrs[] = {
     &dev_attr_lcd_inversion_mode.attr,
     &dev_attr_lcd_color_temperature.attr,
     &dev_attr_lcd_region_limit.attr,
+    &dev_attr_lcd_scan_mode.attr,
     NULL,
 };
 static struct attribute_group hisi_fb_attr_group = {

@@ -14,8 +14,9 @@
 #include <media/v4l2-ioctl.h>
 #include <media/v4l2-subdev.h>
 #include <media/videobuf2-core.h>
-
+#ifdef CONFIG_COMPAT
 #include "hwcam_compat32.h"
+#endif
 #include "hwisp_intf.h"
 #include "ovisp2.3/isp_ops.h"
 
@@ -367,7 +368,10 @@ hwisp_stream_vo_do_ioctl(
 {
     long rc = -EINVAL;
     hwisp_stream_t* stm = I2STM(filep->private_data);
-	BUG_ON(!filep->private_data);
+    if (!filep->private_data) {
+        HWCAM_CFG_ERR("%s()invalid priv data! \n", __func__);
+        return rc;
+    }
     switch (cmd)
     {
     case VIDIOC_DQEVENT:
@@ -480,6 +484,7 @@ hwisp_stream_vo_ioctl32(
 			return rc;
 		}
         break;
+#if 1
     case HWISP_STREAM_IOCTL_ENQUEUE_BUF:
     case HWISP_STREAM_IOCTL_DEQUEUE_BUF:
          {
@@ -497,6 +502,7 @@ hwisp_stream_vo_ioctl32(
             return rc;
         }
         break;
+#endif        
     default:
         rc = hwisp_stream_vo_ioctl(filep, cmd, arg);
         break;
@@ -617,6 +623,7 @@ hwisp_create_stream(
     if (ret < 0) {
         hwisp_stream_intf_put(&stm->intf);
         HWCAM_CFG_ERR("failed to mount isp stream! \n");
+        kfree(stm);
         goto end_create_stream;
     }
 	v4l2_fh_init(&stm->rq, vdev);

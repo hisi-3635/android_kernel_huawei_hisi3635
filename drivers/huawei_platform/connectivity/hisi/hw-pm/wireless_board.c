@@ -96,11 +96,11 @@ L1:
 EXPORT_SYMBOL(get_board_info);
 
 #define DTS_RSSI_FIX "rssi_fix"
-int32 get_wifi_rssi(void)
+#define DTS_RSSI_FIX_TRUE "true"
+uint32 get_wifi_rssi(void)
 {
     struct device_node *np;
-    const int8 *rssi_value;
-	int32 ret = 0;
+	uint32 rssi_value = 0;
 
     np = of_find_compatible_node(NULL, NULL, DTS_COMP_HI1101_RW_NAME);
     if (NULL == np)
@@ -108,13 +108,11 @@ int32 get_wifi_rssi(void)
         PS_PRINT_INFO("Unable to find %s\n",DTS_COMP_HI1101_RW_NAME);
 		return 0;
     }
-
-    if (of_property_read_string(np, DTS_RSSI_FIX, &rssi_value))
+    if (of_property_read_u32(np, DTS_RSSI_FIX, &rssi_value))
     {
 		return 0;
     }
-	sscanf(rssi_value, "%d",&ret);
-	return ret;
+	return rssi_value;
 }
 
 EXPORT_SYMBOL(get_wifi_rssi);

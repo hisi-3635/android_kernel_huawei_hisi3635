@@ -1,0 +1,15 @@
+
+/**
+ * Huawei Ltd.
+ * PhosphorV660
+ */
+
+
+/include/ "PLK_AL10_VC_config.dtsi"
+
+/ {
+	hisi,boardid = <1 8 8 9 >;
+	hisi,boardname = "PLK_AL10_VD";
+	hisi,modem_id = <0x3EFE1D80>;
+};
+

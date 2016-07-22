@@ -289,6 +289,10 @@ VOS_VOID Mm_Cell_S4_E24(
 #if (FEATURE_ON == FEATURE_LTE)
     NAS_MML_PLMN_RAT_PRIO_STRU         *pstPrioRatList = VOS_NULL_PTR;
 
+
+    NAS_MML_MISCELLANEOUS_CFG_INFO_STRU                    *pstMiscellaneousCfgInfo = VOS_NULL_PTR;
+
+    pstMiscellaneousCfgInfo = NAS_MML_GetMiscellaneousCfgInfo();
 #endif
 
 
@@ -311,7 +315,7 @@ VOS_VOID Mm_Cell_S4_E24(
 
         /* 在MM_IDLE_NO_IMSI状态时收到普通呼叫请求直接回复CS_SIM_INVALID,
            其他状态一般是收到系统消息后还未注册时处理缓存,暂时无法提供CS服务，需要重拨 */
-        if ( (MM_IDLE_NO_IMSI     == g_MmGlobalInfo.ucState)
+        if ( (VOS_FALSE           == NAS_MML_GetSimCsRegStatus())
           && (MMCC_MO_NORMAL_CALL == g_MmCcEstReq.ulCallType) )
         {
             Mm_SndCcRelInd(g_MmCcEstReq.ulTransactionId,
@@ -334,17 +338,20 @@ VOS_VOID Mm_Cell_S4_E24(
 
         if (NAS_MML_NET_RAT_TYPE_LTE == NAS_MML_GetCurrNetRatType())
         {
-            /* 如果当前驻留LTE,普通呼叫则直接回复CC失败 */
-            if (MMCC_MO_NORMAL_CALL == g_MmCcEstReq.ulCallType)
+            
+            /* 如果当前PS ONLY时支持CS业务NV未激活，则主叫失败 */
+            if ( (NAS_MML_MS_MODE_PS_ONLY  == NAS_MML_GetMsMode())
+              && (NAS_MMC_NV_ITEM_DEACTIVE == pstMiscellaneousCfgInfo->ucPsOnlyCsServiceSupportFlg)
+              && (MMCC_MO_NORMAL_CALL      == g_MmCcEstReq.ulCallType) )
             {
-                /* LTE下IDLE LIMITED SERVICE无法处理普通呼叫，回复NAS_MMCM_REL_CAUSE_MM_INTER_ERR_LTE_LIMITED_SERVICE */
                 Mm_SndCcRelInd(g_MmCcEstReq.ulTransactionId,
-                               NAS_MMCM_REL_CAUSE_MM_INTER_ERR_LTE_LIMITED_SERVICE);    /* 通知CC建立失败                           */
-
+                              NAS_MMCM_REL_CAUSE_MM_INTER_ERR_CS_DETACH);       /* 通知CC建立失败                           */
+                
                 return;
             }
 
             NAS_MM_RcvCcEstReq_CSFB();
+           
             return;
         }
 #endif
@@ -369,7 +376,6 @@ VOS_VOID Mm_Cell_S4_E24(
 
     return;
 }
-
 VOS_VOID Mm_Cell_S9_E24(
                         VOS_VOID            *pRcvMsg                           /* 接收消息的头地址                         */
                     )

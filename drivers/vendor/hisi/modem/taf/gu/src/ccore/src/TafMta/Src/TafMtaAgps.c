@@ -1602,56 +1602,21 @@ VOS_VOID TAF_MTA_RcvAtRefclkfreqSetReq(VOS_VOID *pMsg)
     pstAtMtaReqMsg      = (AT_MTA_MSG_STRU *)pMsg;
     pstRefClkFreqReq    = (AT_MTA_REFCLKFREQ_SET_REQ_STRU *)pstAtMtaReqMsg->aucContent;
     pstRefClockInfo     = TAF_MTA_GetRefClockInfo();
-    enResult            = MTA_AT_RESULT_NO_ERROR;
-
-    /* Modified by zwx247453 for Refclkfreq, 2015/6/17, begin */
-    /* 当前最新设置上报状态与之前一致，直接回结果 */
-    if (pstRefClockInfo->enRptFlg == pstRefClkFreqReq->enRptFlg)
-    {
-        TAF_MTA_SndAtRefclkfreqSetCnf(pstAtMtaReqMsg, enResult);
-        return;
-    }
 
     if (pstRefClkFreqReq->enRptFlg >= AT_MTA_CMD_RPT_FLG_BUTT)
     {
         enResult = MTA_AT_RESULT_INCORRECT_PARAMETERS;
     }
-    else if (AT_MTA_CMD_RPT_FLG_ON == pstRefClkFreqReq->enRptFlg)
-    {
-        pstRefClockInfo->enRptFlg   = pstRefClkFreqReq->enRptFlg;
-
-        if (VOS_TRUE == TAF_MTA_CheckTLMode())
-        {
-            TAF_MTA_SndTlphyAfclockStatusNtf(AT_MTA_CMD_RPT_FLG_ON, 1);
-        }
-
-        /* 当前未启动周期查询定时器就启动定时器 */
-        if (TAF_MTA_TIMER_STATUS_RUNING != TAF_MTA_GetTimerStatus(TI_TAF_MTA_WAIT_REFCLOCK_STATUS_IND))
-        {
-            /* 再次启动周期查询定时器 */
-            (VOS_VOID)TAF_MTA_StartTimer(TI_TAF_MTA_WAIT_REFCLOCK_STATUS_IND,
-                                         TI_TAF_MTA_WAIT_REFCLOCK_STATUS_IND_TIMER_LEN);
-        }
-    }
     else
     {
-        pstRefClockInfo->enRptFlg   = pstRefClkFreqReq->enRptFlg;
-
-        if (VOS_TRUE == TAF_MTA_CheckTLMode())
-        {
-            TAF_MTA_SndTlphyAfclockStatusNtf(AT_MTA_CMD_RPT_FLG_OFF, 0);
-        }
-
-        TAF_MTA_StopTimer(TI_TAF_MTA_WAIT_REFCLOCK_STATUS_IND);
+        pstRefClockInfo->enRptFlg = pstRefClkFreqReq->enRptFlg;
+        enResult = MTA_AT_RESULT_NO_ERROR;
     }
 
     TAF_MTA_SndAtRefclkfreqSetCnf(pstAtMtaReqMsg, enResult);
-    /* Modified by zwx247453 for Refclkfreq, 2015/6/17, end */
 
     return;
 }
-
-
 VOS_VOID TAF_MTA_SndAtRefclkfreqSetCnf(
     AT_MTA_MSG_STRU                    *pstAtMtaReqMsg,
     MTA_AT_RESULT_ENUM_UINT32           enResult
@@ -1681,60 +1646,14 @@ VOS_VOID TAF_MTA_RcvAtRefclkfreqQryReq(VOS_VOID *pMsg)
     stRefClkFreqCnf.enResult    = MTA_AT_RESULT_NO_ERROR;
     stRefClkFreqCnf.ulFreq      = pstRefClockInfo->ulFreq;
     stRefClkFreqCnf.ulPrecision = pstRefClockInfo->ulPrecision;
+    stRefClkFreqCnf.enStatus    = pstRefClockInfo->enStatus;
 
-    /* Modified by zwx247453 for Refclkfreq, 2015/06/17, begin */
-    if (VOS_TRUE == TAF_MTA_CheckTLMode())
-    {
-        /* 如果当前定时器已经启动，则给at回复失败 */
-        if (TAF_MTA_TIMER_STATUS_RUNING == TAF_MTA_GetTimerStatus(TI_TAF_MTA_WAIT_QRY_AFCLOCK_STATUS_CNF))
-        {
-            stRefClkFreqCnf.enResult    = MTA_AT_RESULT_ERROR;
+    TAF_MTA_SndAtMsg(&pstAtMtaReqMsg->stAppCtrl,
+                     ID_MTA_AT_REFCLKFREQ_QRY_CNF,
+                     sizeof(MTA_AT_REFCLKFREQ_QRY_CNF_STRU),
+                     (VOS_UINT8*)&stRefClkFreqCnf);
 
-            TAF_MTA_SndAtMsg(&pstAtMtaReqMsg->stAppCtrl,
-                             ID_MTA_AT_REFCLKFREQ_QRY_CNF,
-                             sizeof(MTA_AT_REFCLKFREQ_QRY_CNF_STRU),
-                             (VOS_UINT8*)&stRefClkFreqCnf);
-            return;
-        }
-
-        /* 当前已经打开上报，则直接上报当前保存的状态，否则查询一下 */
-        if (AT_MTA_CMD_RPT_FLG_ON == pstRefClockInfo->enRptFlg)
-        {
-            stRefClkFreqCnf.enStatus    = pstRefClockInfo->enStatus;
-
-            TAF_MTA_SndAtMsg(&pstAtMtaReqMsg->stAppCtrl,
-                             ID_MTA_AT_REFCLKFREQ_QRY_CNF,
-                             sizeof(MTA_AT_REFCLKFREQ_QRY_CNF_STRU),
-                             (VOS_UINT8*)&stRefClkFreqCnf);
-        }
-        else
-        {
-            TAF_MTA_SndTlphyAfclockStatusNtf(AT_MTA_CMD_RPT_FLG_ON, 1);
-
-            /* 启保护定时器 */
-            (VOS_VOID)TAF_MTA_StartTimer(TI_TAF_MTA_WAIT_QRY_AFCLOCK_STATUS_CNF,
-                                         TI_TAF_MTA_WAIT_QRY_AFCLOCK_STATUS_CNF_TIMER_LEN);
-
-            /* 添加消息进等待队列 */
-            TAF_MTA_SaveItemInCmdBufferQueue(TI_TAF_MTA_WAIT_QRY_AFCLOCK_STATUS_CNF,
-                                             (VOS_UINT8*)&pstAtMtaReqMsg->stAppCtrl,
-                                             sizeof(AT_APPCTRL_STRU));
-        }
-
-        return;
-    }
-    else
-    {
-        stRefClkFreqCnf.enStatus    = pstRefClockInfo->enStatus;
-
-        TAF_MTA_SndAtMsg(&pstAtMtaReqMsg->stAppCtrl,
-                         ID_MTA_AT_REFCLKFREQ_QRY_CNF,
-                         sizeof(MTA_AT_REFCLKFREQ_QRY_CNF_STRU),
-                         (VOS_UINT8*)&stRefClkFreqCnf);
-
-        return;
-    }
-    /* Modified by zwx247453 for Refclkfreq, 2015/06/17, end */
+    return;
 }
 VOS_VOID TAF_MTA_SndAtRefclkfreqInd(VOS_VOID)
 {
@@ -1773,278 +1692,25 @@ VOS_VOID TAF_MTA_RcvPhyRefClockStatusInd(VOS_VOID *pMsg)
     pstRefClockStatusInd = (APM_MTA_REFCLOCK_STATUS_IND_STRU *)pMsg;
     pstRefClockInfo      = TAF_MTA_GetRefClockInfo();
 
-    /* Modified by zwx247453 for Refclkfreq, 2015/06/17, begin */
-    if (pstRefClockInfo->enStatus != pstRefClockStatusInd->enStatus)
+    if ( (PHY_MTA_REFCLOCK_UNLOCKED == pstRefClockInfo->enStatus)
+      && (PHY_MTA_REFCLOCK_UNLOCKED != pstRefClockStatusInd->enStatus) )
     {
-        pstRefClockInfo->enStatus = pstRefClockStatusInd->enStatus;
+        pstRefClockInfo->enStatus = PHY_MTA_REFCLOCK_LOCKED;
+        TAF_MTA_SndAtRefclkfreqInd();
+    }
+    else if ( (PHY_MTA_REFCLOCK_UNLOCKED != pstRefClockInfo->enStatus)
+           && (PHY_MTA_REFCLOCK_UNLOCKED == pstRefClockStatusInd->enStatus) )
+    {
+        pstRefClockInfo->enStatus = PHY_MTA_REFCLOCK_UNLOCKED;
         TAF_MTA_SndAtRefclkfreqInd();
     }
     else
     {
         /* 锁定状态没有变化，不处理 */
     }
-    /* Modified by zwx247453 for Refclkfreq, 2015/06/17, end */
 
     return;
 }
-
-/* Added by zwx247453 for Refclkfreq, 2015/06/17, begin */
-/*****************************************************************************
- 函 数 名  : TAF_MTA_SndTlphyAfclockStatusInd
- 功能描述  : 给Tlphy发送AFC锁定状态消息
- 输入参数  : usReportCount
- 输出参数  : 无
- 返 回 值  : VOS_VOID
- 调用函数  :
- 被调函数  :
-
- 修改历史      :
-  1.日    期   : 2015年6月17日
-    作    者   : zwx247453
-    修改内容   : 新生成函数
-
-*****************************************************************************/
-VOS_VOID TAF_MTA_SndTlphyAfclockStatusNtf(
-    VOS_UINT16                          enRptFlg,
-    VOS_UINT16                          usReportCount
-)
-{
-    VOS_UINT32                             ulLength;
-    MTA_AGENT_AFCLOCK_AFCSTATUS_NTF_STRU  *pstMtaTlphySetReq = VOS_NULL_PTR;
-
-    /* 申请消息结构内存 */
-    ulLength              = sizeof(MTA_AGENT_AFCLOCK_AFCSTATUS_NTF_STRU) - VOS_MSG_HEAD_LENGTH;
-    pstMtaTlphySetReq     = (MTA_AGENT_AFCLOCK_AFCSTATUS_NTF_STRU *)PS_ALLOC_MSG(UEPS_PID_MTA, ulLength);
-
-    if (VOS_NULL_PTR == pstMtaTlphySetReq)
-    {
-        MTA_ERROR_LOG("TAF_MTA_SndTlphyAfclockStatusNtf: Alloc msg fail!");
-        return;
-    }
-
-    PS_MEM_SET((VOS_UINT8*)pstMtaTlphySetReq + VOS_MSG_HEAD_LENGTH, 0, ulLength);
-
-    /* 构造消息结构体 */
-    pstMtaTlphySetReq->ulReceiverPid     = TLPHY_PID_RTTAGENT;
-    pstMtaTlphySetReq->usMsgID           = ID_MTA_AGENT_AFCLOCK_STATUS_RPT_NTF;
-    pstMtaTlphySetReq->usReportCtrolflag = enRptFlg;
-    if (AT_MTA_CMD_RPT_FLG_ON == enRptFlg)
-    {
-        pstMtaTlphySetReq->usReportCount     = usReportCount;
-    }
-    else
-    {
-        pstMtaTlphySetReq->usReportCount     = 0;
-    }
-    pstMtaTlphySetReq->usReportDuration  = MTA_PHY_AFCLOCK_REPORT_DURATION;
-
-    /* 发送消息到TLPHY */
-    if (VOS_OK != PS_SEND_MSG(UEPS_PID_MTA, pstMtaTlphySetReq))
-    {
-        MTA_ERROR_LOG("TAF_MTA_SndTlphyAfclockStatusNtf: Send msg fail!");
-    }
-
-    return;
-}
-
-/*****************************************************************************
- 函 数 名  : TAF_MTA_RcvTlPhyAfclockStatusInd
- 功能描述  : MTA模块收到物理层上报的AFC锁定状态的处理
- 输入参数  : pMsg   -- 收到的消息内容
- 输出参数  : 无
- 返 回 值  : VOS_VOID
- 调用函数  :
- 被调函数  :
-
- 修改历史      :
-  1.日    期   : 2015年06月17日
-    作    者   : zwx247453
-    修改内容   : 新增
-*****************************************************************************/
-VOS_VOID TAF_MTA_RcvTlPhyAfclockStatusInd(VOS_VOID *pMsg)
-{
-    TAF_MTA_CMD_BUFFER_STRU               *pstCmdBuf            = VOS_NULL_PTR;
-    TLPHY_MTA_AFCLOCK_AFCSTATUS_IND_STRU  *pstRefClockStatusInd = VOS_NULL_PTR;
-    TAF_MTA_REFCLOCK_INFO_STRU            *pstRefClockInfo      = VOS_NULL_PTR;
-    AT_APPCTRL_STRU                       *pstAppCtrl           = VOS_NULL_PTR;
-    MTA_AT_REFCLKFREQ_QRY_CNF_STRU         stRefClkFreqCnf;
-    PHY_MTA_REFCLOCK_STATUS_ENUM_UINT16    enOldAfcStatus;
-
-    pstRefClockStatusInd = (TLPHY_MTA_AFCLOCK_AFCSTATUS_IND_STRU *)pMsg;
-    pstRefClockInfo      = TAF_MTA_GetRefClockInfo();
-
-    /* 获取老的锁定状态 */
-    enOldAfcStatus              = pstRefClockInfo->enStatus;
-
-    /* 更新TL锁定状态 */
-    pstRefClockInfo->enStatus   = pstRefClockStatusInd->usStatus;
-
-    /* 如果当前正在查询命令执行过程中，需要回复查询结果给AT */
-    if (TAF_MTA_TIMER_STATUS_RUNING == TAF_MTA_GetTimerStatus(TI_TAF_MTA_WAIT_QRY_AFCLOCK_STATUS_CNF))
-    {
-        pstCmdBuf = TAF_MTA_GetItemFromCmdBufferQueue(TI_TAF_MTA_WAIT_QRY_AFCLOCK_STATUS_CNF);
-
-        if (VOS_NULL_PTR != pstCmdBuf)
-        {
-            pstAppCtrl = (AT_APPCTRL_STRU *)pstCmdBuf->pucMsgInfo;
-
-            PS_MEM_SET(&stRefClkFreqCnf, 0x00, sizeof(stRefClkFreqCnf));
-            stRefClkFreqCnf.enResult    = MTA_AT_RESULT_NO_ERROR;
-            stRefClkFreqCnf.ulFreq      = pstRefClockInfo->ulFreq;
-            stRefClkFreqCnf.ulPrecision = pstRefClockInfo->ulPrecision;
-            stRefClkFreqCnf.enStatus    = pstRefClockInfo->enStatus;
-
-            /* 上报给AT模块查询错误 */
-            TAF_MTA_SndAtMsg(pstAppCtrl,
-                             ID_MTA_AT_REFCLKFREQ_QRY_CNF,
-                             sizeof(MTA_AT_REFCLKFREQ_QRY_CNF_STRU),
-                             (VOS_UINT8*)&stRefClkFreqCnf);
-
-            TAF_MTA_DelItemInCmdBufferQueue(TI_TAF_MTA_WAIT_QRY_AFCLOCK_STATUS_CNF);
-            TAF_MTA_StopTimer(TI_TAF_MTA_WAIT_QRY_AFCLOCK_STATUS_CNF);
-        }
-
-    }
-
-    /* 如果开关打开，还需要根据变化状态主动上报 */
-    if (AT_MTA_CMD_RPT_FLG_ON == pstRefClockInfo->enRptFlg)
-    {
-        /* 之前的状态和当前的不一致，则主动上报一次 */
-        if (enOldAfcStatus != pstRefClockStatusInd->usStatus)
-        {
-            TAF_MTA_SndAtRefclkfreqInd();
-        }
-
-        if (TAF_MTA_TIMER_STATUS_RUNING != TAF_MTA_GetTimerStatus(TI_TAF_MTA_WAIT_REFCLOCK_STATUS_IND))
-        {
-            /* 再次启动周期查询定时器 */
-            (VOS_VOID)TAF_MTA_StartTimer(TI_TAF_MTA_WAIT_REFCLOCK_STATUS_IND,
-                                         TI_TAF_MTA_WAIT_REFCLOCK_STATUS_IND_TIMER_LEN);
-        }
-    }
-
-    return;
-}
-
-/*****************************************************************************
- 函 数 名  : TAF_MTA_RcvTiWaitAgentQryAfclockExpired
- 功能描述  : MTA模块查询物理层AFC锁定状态超时的处理
- 输入参数  : pMsg   -- 收到的消息内容
- 输出参数  : 无
- 返 回 值  : VOS_VOID
- 调用函数  :
- 被调函数  :
-
- 修改历史      :
-  1.日    期   : 2015年06月17日
-    作    者   : zwx247453
-    修改内容   : 新增
-*****************************************************************************/
-VOS_VOID TAF_MTA_RcvTiWaitAgentQryAfclockExpired(VOS_VOID *pMsg)
-{
-    TAF_MTA_CMD_BUFFER_STRU            *pstCmdBuf       = VOS_NULL_PTR;
-    AT_APPCTRL_STRU                    *pstAppCtrl      = VOS_NULL_PTR;
-    MTA_AT_REFCLKFREQ_QRY_CNF_STRU      stRefclkfreqQry;
-
-    /* 获取当前定时器对应的消息队列 */
-    pstCmdBuf = TAF_MTA_GetItemFromCmdBufferQueue(TI_TAF_MTA_WAIT_QRY_AFCLOCK_STATUS_CNF);
-
-    if (VOS_NULL_PTR == pstCmdBuf)
-    {
-        return;
-    }
-
-    pstAppCtrl = (AT_APPCTRL_STRU *)pstCmdBuf->pucMsgInfo;
-
-    PS_MEM_SET(&stRefclkfreqQry, 0x00, sizeof(stRefclkfreqQry));
-    stRefclkfreqQry.enResult = MTA_AT_RESULT_ERROR;
-
-    /* 上报给AT模块查询错误 */
-    TAF_MTA_SndAtMsg(pstAppCtrl,
-                     ID_MTA_AT_REFCLKFREQ_QRY_CNF,
-                     sizeof(MTA_AT_REFCLKFREQ_QRY_CNF_STRU),
-                     (VOS_UINT8*)&stRefclkfreqQry);
-
-    /* 从等待队列中删除消息 */
-    TAF_MTA_DelItemInCmdBufferQueue(TI_TAF_MTA_WAIT_QRY_AFCLOCK_STATUS_CNF);
-
-    return;
-}
-
-/*****************************************************************************
- 函 数 名  : TAF_MTA_RcvTiWaitAgentRefclockIndExpired
- 功能描述  : MTA模块向物理层下发AFC锁定超时的处理
- 输入参数  : pMsg   -- 收到的消息内容
- 输出参数  : 无
- 返 回 值  : VOS_VOID
- 调用函数  :
- 被调函数  :
-
- 修改历史      :
-  1.日    期   : 2015年06月17日
-    作    者   : zwx247453
-    修改内容   : 新增
-*****************************************************************************/
-VOS_VOID TAF_MTA_RcvTiWaitAgentRefclockIndExpired(VOS_VOID *pMsg)
-{
-    TAF_MTA_REFCLOCK_INFO_STRU         *pstRefClockInfo = VOS_NULL_PTR;
-
-    /* 下发开启开关，接受物理层上报超时，重新下发 */
-    pstRefClockInfo      = TAF_MTA_GetRefClockInfo();
-
-    if (AT_MTA_CMD_RPT_FLG_ON == pstRefClockInfo->enRptFlg)
-    {
-        if (VOS_TRUE == TAF_MTA_CheckTLMode())
-        {
-            TAF_MTA_SndTlphyAfclockStatusNtf(AT_MTA_CMD_RPT_FLG_ON,1);
-        }
-
-        /* 启保护周期查询定时器 */
-        (VOS_VOID)TAF_MTA_StartTimer(TI_TAF_MTA_WAIT_REFCLOCK_STATUS_IND,
-                                     TI_TAF_MTA_WAIT_REFCLOCK_STATUS_IND_TIMER_LEN);
-    }
-
-    return;
-}
-
-/*****************************************************************************
- 函 数 名  : TAF_MTA_CheckTLMode
- 功能描述  : 检查是否是LTE或者TD的网络模式
- 输入参数  : 系统模式
- 输出参数  : 无
- 返 回 值  : VOS_TRUE ---- 成功
-             VOS_FALSE --- 失败
- 调用函数  :
- 修改历史      :
-  1.日    期   : 2015年06月17日
-    作    者   : zwx247453
-    修改内容   : 新生成函数
-*****************************************************************************/
-VOS_UINT32 TAF_MTA_CheckTLMode(VOS_VOID)
-{
-    TAF_SDC_SYS_MODE_ENUM_UINT8         enSysmode;
-
-    enSysmode   = TAF_SDC_GetSysMode();
-
-    switch (enSysmode)
-    {
-        case TAF_SDC_SYS_MODE_LTE:
-            return VOS_TRUE;
-
-        case TAF_SDC_SYS_MODE_WCDMA:
-            if (NAS_UTRANCTRL_UTRAN_MODE_TDD == NAS_UTRANCTRL_GetCurrUtranMode())
-            {
-                return VOS_TRUE;
-            }
-
-            return VOS_FALSE;
-
-        default:
-            return VOS_FALSE;
-    }
-}
-/* Added by zwx247453 for Refclkfreq, 2015/06/17, end */
-
 VOS_VOID TAF_MTA_RcvAtEcidSetReq(VOS_VOID *pMsg)
 {
     AT_MTA_MSG_STRU                    *pstAtMtaReqMsg      = VOS_NULL_PTR;     /* 收到AT发来的消息指针 */

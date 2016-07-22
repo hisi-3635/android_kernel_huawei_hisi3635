@@ -3469,12 +3469,44 @@ VOS_VOID Mm_Cell_S4_E65(
 
         /* 如果当前驻留LTE,则直接回复SS失败 */
         if (NAS_MML_NET_RAT_TYPE_LTE == NAS_MML_GetCurrNetRatType())
-        {
-            /* LTE下UE在null、idle limited service、no imsi、wait for attach状态无法处理ss业务 */
+        {        
+
+            /* CS域卡无效，则不处理补充业务 */
+            if (VOS_FALSE  == NAS_MML_GetSimCsRegStatus())
+            {
+                Mm_SndSsRelInd(g_MmSsEstReq.ulTi,
+                               NAS_MMCM_REL_CAUSE_MM_INTER_ERR_CS_SIM_INVALID);
+
+                return;
+            }
+            
+            /* 如果当前PS ONLY时支持CS业务NV未激活，则SS失败 */
+            if ( (NAS_MML_MS_MODE_PS_ONLY == NAS_MML_GetMsMode())
+              && (NAS_MMC_NV_ITEM_DEACTIVE == pstMiscellaneousCfgInfo->ucPsOnlyCsServiceSupportFlg) )
+            { 
+                 Mm_SndSsRelInd(g_MmSsEstReq.ulTi,
+                               NAS_MMCM_REL_CAUSE_MM_INTER_ERR_CS_DETACH);
+                
+                 return;
+            }
+            
+            /* 在LIMIT SRVICE状态放开SS业务的CSFB处理 */
+            if (MM_IDLE_LIMITED_SERVICE == Mm_GetState())
+            {
+                NAS_MM_RcvSsEstReq_CSFB();
+
+                return;
+            }            
+
+            
+            /* LTE下UE在null、no imsi、wait for attach状态无法处理ss业务 */
             Mm_SndSsRelInd(g_MmSsEstReq.ulTi, NAS_MMCM_REL_CAUSE_MM_INTER_ERR_NOT_SUPPORT_CS_CALL_S1_MODE_ONLY);
 
             return;
         }
+
+
+        
 #endif
         if (NAS_MMC_NV_ITEM_DEACTIVE == pstMiscellaneousCfgInfo->ucPsOnlyCsServiceSupportFlg)
         {
@@ -3525,8 +3557,6 @@ VOS_VOID Mm_Cell_S4_E65(
 
     return;
 }
-
-
 VOS_VOID Mm_Cell_S10_E65(
                         VOS_VOID            *pRcvMsg                            /* 接收消息的头地址                         */
                     )
@@ -3755,6 +3785,8 @@ VOS_VOID Mm_Cell_S3_E62(
 
     return;
 }
+
+
 VOS_VOID NAS_MM_ProcSmsEstReq_WaitForOutgoingMmConnection(VOS_VOID)
 {
     MM_MSG_CM_SVC_REQ_STRU                     CmSvcReq;                            /* 要发送的CM SERVICE REQ消息               */

@@ -783,6 +783,7 @@ static int tps61310_register_attribute(struct hisi_flash_ctrl_t *flash_ctrl, str
 		goto err_out;
 	}
 
+#ifdef DEBUG_HISI_CAMERA
 	rc = device_create_file(dev, &tps61310_lightness);
 	if (rc < 0) {
 		cam_err("%s failed to creat lightness attribute.", __func__);
@@ -800,6 +801,9 @@ static int tps61310_register_attribute(struct hisi_flash_ctrl_t *flash_ctrl, str
 err_create_flash_mask_file:
 	device_remove_file(dev, &tps61310_lightness);
 err_create_lightness_file:
+#else
+    return 0;
+#endif
 	led_classdev_unregister(&flash_ctrl->cdev_torch);
 err_out:
 	return rc;

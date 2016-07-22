@@ -822,6 +822,11 @@ VOS_UINT32 NAS_MMC_RcvMmaAutoReselSet_PreProc(
     struct MsgCB                       *pstMsg
 );
 
+VOS_UINT32  NAS_MMC_RcvMmaImsiRefreshInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()
 #else

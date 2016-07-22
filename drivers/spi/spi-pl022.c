@@ -50,7 +50,7 @@
 #include <soc_baseaddr_interface.h>
 #include <soc_peri_sctrl_interface.h>
 #endif
-#include<huawei_platform/dsm/dsm_pub.h>
+#include<dsm/dsm_pub.h>
 /*
  * This macro is used to define some register default values.
  * reg is masked with mask, the OR:ed with an (again masked)
@@ -562,6 +562,9 @@ static void giveback(struct pl022 *pl022)
 {
 	struct spi_transfer *last_transfer;
 	pl022->next_msg_cs_active = false;
+
+	if (NULL == pl022->cur_msg)
+		return;
 
 	last_transfer = list_entry(pl022->cur_msg->transfers.prev,
 					struct spi_transfer,
@@ -1277,7 +1280,7 @@ static int pl022_dma_probe(struct pl022 *pl022)
 		goto err_no_txchan;
 	}
 
-	pl022->dummypage = kmalloc(PAGE_SIZE, GFP_KERNEL);
+	pl022->dummypage = __get_free_pages(GFP_KERNEL, 0);
 	if (!pl022->dummypage) {
 		dev_dbg(&pl022->adev->dev, "no DMA dummypage!\n");
 		goto err_no_dummypage;
@@ -1313,7 +1316,7 @@ static int pl022_dma_autoprobe(struct pl022 *pl022)
 	if (!pl022->dma_tx_channel)
 		goto err_no_txchan;
 
-	pl022->dummypage = kmalloc(PAGE_SIZE, GFP_KERNEL);
+	pl022->dummypage = __get_free_pages(GFP_KERNEL, 0);
 	if (!pl022->dummypage)
 		goto err_no_dummypage;
 
@@ -1348,7 +1351,7 @@ static void pl022_dma_remove(struct pl022 *pl022)
 		dma_release_channel(pl022->dma_tx_channel);
 	if (pl022->dma_rx_channel)
 		dma_release_channel(pl022->dma_rx_channel);
-	kfree(pl022->dummypage);
+	free_page(pl022->dummypage);
 }
 
 #else

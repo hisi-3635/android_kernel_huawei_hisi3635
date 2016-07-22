@@ -10,6 +10,9 @@
 #define	__SENSORS_H__
 
 #define PDC_SIZE		27
+// Number of z-axis samples required by FingerSense at 1.6KHz ODR
+#define FINGERSENSE_DATA_NSAMPLES 128
+
 #define SENSOR_PLATFORM_EXTEND_DATA_SIZE    48
 #define EXTEND_DATA_TYPE_IN_DTS_BYTE        0
 #define EXTEND_DATA_TYPE_IN_DTS_HALF_WORD   1
@@ -41,6 +44,13 @@ struct i2c_data{
 	uint8_t data[MAX_I2C_DATA_LENGTH];
 };
 
+struct t_sensor_get_data
+{
+	atomic_t reading;
+	struct completion complete;
+	struct sensor_data data;
+};
+
 struct sensor_status
 {
 	int status[TAG_SENSOR_END];//record whether sensor is in activate status, already opened and setdelay
@@ -49,6 +59,8 @@ struct sensor_status
 	char gyro_selfTest_result[5];
 	char mag_selfTest_result[5];
 	char accel_selfTest_result[5];
+	char selftest_result[TAG_SENSOR_END][5];
+	struct t_sensor_get_data get_data[TAG_SENSOR_END];
 };
 struct g_sensor_platform_data{
     uint8_t i2c_address;
@@ -126,12 +138,17 @@ struct ps_platform_data{
     uint8_t ps_extend_data[SENSOR_PLATFORM_EXTEND_DATA_SIZE];
 };
 
+extern struct sensor_status sensor_status;
 extern  bool sensor_info_isensor_version;
 
 extern void update_sensor_info(const pkt_header_t *pkt);
+extern void update_fingersense_zaxis_data(s16 *buffer, int nsamples);
 extern void disable_sensors_when_suspend(void);
 extern void enable_sensors_when_resume(void);
 extern void disable_sensors_when_reboot(void);
 extern void enable_sensors_when_recovery_iom3(void);
 extern void reset_calibrate_when_recovery_iom3(void);
+extern const char *get_sensor_info_by_tag(int tag);
+extern ssize_t sensors_calibrate_show(int tag, struct device *dev, struct device_attribute *attr, char *buf);
+extern ssize_t sensors_calibrate_store(int tag, struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
 #endif	/* __SENSORS_H__ */

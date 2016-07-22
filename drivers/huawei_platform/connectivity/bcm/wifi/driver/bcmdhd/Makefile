@@ -23,7 +23,7 @@ DHDOFILES = aiutils.o siutils.o sbutils.o bcmutils.o bcmwifi_channels.o \
 	dhd_linux.o dhd_linux_platdev.o dhd_linux_sched.o dhd_pno.o \
 	dhd_common.o dhd_ip.o dhd_linux_wq.o dhd_custom_gpio.o \
 	bcmevent.o hndpmu.o linux_osl.o wldev_common.o wl_android.o hw_wifi.o \
-	hnd_pktq.o hnd_pktpool.o
+	hnd_pktq.o hnd_pktpool.o dhd_cfg_vendor.o
 
 obj-$(CONFIG_BCMDHD) += bcmdhd.o
 bcmdhd-objs += $(DHDOFILES)
@@ -83,6 +83,10 @@ DHDCFLAGS += -DHW_SOFTAP_MANAGEMENT
 DHDCFLAGS += -DHW_SOFTAP_MANAGEMENT_BUG
 DHDCFLAGS += -DHW_WIFI_POLL_ENABLE
 DHDCFLAGS += -DHW_WIFI_WAKELOCK_BUGFIX
+DHDCFLAGS += -DHW_WIFI_ALLOC_IF_PANIC
+DHDCFLAGS += -DSUPPORT_WL_TXPOWER
+DHDCFLAGS += -DHW_WIFI_CONFIG_FROM_FILE_BUG
+
 #huawei feature macro
 DHDCFLAGS += -DHW_WIFI_FIRST_SCAN_OPTIMIZE
 DHDCFLAGS += -DHW_WIFI_SHUTDOWN
@@ -136,6 +140,10 @@ DHDCFLAGS += -DHW_WIFI_WAKEUP_SRC_PARSE
 DHDCFLAGS += -DCUSTOM_MAX_TXGLOM_SIZE=32
 DHDCFLAGS += -DHW_PKT_FILTER_PATCH_FOR_64
 DHDCFLAGS += -DHW_WIFI_DMD_CLOSE_CMD52_LOG
+
+ifeq ($(IS_DOCOMO), true)
+DHDCFLAGS += -DHW_DOCOMO_FEATURE
+endif
 
 ifeq ($(CONFIG_HW_WIFI_FREQ_CTRL_FLAG),y)
 #throughput tuning begin

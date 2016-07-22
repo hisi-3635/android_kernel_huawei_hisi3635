@@ -639,6 +639,75 @@ out:
 	return rc;
 }
 
+int imx214_set_bshutter_expo_gain(struct hisi_sensor_t *sensor, u32 expo, u16 gain)
+{
+	int rc = 0;
+	u32 analog_gain = 0;
+	u32 digital_gain = 0x100;
+	u32 digital_gain_r, digital_gain_g, digital_gain_b;
+	int wait = SCCB_BUS_MUTEX_NOWAIT;
+
+	cam_info("enter %s ,expo %d, gain %d",__func__, expo, gain);
+
+	if(expo == 0)
+	    goto gain;
+
+	expo >>= 4;
+	isp_write_sensor_byte(&sensor->sensor_info->i2c_config,
+		IMX214_EXPOSURE_REG_H, (expo >> 8) & 0xff, 0x00, wait);
+	isp_write_sensor_byte(&sensor->sensor_info->i2c_config,
+		IMX214_EXPOSURE_REG_L, expo & 0xff, 0x00, wait);
+
+gain:
+	if (gain == 0)
+		goto out;
+	/*
+	 * gain = (analog_gain * digital_gain)
+	 * digital_gain = digital_h + digital_l / 256;
+	 */
+	if (gain > IMX214_MAX_ANALOG_GAIN * 16) {
+		analog_gain = IMX214_MAX_ANALOG_GAIN * 16;
+		digital_gain = (gain * 0x100) / analog_gain;
+	} else {
+		analog_gain = gain;
+		digital_gain = 0x100;
+	}
+
+	/* re-calculate digital gain */
+	digital_gain_r = digital_gain * dgain_base.rgain / 0x100;
+	digital_gain_g = digital_gain * dgain_base.ggain / 0x100;
+	digital_gain_b = digital_gain * dgain_base.bgain / 0x100;
+
+	/* write analog gain */
+	analog_gain = 512 - (512 * 16) / analog_gain;
+	isp_write_sensor_byte(&sensor->sensor_info->i2c_config,
+		IMX214_ANA_GAIN_GLOBAL_H, (analog_gain >> 8) & 0xff, 0x00, wait);
+	isp_write_sensor_byte(&sensor->sensor_info->i2c_config,
+		IMX214_ANA_GAIN_GLOBAL_L, analog_gain & 0xff, 0x00, wait);
+
+	/* write digital gain */
+	isp_write_sensor_byte(&sensor->sensor_info->i2c_config,
+		IMX214_DIG_GAIN_GR_H, (digital_gain_g >> 8) & 0xff, 0x00, wait);
+	isp_write_sensor_byte(&sensor->sensor_info->i2c_config,
+		IMX214_DIG_GAIN_GR_L, digital_gain_g & 0xff, 0x00, wait);
+	isp_write_sensor_byte(&sensor->sensor_info->i2c_config,
+		IMX214_DIG_GAIN_R_H, (digital_gain_r >> 8) & 0xff, 0x00, wait);
+	isp_write_sensor_byte(&sensor->sensor_info->i2c_config,
+		IMX214_DIG_GAIN_R_L, digital_gain_r & 0xff, 0x00, wait);
+	isp_write_sensor_byte(&sensor->sensor_info->i2c_config,
+		IMX214_DIG_GAIN_B_H, (digital_gain_b >> 8) & 0xff, 0x00, wait);
+	isp_write_sensor_byte(&sensor->sensor_info->i2c_config,
+		IMX214_DIG_GAIN_B_L, digital_gain_b & 0xff, 0x00, wait);
+	isp_write_sensor_byte(&sensor->sensor_info->i2c_config,
+		IMX214_DIG_GAIN_GB_H, (digital_gain_g >> 8) & 0xff, 0x00, wait);
+	isp_write_sensor_byte(&sensor->sensor_info->i2c_config,
+		IMX214_DIG_GAIN_GB_L, digital_gain_g & 0xff, 0x00, wait);
+
+out:
+	return rc;
+}
+
+
 int imx214_set_hts(struct hisi_sensor_t *sensor, u16 hts)
 {
 	isp_write_sensor_byte(&sensor->sensor_info->i2c_config,
@@ -674,6 +743,8 @@ struct hisi_sensor_fn_t imx214_func_tbl = {
 	.sensor_suspend_eg_task = hisi_sensor_suspend_eg_task,
 	.sensor_set_hts = imx214_set_hts,
 	.sensor_set_vts = imx214_set_vts,
+	.sensor_set_bshutter_expo_gain = imx214_set_bshutter_expo_gain,
+	.sensor_apply_bshutter_expo_gain = hisi_sensor_apply_bshutter_expo_gain,
 };
 
 static int32_t imx214_sensor_probe(struct platform_device *pdev)

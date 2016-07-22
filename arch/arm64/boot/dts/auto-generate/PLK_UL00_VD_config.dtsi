@@ -1,0 +1,27 @@
+
+/**
+ * Huawei Ltd.
+ * PhosphorV660
+ */
+
+
+/include/ "PLK_TL00_VC_config.dtsi"
+
+/ {
+	hisi,boardid = <1 8 8 5 >;
+	hisi,boardname = "PLK_UL00_VD";
+	hisi,modem_id = <0x3EB53580>;
+	hisi,sub_platform_info0 = "Kirin935";
+
+	target-cpu {
+		compatible = "hisi,targetcpu";
+		target_cpu = "Kirin 935";
+	};
+	antenna_fpga{
+		compatible = "antenna_fpga";
+		antenna_fpga,pre-image-filename = "PLK-UL00-VA.bin";
+		status = "ok";
+	};
+};
+
+

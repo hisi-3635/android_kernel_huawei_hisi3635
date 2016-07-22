@@ -40,6 +40,7 @@ struct hw_lm3642_private_data_t {
 	unsigned int torch_led_num;
 	unsigned int flash_current;
 	unsigned int torch_current;
+	unsigned int torch_video_current;
 
 	/* flash control pin */
 	unsigned int strobe;
@@ -205,6 +206,57 @@ static int hw_lm3642_torch_mode(struct hw_flash_ctrl_t *flash_ctrl,
 	return 0;
 }
 
+static int hw_lm3642_torch_video_mode(struct hw_flash_ctrl_t *flash_ctrl,
+	int data)
+{
+	struct hw_flash_i2c_client *i2c_client;
+	struct hw_flash_i2c_fn_t *i2c_func;
+	struct hw_lm3642_private_data_t *pdata;
+	unsigned char val;
+	unsigned int current_level = 0;
+
+	cam_debug("%s data=%d.\n", __func__, data);
+	cam_info("%s 220250 data=%d.\n", __func__, data);
+	if (NULL == flash_ctrl || NULL ==flash_ctrl->pdata) {
+            cam_err("%s flash_ctrl is NULL.", __func__);
+	    return -1;
+	}
+
+	i2c_client = flash_ctrl->flash_i2c_client;
+	i2c_func = flash_ctrl->flash_i2c_client->i2c_func_tbl;
+	pdata = (struct hw_lm3642_private_data_t *)flash_ctrl->pdata;
+
+	cam_info("%s torch_video_current = %d.\n", __func__, pdata->torch_video_current);
+	if(FLASH_LED_LEVEL_INVALID == pdata->torch_video_current)
+	{
+	    if (FLASH_LED_LEVEL_INVALID == pdata->torch_current)
+	    {
+	        current_level = data;
+	    }
+	    else
+	    {
+	        current_level = pdata->torch_current;
+	    }
+	}
+	else
+	{
+	    current_level = pdata->torch_video_current;
+	}
+
+	/* clear error flag,resume chip */
+	i2c_func->i2c_read(i2c_client, REG_FLAGS, &val);
+	i2c_func->i2c_read(i2c_client, REG_CURRENT_CONTROL, &val);
+
+	/* set LED Flash current value */
+	val = (val & 0x0f) | (current_level << 4);
+	cam_info("%s the led torch current val=0x%x, current_level=%d.\n", __func__, val, current_level);
+
+	i2c_func->i2c_write(i2c_client, REG_CURRENT_CONTROL, val);
+	i2c_func->i2c_write(i2c_client, REG_ENABLE, MODE_TORCH);
+
+	return 0;
+}
+
 static int hw_lm3642_on(struct hw_flash_ctrl_t *flash_ctrl, void *data)
 {
 	struct hw_flash_cfg_data *cdata = (struct hw_flash_cfg_data *)data;
@@ -220,7 +272,10 @@ static int hw_lm3642_on(struct hw_flash_ctrl_t *flash_ctrl, void *data)
 	mutex_lock(flash_ctrl->hw_flash_mutex);
 	if (FLASH_MODE == cdata->mode) {
 		rc = hw_lm3642_flash_mode(flash_ctrl, cdata->data);
-	} else {
+	} else if (TORCH_VIDEO_MODE == cdata->mode){
+		rc = hw_lm3642_torch_video_mode(flash_ctrl, cdata->data);
+	}
+	else {
 		rc = hw_lm3642_torch_mode(flash_ctrl, cdata->data);
 	}
 	flash_ctrl->state.mode = cdata->mode;
@@ -340,6 +395,16 @@ static int hw_lm3642_get_dt_data(struct hw_flash_ctrl_t *flash_ctrl)
 		pdata->torch_current = FLASH_LED_LEVEL_INVALID;
 		//return rc;
 	}
+
+	rc = of_property_read_u32(of_node, "huawei,torch_video_current",
+		&pdata->torch_video_current);
+	cam_info("%s hisi,torch_video_current %d, rc %d\n", __func__,
+		pdata->torch_video_current, rc);
+	if (rc < 0) {
+		cam_err("%s failed %d\n", __func__, __LINE__);
+		pdata->torch_video_current = FLASH_LED_LEVEL_INVALID;
+	}
+
 
 	rc = of_property_read_u32(of_node, "huawei,flash_led_num",
 		&pdata->flash_led_num);

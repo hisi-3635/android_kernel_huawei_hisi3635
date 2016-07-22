@@ -77,6 +77,7 @@ struct hi6402_priv {
 	bool mic2_power_on;
 	bool aux_mic_power_on;
 	bool mic3_power_on;
+	bool use_stereo_smartpa;
 
 	struct wake_lock		wake_lock;
 	struct workqueue_struct *codec_reg_ref_delay_wq;
@@ -462,12 +463,13 @@ int hi6402_pll_power_mode_event(struct snd_soc_dapm_widget *w,
 static int hi6402_read(struct file *file, char __user *user_buf,
                                    size_t count, loff_t *ppos)
 {
-	#define SIZE_MAX 12288
+	#define SIZE_MAX_HI6402DUMP 12288
 	#define BASE_ADDR_PAGE_CFG_DEBUG (BASE_ADDR_PAGE_CFG + CODEC_BASE_ADDR)
 	#define BASE_ADDR_PAGE_DIG_DEBUG (BASE_ADDR_PAGE_DIG + CODEC_BASE_ADDR)
 	#define HI6402_PLL_REG  (BASE_ADDR_PAGE_CFG_DEBUG + 0x0F6)
 	#define HI6402_AUD_CLK_EN (BASE_ADDR_PAGE_CFG_DEBUG + 0x040)
 
+	int len;
 	unsigned int i = 0;
 	char * buf = NULL;
 	ssize_t value_ret= 0;
@@ -478,12 +480,12 @@ static int hi6402_read(struct file *file, char __user *user_buf,
 
 	pr_info("%s++: pll:0x%x, clk:%x\n", __FUNCTION__, hi6402_pll_reg, hi6402_clk_en_reg);
 
-	buf = kmalloc(SIZE_MAX, GFP_KERNEL);
+	buf = kmalloc(SIZE_MAX_HI6402DUMP, GFP_KERNEL);
 	if (NULL == buf) {
 		pr_info("buf NULL");
 		return simple_read_from_buffer(user_buf, count, ppos, "buf alloc fail\n", 15);
 	}
-	memset( buf, 0, SIZE_MAX);
+	memset( buf, 0, SIZE_MAX_HI6402DUMP);
 
 	for (i = BASE_ADDR_PAGE_CFG_DEBUG + 0x00; i <= BASE_ADDR_PAGE_CFG_DEBUG + 0xFC; i++)
 	{
@@ -492,11 +494,15 @@ static int hi6402_read(struct file *file, char __user *user_buf,
 				i = BASE_ADDR_PAGE_CFG_DEBUG + 0x4C;
 				continue;
 			}
+			len = strlen(buf);
+			snprintf(buf + len, SIZE_MAX_HI6402DUMP - len, "%#04x-%#04x\n", i, hi6402_dapm_reg_read(g_hi6402_codec, i - CODEC_BASE_ADDR));
+			continue;
 		}
-		snprintf(buf, SIZE_MAX, "%s%#04x-%#04x\n", buf, i, hi6402_reg_read(g_hi6402_codec, i));
+		len = strlen(buf);
+		snprintf(buf + len, SIZE_MAX_HI6402DUMP - len, "%#04x-%#04x\n", i, hi6402_reg_read(g_hi6402_codec, i));
 	}
-
-	snprintf(buf, SIZE_MAX, "%s\n", buf);
+	len = strlen(buf);
+	snprintf(buf + len, SIZE_MAX_HI6402DUMP - len, "\n");
 
 	for (i = BASE_ADDR_PAGE_DIG_DEBUG + 0x00; i <= BASE_ADDR_PAGE_DIG_DEBUG + 0x1FF; i++)
 	{
@@ -504,9 +510,11 @@ static int hi6402_read(struct file *file, char __user *user_buf,
 			i = BASE_ADDR_PAGE_DIG_DEBUG + 0x1FF;
 			continue;
 		}
-		snprintf(buf, SIZE_MAX, "%s%#04x-%#04x\n", buf, i, hi6402_reg_read(g_hi6402_codec, i));
+		len = strlen(buf);
+		snprintf(buf + len, SIZE_MAX_HI6402DUMP - len, "%#04x-%#04x\n", i, hi6402_dapm_reg_read(g_hi6402_codec, i - CODEC_BASE_ADDR));
 	}
-	snprintf(buf, SIZE_MAX, "%s\n", buf);
+	len = strlen(buf);
+	snprintf(buf + len, SIZE_MAX_HI6402DUMP - len, "\n");
 
 	value_ret = simple_read_from_buffer(user_buf, count, ppos, buf, strlen(buf));
 
@@ -1710,6 +1718,10 @@ static const struct snd_kcontrol_new hi6402_snd_controls[] = {
 		HI6402_S2_FS_CFG_L, HI6402_PORT_CLK_EN, 1, 0),
 	SOC_SINGLE("S2 IF FS CFG",
 		HI6402_S2_FS_CFG_L, HI6402_PORT_FS_CFG, 7, 0),
+	SOC_SINGLE("S2 DSP IF IN FS",
+		HI6402_S2_FS_CFG_H, HI6402_DSP_IF_IN_FS_CFG, 7, 0),
+	SOC_SINGLE("S2 DSP IF OUT FS",
+		HI6402_S2_FS_CFG_H, HI6402_DSP_IF_OUT_FS_CFG, 7, 0),
 	SOC_SINGLE("S2 IF FUNC MODE CFG",
 		HI6402_S2_PORT_CFG_L, HI6402_FUNC_MODE_BIT, 5, 0),
 	SOC_SINGLE("S2 MST SLV CFG",
@@ -3743,6 +3755,10 @@ EXPORT_SYMBOL(hi6402_soc_jack_report);
 
 static void hi6402_init_chip(struct snd_soc_codec *codec)
 {
+	struct hi6402_priv *priv = snd_soc_codec_get_drvdata(codec);
+
+	BUG_ON(NULL == priv);
+
 	/* S1-S4 I2S INIT */
 	hi6402_dapm_reg_write_bits(codec, 0x1000, 0x000000F0, 0x000000F0);
 	hi6402_dapm_reg_write(codec, 0x1228, 0x000000C4);
@@ -3800,8 +3816,13 @@ static void hi6402_init_chip(struct snd_soc_codec *codec)
 	
 	/* S4 PORT IN */
 	hi6402_dapm_reg_write(codec, HI6402_S4_PORT_CFG_L, 0x00);
-	hi6402_dapm_reg_write(codec, HI6402_S4_PORT_CFG_H, 0x40);
-	
+
+	if(priv->use_stereo_smartpa){
+		hi6402_dapm_reg_write(codec, HI6402_S4_PORT_CFG_H, 0x70);
+	} else {
+		hi6402_dapm_reg_write(codec, HI6402_S4_PORT_CFG_H, 0x40);
+	}
+
 	/* S4 FS INIT */
 	hi6402_dapm_reg_write_bits(codec, HI6402_S4_FS_CFG_L, 0x04, 0x07);
 	
@@ -4053,6 +4074,7 @@ static int hi6402_codec_probe(struct platform_device *pdev)
 		pr_err("%s : kzalloc failed\n", __FUNCTION__);
 		return -ENOMEM;
 	}
+	priv->use_stereo_smartpa = false;
 
 	match = of_match_device(hi6402_codec_match, dev);
 	if (!match) {
@@ -4083,6 +4105,19 @@ static int hi6402_codec_probe(struct platform_device *pdev)
 		temp = 0;
 	}
 	priv->mic3_source = temp;
+
+	if (!of_property_read_u32(node, "use_stereo_smartpa", &temp)){
+		pr_info("%s:get device info of use_stereo_smartpa =0x%x\n",__FUNCTION__ ,temp);
+		if(temp){
+			priv->use_stereo_smartpa = true;
+		} else {
+			priv->use_stereo_smartpa = false;
+		}
+	} else {
+		pr_info("%s:get device info of use_stereo_smartpa errr\n",__FUNCTION__);
+		priv->use_stereo_smartpa = false;
+	}
+
 	priv->codec_reg_ref_delay_wq =
 			create_singlethread_workqueue("codec_reg_ref_delay_wq");
 	if (!(priv->codec_reg_ref_delay_wq)) {

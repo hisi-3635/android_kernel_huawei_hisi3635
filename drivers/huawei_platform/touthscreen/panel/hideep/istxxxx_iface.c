@@ -27,6 +27,12 @@
 #define IST510E_RDIM _IOW(IST510E_IOC_MAGIC,  2, int)
 #define IST510E_IOC_MAXNR 3
 
+static bool hideep_dev_release_flag;
+
+#define IST_Z_CALIB2 0x1004
+#define IST_RELEASE_FILE_HANDLE 0x8000
+#define IST_Z_CALIB2_READ 0x70007000
+
 static int32_t hideep_get_vreg(struct ist510e *ts,u32 addr, u32 len)
 {
 	int32_t ret = 0;
@@ -127,6 +133,8 @@ static int hideep_iface_open(struct inode *inode, struct file *file)
 		return -ENODEV;
 	}
 	file->private_data = dev_info;
+	hideep_dev_release_flag = false;
+	dev_info->ts->z_flag_calib2 = false;
 	TS_LOG_INFO("hideep_iface_open end\n");
 
 	return 0;
@@ -134,7 +142,10 @@ static int hideep_iface_open(struct inode *inode, struct file *file)
 
 static int hideep_iface_release(struct inode *inode, struct file *file)
 {
-	TS_LOG_INFO("hideep_iface_release start\n");
+	TS_LOG_INFO("hideep_iface_release start, release_flag = %d\n", hideep_dev_release_flag);
+	if(!hideep_dev_release_flag)
+	    return -1;
+	hideep_dev_release_flag = false;
 	file->private_data = NULL;
 	return 0;
 }
@@ -167,7 +178,7 @@ static ssize_t hideep_iface_read(struct file *file, char __user *buf, size_t cou
 	uint8_t* rd_buffer = NULL;
 	u16* p_z;
 
-	TS_LOG_INFO("hideep_iface_read start count = %d, (*offset) = %d\n",count,*offset);
+	TS_LOG_DEBUG("hideep_iface_read start count = %d, (*offset) = %d(0x%x)\n",count,*offset,*offset);
 	if(!file->private_data){
 		TS_LOG_ERR("file->private_data is NULL\n");
 		return -EFAULT;
@@ -200,6 +211,14 @@ static ssize_t hideep_iface_read(struct file *file, char __user *buf, size_t cou
 		drv_info->im_size = count;
 		rd_buffer = drv_info->im_buff;
 		rd_len = count;
+	} else if((IST_Z_CALIB2==(*offset))&&(((drv_info->ts->z_calib_end-drv_info->ts->z_calib_start+1)*2+2)==count) && (drv_info->ts->z_flag_ready)){
+		TS_LOG_DEBUG("z_data read, index = %d\n, start = %d, end = %d", drv_info->ts->z_index, drv_info->ts->z_calib_start, drv_info->ts->z_calib_end);
+		rd_buffer = drv_info->vr_buff;
+		drv_info->ts->z_flag_calib2 = false;
+		drv_info->ts->z_flag_ready = false;
+		memcpy(rd_buffer+0, &drv_info->ts->z_index,2);
+		memcpy(rd_buffer+2, &drv_info->ts->z_data[drv_info->ts->z_calib_start],count-2);
+		rd_len = count;
 	}else{
 		TS_LOG_ERR("ist510e_read : undefined address\n");
 		return -EFAULT;
@@ -208,13 +227,11 @@ static ssize_t hideep_iface_read(struct file *file, char __user *buf, size_t cou
 		TS_LOG_ERR("hideep_iface_read error\n");
 		goto hideep_iface_read_err;
 	}
-	
 	if(g_ts_log_cfg>=1) {
 		for(i=0; i<rd_len; i++) {
 			TS_LOG_DEBUG("0x%02x\n", rd_buffer[i]);
 		}
 	}
-	
 	ret = copy_to_user(buf, rd_buffer, rd_len);
 	if (ret < 0){
 		TS_LOG_ERR("error : copy_to_user\n");
@@ -233,7 +250,7 @@ static ssize_t hideep_iface_write(struct file *file, const char __user *buf, siz
 	struct ist510e_debug_dev  *debug_dev = &drv_info->ts->debug_dev;
 	int wr_len = 0;
 
-	TS_LOG_INFO("hideep_iface_write count = %d, (*offset) = %d\n",count,*offset);
+	TS_LOG_DEBUG("hideep_iface_write count = %d, (*offset) = %d(0x%x)\n",count,*offset,*offset);
 	if(!file->private_data){
 		TS_LOG_ERR("file->private_data is NULL\n");
 		return -EFAULT;
@@ -310,17 +327,37 @@ static loff_t hideep_iface_llseek(struct file *file, loff_t off, int whence)
 			break;
 		/* set the raw mode or touch mode.*/
 		case 1  :
-			TS_LOG_INFO("set mode, off = 0x%08x\n",off);
+			TS_LOG_INFO("hideep_iface_llseek set mode, off = 0x%08x\n",off);
 			if(off == 0x1000){
 				drv_info->im_r_en = 1;
 				drv_info->vr_buff[0] = OPM_MOD_CAP;		// select frame mode...
 				hideep_set_vreg(drv_info->ts, 0x00, 1);
+				newpos=file->f_pos;
 			}else if(off == 0x240){
 				drv_info->im_r_en = 0;
 				drv_info->vr_buff[0] = OPM_TOUCH_A;
 				hideep_set_vreg(drv_info->ts, 0x00, 1);
+				newpos=file->f_pos;
+			}else if(off == IST_RELEASE_FILE_HANDLE){
+				TS_LOG_DEBUG("hideep_iface_llseek set release flag \n");
+				hideep_dev_release_flag = true;
+				newpos=file->f_pos;
+	        }else if((off & IST_Z_CALIB2_READ)==IST_Z_CALIB2_READ){
+				drv_info->ts->z_calib_start = off&0x0fff;
+				drv_info->ts->z_calib_end = (off>>16)&0x0fff;
+				if((drv_info->ts->z_calib_end -drv_info->ts->z_calib_start+1)>(1024*4)){
+					TS_LOG_ERR("hideep_iface_llseek set the frames is oversize\n");
+					return -EINVAL;
 			}
+				TS_LOG_DEBUG("hideep_iface_llseek set calib2 start = %d, end = %d\n", drv_info->ts->z_calib_start, drv_info->ts->z_calib_end);
+				drv_info->ts->z_flag_calib2 = true;
+				drv_info->ts->z_flag_ready = false;
+				drv_info->ts->z_index = 0;
+				memset(drv_info->ts->z_data, 0x0, 4096*2);
+				newpos=off;
+			}else{
 			newpos=file->f_pos;
+			}
 			break;
 		/* set the config of im/vr size.*/
 		case 2  :

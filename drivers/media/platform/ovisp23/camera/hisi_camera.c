@@ -83,6 +83,11 @@ static int camera_v4l2_g_ext_ctrls(struct file *file, void *fh, struct v4l2_ext_
 {
 	u32 cid_idx;
 	int ret	= 0;
+    if (NULL == arg) {
+        cam_err("camera_v4l2_g_ext_ctrls arg is NULL");
+        return -EINVAL;
+    }
+
 	struct v4l2_ext_controls *ext_ctls	= arg;
 	struct v4l2_ext_control *controls	= NULL;
 	cam_debug("enter %s", __func__);
@@ -94,6 +99,10 @@ static int camera_v4l2_g_ext_ctrls(struct file *file, void *fh, struct v4l2_ext_
 	}
 
 	controls = (struct v4l2_ext_control *) ext_ctls->controls;
+    if (NULL == controls) {
+        cam_err("camera_v4l2_g_ext_ctrls ext_ctls->controls is NULL");
+        return -EINVAL;
+    }
 
 	for (cid_idx = 0; cid_idx < ext_ctls->count; cid_idx++) {
 		switch (controls[cid_idx].id) {
@@ -129,6 +138,12 @@ static int camera_v4l2_s_ext_ctrls(struct file *file, void *fh, struct v4l2_ext_
 {
 	u32 cid_idx;
 	int ret	= 0;
+
+    if (NULL == arg) {
+        cam_err("camera_v4l2_s_ext_ctrls arg is NULL");
+        return -EINVAL;
+    }
+
 	struct v4l2_ext_controls *ext_ctls	= arg;
 	struct v4l2_ext_control *controls	= NULL;
 	cam_debug("enter %s", __func__);
@@ -140,6 +155,11 @@ static int camera_v4l2_s_ext_ctrls(struct file *file, void *fh, struct v4l2_ext_
 	}
 
 	controls = (struct v4l2_ext_control *) ext_ctls->controls;
+
+    if (NULL == controls) {
+        cam_err("camera_v4l2_s_ext_ctrls ext_ctls->controls is NULL");
+        return -EINVAL;
+    }
 
 	for (cid_idx = 0; cid_idx < ext_ctls->count; cid_idx++) {
 		switch (controls[cid_idx].id) {
@@ -219,6 +239,11 @@ ssize_t camera_v4l2_read(struct file *filp, char __user *buf, size_t size, loff_
 	cam_debug("enter %s\n", __func__);
 
 	k3_query_irq(&irq_buf);
+
+    if (size > sizeof(struct irq_reg_t)) {
+        cam_err("invalid size, limit it to irq_reg_t");
+        size = sizeof(struct irq_reg_t);
+    }
 
 	if (copy_to_user(buf, &irq_buf, size)) {
 		cam_err("failed to query irq info!");
@@ -368,19 +393,20 @@ int camera_init_v4l2(struct platform_device *pdev)
 	if (WARN_ON(rc < 0))
 		goto video_register_fail;
 
+#ifdef DEBUG_HISI_CAMERA
 	rc = device_create_file(&pvdev->vdev->dev, &camera_for_debug);
 	if (WARN_ON(rc < 0))
 	{
 		cam_err("camera_for_debug node create  failed %d\n", rc);
 		goto video_register_fail;
 	}
-
 	rc = device_create_file(&pvdev->vdev->dev, &camera_thermal_adjust_fps);
 	if (WARN_ON(rc < 0))
 	{
 		cam_err("camera_thermal_adjust_fps node create failed %d\n", rc);
 		goto video_register_fail;
 	}
+#endif
 
 #if defined(CONFIG_MEDIA_CONTROLLER)
 	pvdev->vdev->entity.name = video_device_node_name(pvdev->vdev);

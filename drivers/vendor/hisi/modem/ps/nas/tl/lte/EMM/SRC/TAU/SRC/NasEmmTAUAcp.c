@@ -1632,8 +1632,8 @@ VOS_VOID  NAS_EMM_TAU_CollisionDetachProc( VOS_VOID )
     /* 如果冲突的DETACH类型不是IMSI DEACH，则还需停止定时器，通知ESM进入DETACHED态 */
     if (MMC_LMM_MO_DET_CS_ONLY != NAS_EMM_GLO_AD_GetDetTypeMo())
     {
-        /*停所有EMM(MMC除外)定时器*/
-        NAS_LMM_StopAllEmmStateTimer();
+        /* 关闭当前EMM的除Del Forb Ta Proid之外的状态定时器, Del Forb Ta Proid只能在关机时停止*/
+        NAS_LMM_StopAllStateTimerExceptDelForbTaProidTimer();
 
         NAS_LMM_StopPtlTimer(TI_NAS_EMM_PTL_T3402);
 

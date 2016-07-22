@@ -188,6 +188,8 @@ enum SYS_NV_ID_ENUM
 
 /*   2335*/     en_NV_Item_LTE_OOS_2G_PREF_PLMN_SEL_CFG = 2335,
 
+/*  2354 */     en_NV_Item_ADS_WAKE_LOCK_CFG = 2354,                            /* ADS WAKELOCK ≈‰÷√ */
+
 /*   3000*/      en_NV_Item_ErrLog_CsHo_Len = 3000,
 
 /* 3002 */      en_NV_Item_GAS_UTRAN_TDD_DEFAULT_Q_RXLMIN = 3002,

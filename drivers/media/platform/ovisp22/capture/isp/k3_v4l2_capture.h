@@ -234,6 +234,11 @@ void k3_isp_lock_ddr_freq(int freq);
 void k3_isp_unlock_ddr_freq(void);
 void k3_isp_set_hw_3a_mode(int mode);
 
+void k3_isp_set_b_shutter_mode(int b_shutter_mode);
+int  k3_isp_set_b_shutter_long_ae(b_shutter_ae_iso_s* b_shutter_ae_iso);
+int  k3_isp_get_aec_state(void);
+int  k3_isp_set_b_shutter_hdr_ae(b_shutter_hdr_aeciso_s* b_shutter_hdr_aeciso);
+int  k3_isp_set_b_shutter_ecgc(b_shutter_ae_iso_s* b_shutter_tryae_ecgc);
 
 int camera_init(void);
 

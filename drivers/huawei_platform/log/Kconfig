@@ -2,6 +2,7 @@
 # Logger extend configuration
 #
 source "drivers/huawei_platform/log/goldeneye/Kconfig"
+source "drivers/huawei_platform/log/log_usertype/Kconfig"
 
 menu "Logger extend configuration"
 
@@ -35,6 +36,13 @@ config LOG_JANK
 	---help---
 	  Say Y here to enable log jank feature support. This allows
 	  user to send log to remote server by net.
+
+config HUAWEI_NFF
+	bool "huawei nff log support"
+	default n
+	---help---
+	  Say Y here to enable huawei nff log feature. This is used to
+	  record device reset events and other stability events.
 
 endif # if LOGGER_EXTEND
 

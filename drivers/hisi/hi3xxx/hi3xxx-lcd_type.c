@@ -53,6 +53,9 @@ int get_lcd_type(void)
 	} else if (0 == strncmp(lcd_type_buf, LCD_TYPE_STR_JDI_NT35695B_LCD, strlen(LCD_TYPE_STR_JDI_NT35695B_LCD))) {
 		pr_info("%s : found jdi_NT35695B lcd.\n", __func__);
 		return JDI_NT35695B_LCD;
+	} else  if (0 == strncmp(lcd_type_buf, LCD_TYPE_STR_TIANMA_OTM1906_LCD, strlen(LCD_TYPE_STR_TIANMA_OTM1906_LCD))) {
+		pr_info("%s : found tianma_OTM1906 lcd.\n", __func__);
+		return TIANMA_OTM1906_LCD;
 	} else {
 		pr_info("%s : there is no lcd.\n", __func__);
 		return UNKNOWN_LCD;

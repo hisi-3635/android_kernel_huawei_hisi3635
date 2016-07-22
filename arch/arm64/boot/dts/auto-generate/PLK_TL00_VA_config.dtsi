@@ -1,0 +1,25 @@
+
+/**
+ * Huawei Ltd.
+ * PhosphorV660
+ */
+
+
+/include/ "PLK_TL00H_VA_config.dtsi"
+
+/ {
+	hisi,boardid = <1 8 0 1 >;
+	hisi,boardname = "PLK_TL00_VA";
+	hisi,modem_id = <0x3EF50180>;
+
+	bcm_wifi {
+		wifi_nvram_name = "/vendor/firmware/nvram4339_hw_plk_tl00.txt";
+	};
+
+	antenna_fpga{
+		compatible = "antenna_fpga";
+		antenna_fpga,pre-image-filename = "PLK-TL00-VA.bin";
+		status = "ok";
+	};
+};
+

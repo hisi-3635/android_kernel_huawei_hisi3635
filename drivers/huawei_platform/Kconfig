@@ -24,9 +24,13 @@ source "drivers/huawei_platform/storage/Kconfig"
 source "drivers/huawei_platform/chipverification/Kconfig"
 source "drivers/huawei_platform/chr/Kconfig"
 source "drivers/huawei_platform/immersion/Kconfig"
+source "drivers/huawei_platform/tsif/Kconfig"
 endmenu
 
 source "drivers/huawei_platform/audio/Kconfig"
 source "drivers/huawei_platform/antenna_fpga/Kconfig"
 
 source "drivers/huawei_platform/power/Kconfig"
+
+source "drivers/huawei_platform/tuners/Kconfig"
+source "drivers/huawei_platform/antenna_board_match/Kconfig"

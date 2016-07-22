@@ -46,7 +46,7 @@
 HWLOG_REGIST();
 
 #if defined (CONFIG_HUAWEI_DSM)
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #endif
 
 #define WINDOW_LEN                   (10)
@@ -235,7 +235,7 @@ static int bq_bci_state_ops_set(const char *buffer,
 
 static int bq_bci_state_ops_get(char *buffer, const struct kernel_param *kp)
 {
-	sprintf(buffer, "%d", bq_bci_running);
+	snprintf(buffer, PAGE_SIZE, "%d", bq_bci_running);
 	return strlen(buffer);
 }
 
@@ -970,7 +970,7 @@ static ssize_t bq_bci_set_batt_error_mask(struct device *dev, struct device_attr
 
 static ssize_t bq_bci_show_batt_error_mask(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    return sprintf(buf, "0x%x\n", batt_error_mask);
+    return snprintf(buf, PAGE_SIZE, "0x%x\n", batt_error_mask);
 }
 
 static DEVICE_ATTR(batt_error_mask, (S_IWUSR | S_IRUGO),

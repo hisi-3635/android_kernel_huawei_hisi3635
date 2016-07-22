@@ -1906,7 +1906,6 @@ VOS_VOID NAS_GMM_SndAcpuOmChangePtmsi(VOS_VOID)
 }
 #endif
 
-
 VOS_VOID Gmm_SndAgentUsimUpdateFileReq(
                                    VOS_UINT16 usEfId                                /* 希望获取的文件ID                         */
                                    )
@@ -1987,6 +1986,13 @@ VOS_VOID Gmm_SndAgentUsimUpdateFileReq(
         Gmm_MemFree(pucPsKey);                                                  /* 释放内存                                 */
         break;
     case GMM_USIM_FILE_PS_LOC_INFO:                                             /* 更新PS Location information              */
+        /* IMSI Refresh, 不更新卡文件，直接返回 */
+        if (VOS_TRUE == NAS_MML_GetImsiRefreshStatus())
+        {
+            PS_LOG(WUEPS_PID_GMM, VOS_NULL, PS_PRINT_INFO, "Gmm_SndAgentUsimUpdateFileReq: IMSI Refresh, do not write EFPSLOCI file");
+            return;
+        }
+
         pucPsLocInfo = (VOS_UINT8 *)Gmm_MemMalloc(14);                              /* 申请空间                                 */
         if (VOS_NULL_PTR == pucPsLocInfo)
         {
@@ -2052,8 +2058,6 @@ VOS_VOID Gmm_SndAgentUsimUpdateFileReq(
 
     return;                                                                     /* 返回                                     */
 }
-
-
 VOS_VOID Gmm_SndAgentUsimAuthenticationReq(
                                        VOS_UINT32    ulLength,                       /* AUTN的长度                               */
                                        VOS_VOID     *pAutn                          /* 指向参数AUTN的的指针                     */

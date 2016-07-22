@@ -61,3 +61,4 @@ obj-$(CONFIG_HISI_BALONG_MODEM_HI3630)        += modem_hi3630/
 endif
 
 
+obj-$(CONFIG_HISI_PERFHUB) += perfhub/

@@ -688,8 +688,14 @@ int hisi_charger_type_notifier_unregister(struct notifier_block *nb)
 enum hisi_charger_type hisi_get_charger_type(void)
 {
 	struct otg_dev *dev_p = otg_dev_p;
-	enum hisi_charger_type type = dev_p->charger_type;
-	usb_dbg("charger type: %s\n", charger_type_string(type));
+        enum hisi_charger_type type = CHARGER_TYPE_NONE;
+
+        if(dev_p) {
+                type = dev_p->charger_type;
+        } else {
+                usb_err("Call hisi_get_charger_type, But Usb Driver Can't be init.\n");
+        }
+        usb_dbg("charger type: %s\n", charger_type_string(type));
 	return type;
 }
 

@@ -27,7 +27,7 @@
 #include <linux/mfd/hi6402_irq.h>
 #include <linux/hisi/hi6402_hifi_misc.h>
 #include <linux/irq.h>
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #ifndef NO_IRQ
 #define NO_IRQ 0
 #endif
@@ -2036,8 +2036,10 @@ static int hi6402_irq_probe(struct platform_device *pdev)
 		return 0;
 	}
 
+#ifdef ENABLE_HI6402_IRQ_DEBUG
 	if (!debugfs_create_file("rr", 0644, debug_dir, NULL, &hi6402_rr_fops))
 		pr_err("hi6402: Failed to create hi6402 rr debugfs file\n");
+#endif
 
 	/* register history */
 	if (!debugfs_create_file("rh", 0644, debug_dir, NULL, &hi6402_rh_fops))
@@ -2285,7 +2287,7 @@ static int hi6402_irq_resume(struct platform_device *pdev)
 	struct hi6402_irq *irq = dev_get_drvdata(dev);
 	int ret = 0;
 
-	bool dsp_running = false;
+    bool dsp_running = false;
 	BUG_ON(NULL == irq);
 
 	ret = codec_ssi_iomux_default(irq);

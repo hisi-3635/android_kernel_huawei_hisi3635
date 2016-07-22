@@ -185,6 +185,19 @@ static struct ion_heap_ops carveout_heap_ops = {
 	.buffer_zero = ion_carveout_heap_buffer_zero,
 };
 
+#if defined(CONFIG_ARCH_HI3630)
+static __kernel_ulong_t ion_carveout_heap_free_memory(struct ion_heap *heap)
+{
+	struct ion_carveout_heap *carveout_heap =
+			container_of(heap, struct ion_carveout_heap, heap);
+	__kernel_ulong_t free_memory = 0;
+
+	free_memory = (carveout_heap->size - ion_get_used_memory(heap)) / PAGE_SIZE;
+
+	return free_memory;
+}
+#endif
+
 struct ion_heap *ion_carveout_heap_create(struct ion_platform_heap *heap_data)
 {
 	struct ion_carveout_heap *carveout_heap;
@@ -220,6 +233,7 @@ struct ion_heap *ion_carveout_heap_create(struct ion_platform_heap *heap_data)
 #if defined(CONFIG_ARCH_HI3630)
 	if (ION_MISC_HEAP_ID != heap_data->id)
 		carveout_heap->heap.flags = ION_HEAP_FLAG_DEFER_FREE;
+	carveout_heap->heap.free_memory = ion_carveout_heap_free_memory;
 #else
 	carveout_heap->heap.flags = ION_HEAP_FLAG_DEFER_FREE;
 #endif

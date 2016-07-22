@@ -251,7 +251,7 @@ extern VOS_VOID    NAS_LMM_StopStateTimer(
                            NAS_LMM_STATE_TI_ENUM_UINT16             enStateTimerId );
 extern VOS_VOID    NAS_LMM_SuspendStateTimer(
                            NAS_LMM_STATE_TI_ENUM_UINT16             enStateTimerId );
-extern VOS_VOID    NAS_LMM_StopAllEmmStateTimer(VOS_VOID);
+extern VOS_VOID    NAS_LMM_StopAllStateTimerExceptDelForbTaProidTimer(VOS_VOID);
 extern VOS_VOID  NAS_LMM_StartInactivePtlTimer( NAS_LMM_PTL_TI_ENUM_UINT16  enPtlTimerId);
 extern VOS_VOID  NAS_LMM_StartInactiveStateTimer( NAS_LMM_STATE_TI_ENUM_UINT16 enStateTimerId );
 extern VOS_VOID  NAS_LMM_GetStateTimerLen( NAS_LMM_STATE_TI_ENUM_UINT16   enStateTimerId,
@@ -264,7 +264,7 @@ extern NAS_LMM_TIMER_RUN_STA_ENUM_UINT32  NAS_LMM_IsStaTimerRunning(
 extern NAS_LMM_TIMER_RUN_STA_ENUM_UINT32  NAS_LMM_IsPtlTimerRunning(
                                     NAS_LMM_PTL_TI_ENUM_UINT16 enPtlTimerId );
 extern VOS_VOID    NAS_LMM_StopAllEmmPtlTimer( VOS_VOID );
-extern VOS_VOID    NAS_LMM_StopAllLmmTimerExcept3412_3423( VOS_VOID );
+/* É¾³ý²»ÓÃº¯Êý */
 extern VOS_VOID    NAS_LMM_SuspendAllPtlTimerExpT3412( VOS_VOID );
 extern VOS_VOID    NAS_LMM_ResumeAllPtlTimer( VOS_VOID );
 extern VOS_VOID    NAS_LMM_SuspendAllPtlTimer( VOS_VOID );

@@ -1192,6 +1192,9 @@ VOS_VOID NAS_EMM_ProcLocalStop( VOS_VOID )
 
     VOS_UINT32                          ulSendResult;
     NAS_EMM_FSM_STATE_STRU              EmmState;
+    /* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,Begin */
+    VOS_UINT8                           ucImsiRefreshFlag;
+    /* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,Begin */
     NAS_EMM_PLMN_INIT_EMMSTATE(EmmState);
 
     /*向ESM发送EMM_ESM_STATUS_IND消息*/
@@ -1213,7 +1216,15 @@ VOS_VOID NAS_EMM_ProcLocalStop( VOS_VOID )
         NAS_EMM_SecuDeregClrSecuCntxt();
 
         /* 写入EMM NV相关信息 */
-        NAS_EMM_WriteNvMmInfo();
+        /* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,Begin */
+        ucImsiRefreshFlag = NAS_MML_GetImsiRefreshStatus();
+        NAS_LMM_SndOmImsiRefreshStatus(ucImsiRefreshFlag);
+        /* IMSI REFRESH 情况下不写卡 */
+        if(VOS_FALSE == ucImsiRefreshFlag)
+        {
+            NAS_EMM_WriteNvMmInfo();
+        }
+        /* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,End */
     }
 
     /* 向MMC发送MMC_EMM_STOP_REQ消息 */
@@ -1235,6 +1246,8 @@ VOS_VOID NAS_EMM_ProcLocalStop( VOS_VOID )
     NAS_LMM_StaTransProc(EmmState);
     return;
 }
+
+
 VOS_UINT32    NAS_EMM_MsNotNullNotRegMsgAppStopReq(
                     VOS_UINT32                              ulMsgId,
                     VOS_VOID                                *pMsg )
@@ -1714,8 +1727,8 @@ VOS_UINT32    NAS_EMM_MsNotNullSsAnyStateMsgMmcCoverageLostInd(
     /*清除BAR标识*/
     NAS_EMM_ClearBarResouce();
 
-    /* 关闭当前EMM的状态定时器和协议定时器 */
-    NAS_LMM_StopAllEmmStateTimer();
+    /* 关闭当前EMM的除Del Forb Ta Proid之外的状态定时器, Del Forb Ta Proid只能在关机时停止*/
+    NAS_LMM_StopAllStateTimerExceptDelForbTaProidTimer();
 
     /* 如果当前CSFB延时定时器在运行，说明在REG-NORMAL态下释放过程中收到CSFB，
        但是在释放后搜小区出现丢网，此时应触发去GU搜网继续CSFB */
@@ -1797,8 +1810,8 @@ VOS_UINT32 NAS_EMM_MsRegSsRegAttemptUpdateMmMsgMmcCoverageLostInd
     /*清除BAR标识*/
     NAS_EMM_ClearBarResouce();
 
-    /* 关闭当前EMM的状态定时器和协议定时器 */
-    NAS_LMM_StopAllEmmStateTimer();
+    /* 关闭当前EMM的除Del Forb Ta Proid之外的状态定时器, Del Forb Ta Proid只能在关机时停止*/
+    NAS_LMM_StopAllStateTimerExceptDelForbTaProidTimer();
 
     /* 记录UPDATE_MM标识 */
     /*NAS_LMM_SetEmmInfoUpdateMmFlag(NAS_EMM_UPDATE_MM_FLAG_VALID);*/
@@ -2608,6 +2621,9 @@ VOS_UINT32  NAS_EMM_MsNullSsWaitSwitchOffProcMsgRrcRelInd(VOS_VOID)
 {
     VOS_UINT32                          ulSendResult;
     NAS_EMM_FSM_STATE_STRU              EmmState;
+    /* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,Begin */
+    VOS_UINT8                           ucImsiRefreshFlag;
+    /* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,Begin */
 
     NAS_EMM_PLMN_INIT_EMMSTATE(         EmmState);
 
@@ -2638,7 +2654,15 @@ VOS_UINT32  NAS_EMM_MsNullSsWaitSwitchOffProcMsgRrcRelInd(VOS_VOID)
     NAS_EMM_SecuDeregClrSecuCntxt();
 
     /* 写入EMM NV相关信息 */
-    NAS_EMM_WriteNvMmInfo();
+    /* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,Begin */
+    ucImsiRefreshFlag = NAS_MML_GetImsiRefreshStatus();
+    NAS_LMM_SndOmImsiRefreshStatus(ucImsiRefreshFlag);
+    /* IMSI REFRESH 情况下不写卡 */
+    if(VOS_FALSE == ucImsiRefreshFlag)
+    {
+        NAS_EMM_WriteNvMmInfo();
+    }
+    /* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,End */
 
     /* 启动TI_NAS_EMM_WAIT_MMC_STOP_CNF_TIMER */
     NAS_LMM_StartStateTimer(             TI_NAS_EMM_WAIT_MMC_STOP_CNF_TIMER);
@@ -2651,6 +2675,9 @@ VOS_UINT32  NAS_EMM_MsNullSsWaitSwitchOffProcMsgRrcRelInd(VOS_VOID)
 
     return(                             NAS_LMM_MSG_HANDLED);
 }
+
+
+
 VOS_UINT32  NAS_EMM_MsNullSsWaitSwitchOffMsgRrcErrInd(
     VOS_UINT32                                              ulMsgId,
     VOS_VOID                                                *pMsg )

@@ -480,6 +480,27 @@
 			interrupts = <11 0>, <12 0>;
 			interrupt-names = "connect", "disconnect";
 		};
+
+		/* pmu led flash */
+		huawei,pmu_led {
+			compatible = "huawei,pmu_led";
+			huawei,flash-name = "pmu_led";
+			huawei,flash-index = <1>;
+			huawei,flash-type = <0>;
+			huawei,slave-address = <0x0>;
+
+			huawei,flash_led_num = <9>;
+			huawei,torch_led_num = <2>;
+			huawei,flash_led = <0x1 0x2 0x3 0x4 0x5 0x6 0x7 0x8 0x9>;
+			huawei,torch_led = <0x0 0x3>;
+
+			huawei,led_ctrl_flash = <0x13 0x00 0x75 0x0a 0xd0 0xc8 0x1b>;
+			huawei,led_ctrl_torch = <0x13 0x00 0x75 0x0a 0xd0 0x48 0x1b>;
+
+			huawei,flash-position = "front";
+
+			status = "disabled";
+		};
 	}; /* end of pmic */
 	/*hi3630_regulator_operation_step = <1:mtcmos,2:softrest,3:iso,4:topcssys,5:clock,6:sysctrl,7:nocidlemode,8:reclock>*/
 	/*hisilicon,hisi-*-ctrl = <offset value base_addr>;base_addr 0:pmic;1:dss;2:vpp_qos;3:vdec_qos;4:venc_qos;5:dss_qos;6:isp_qos;*/

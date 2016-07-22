@@ -53,6 +53,13 @@ struct i2c_data{
 	uint8_t data[MAX_I2C_DATA_LENGTH];
 };
 
+struct t_sensor_get_data
+{
+	atomic_t reading;
+	struct completion complete;
+	struct sensor_data data;
+};
+
 struct sensor_status
 {
 	int status[TAG_SENSOR_END];//record whether sensor is in activate status, already opened and setdelay
@@ -61,6 +68,8 @@ struct sensor_status
 	char gyro_selfTest_result[5];
 	char mag_selfTest_result[5];
 	char accel_selfTest_result[5];
+	char selftest_result[TAG_SENSOR_END][5];
+	struct t_sensor_get_data get_data[TAG_SENSOR_END];
 };
 struct g_sensor_platform_data{
     uint8_t i2c_address;
@@ -172,7 +181,15 @@ struct cap_prox_platform_data{
 	uint8_t cap_prox_extend_data[8];
 };
 
+extern struct sensor_status sensor_status;
 extern  bool sensor_info_isensor_version;
+extern  int motion_rotate_mask;
+#define MOTION_ROTATION_PORTRIAT 0
+#define MOTION_ROTATION_LAND_LEFT 1
+#define MOTION_ROTATION_PRITRIAT_REVERSE 2
+#define MOTION_ROTATION_LAND_RIGHT 3
+#define MOTION_ROTATION_LAND_NONE -1
+
 
 int is_sensor_active(void);
 int is_backup_sensor_active(void);
@@ -186,4 +203,9 @@ extern void disable_sensors_when_reboot(void);
 extern void enable_sensors_when_recovery_iom3(void);
 extern void reset_calibrate_when_recovery_iom3(void);
 extern sys_status_t iom3_sr_status;
+extern const char *get_sensor_info_by_tag(int tag);
+extern ssize_t show_sensor_read_airpress_common(struct device *dev, struct device_attribute *attr, char *buf);
+extern ssize_t show_airpress_set_calidata_common(struct device *dev, struct device_attribute *attr, char *buf);
+extern ssize_t sensors_calibrate_show(int tag, struct device *dev, struct device_attribute *attr, char *buf);
+extern ssize_t sensors_calibrate_store(int tag, struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
 #endif	/* __SENSORS_H__ */

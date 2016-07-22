@@ -4541,9 +4541,7 @@ VOS_UINT32 TAF_CALL_IsCallRedialCause_RrConnFail(
     NAS_CC_CAUSE_VALUE_ENUM_U32         enCause
 )
 {
-    if ((NAS_CC_CAUSE_RR_CONN_FAIL_IMMEDIATE_ASSIGN_REJECT          == enCause)
-     || (NAS_CC_CAUSE_RR_CONN_FAIL_ACCESS_BAR                       == enCause)
-     || (NAS_CC_CAUSE_RR_CONN_FAIL_T3122_RUNING                     == enCause)
+    if ((NAS_CC_CAUSE_RR_CONN_FAIL_ACCESS_BAR                       == enCause)
      || (NAS_CC_CAUSE_RR_CONN_FAIL_CURRENT_PROTOCOL_NOT_SUPPORT     == enCause)
      || (NAS_CC_CAUSE_RR_CONN_FAIL_INVALID_UE_STATE                 == enCause)
      || (NAS_CC_CAUSE_RR_CONN_FAIL_CELL_BARRED                      == enCause))
@@ -4555,8 +4553,6 @@ VOS_UINT32 TAF_CALL_IsCallRedialCause_RrConnFail(
         return VOS_TRUE;
     }
 }
-
-
 VOS_UINT32 TAF_CALL_IsCallRedialCause_RrRel(
     NAS_CC_CAUSE_VALUE_ENUM_U32         enCause
 )
