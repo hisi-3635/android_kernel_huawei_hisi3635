@@ -22,6 +22,7 @@ static int g_scf1_coef_load_refcount;
 static int g_scf2_coef_load_refcount;
 
 uint32_t g_frame_count = 0;
+int32_t g_enable_te_debug = 0;
 
 extern bool g_enable_extra_data;
 
@@ -521,19 +522,29 @@ int hisi_dss_check_layer_par(struct hisi_fb_data_type *hisifd, dss_layer_t *laye
 	BUG_ON(hisifd == NULL);
 	BUG_ON(layer == NULL);
 
+	if ((layer->layer_idx < 0) || (layer->layer_idx >= MAX_DSS_SRC_NUM)) {
+		HISI_FB_ERR("fb%d, layer_idx=%d is invalid!", hisifd->index, layer->layer_idx);
+		return -EINVAL;
+	}
+
+	if ((layer->chn_idx < 0) || (layer->chn_idx >= WBE0_CHN0)) {
+		HISI_FB_ERR("fb%d, rchn_idx=%d is invalid!", hisifd->index, layer->chn_idx);
+		return -EINVAL;
+	}
+
 	if (layer->need_cap & (CAP_BASE | CAP_DIM))
 		return 0;
 
-	if (layer->src_rect.x < 0 || layer->src_rect.y < 0 ||
-		layer->src_rect.w <= 0 || layer->src_rect.h <= 0) {
+	if ((layer->src_rect.x < 0) || (layer->src_rect.y < 0) ||
+		(layer->src_rect.w <= 0) || (layer->src_rect.h <= 0)) {
 		HISI_FB_ERR("src_rect(%d, %d, %d, %d) is out of range!\n",
 			layer->src_rect.x, layer->src_rect.y,
 			layer->src_rect.w, layer->src_rect.h);
 		return -EINVAL;
 	}
 
-	if (layer->dst_rect.x < 0 || layer->dst_rect.y < 0 ||
-		layer->dst_rect.w <= 0 || layer->dst_rect.h <= 0) {
+	if ((layer->dst_rect.x < 0) || (layer->dst_rect.y < 0) ||
+		(layer->dst_rect.w <= 0) || (layer->dst_rect.h <= 0)) {
 		HISI_FB_ERR("dst_rect(%d, %d, %d, %d) is out of range!\n",
 			layer->dst_rect.x, layer->dst_rect.y,
 			layer->dst_rect.w, layer->dst_rect.h);
@@ -543,6 +554,77 @@ int hisi_dss_check_layer_par(struct hisi_fb_data_type *hisifd, dss_layer_t *laye
 	return 0;
 }
 
+int hisi_dss_check_userdata(struct hisi_fb_data_type *hisifd, dss_overlay_t *pov_req)
+{
+	dss_wb_layer_t *wb_layer = NULL;
+
+	if (hisifd == NULL) {
+		HISI_FB_ERR("invalid hisifd!");
+		return -EINVAL;
+	}
+
+	if (pov_req == NULL) {
+		HISI_FB_ERR("fb%d, invalid pov_req!", hisifd->index);
+		return -EINVAL;
+	}
+
+	if ((pov_req->layer_nums <= 0) || (pov_req->layer_nums > MAX_DSS_SRC_NUM)) {
+		HISI_FB_ERR("fb%d, layer_nums=%d is invalid!", hisifd->index, pov_req->layer_nums);
+		return -EINVAL;
+	}
+
+	if (hisifd->index == AUXILIARY_PANEL_IDX) {
+		wb_layer = &(pov_req->wb_layer_info);
+
+		if ((wb_layer->chn_idx < WBE1_CHN0) || (wb_layer->chn_idx > WBE1_CHN1)) {
+			HISI_FB_ERR("fb%d, wchn_idx=%d is invalid!", hisifd->index, wb_layer->chn_idx);
+			return -EINVAL;
+		}
+
+		if ((wb_layer->src_rect.x < 0) || (wb_layer->src_rect.y < 0) ||
+			(wb_layer->src_rect.w <= 0) || (wb_layer->src_rect.h <= 0)) {
+			HISI_FB_ERR("src_rect(%d, %d, %d, %d) is out of range!\n",
+				wb_layer->src_rect.x, wb_layer->src_rect.y,
+				wb_layer->src_rect.w, wb_layer->src_rect.h);
+			return -EINVAL;
+		}
+
+		if ((wb_layer->dst_rect.x < 0) || (wb_layer->dst_rect.y < 0) ||
+			(wb_layer->dst_rect.w <= 0) || (wb_layer->dst_rect.h <= 0)) {
+			HISI_FB_ERR("dst_rect(%d, %d, %d, %d) is out of range!\n",
+				wb_layer->dst_rect.x, wb_layer->dst_rect.y,
+				wb_layer->dst_rect.w, wb_layer->dst_rect.h);
+			return -EINVAL;
+		}
+	} else  {
+		wb_layer = &(pov_req->wb_layer_info);
+
+		if (pov_req->wb_enable) {
+			if ((wb_layer->chn_idx < WBE0_CHN0) || (wb_layer->chn_idx > WBE0_CHN1)) {
+				HISI_FB_ERR("fb%d, wchn_idx=%d is invalid!", hisifd->index, wb_layer->chn_idx);
+				return -EINVAL;
+			}
+
+			if ((wb_layer->src_rect.x < 0) || (wb_layer->src_rect.y < 0) ||
+				(wb_layer->src_rect.w <= 0) || (wb_layer->src_rect.h <= 0)) {
+				HISI_FB_ERR("src_rect(%d, %d, %d, %d) is out of range!\n",
+					wb_layer->src_rect.x, wb_layer->src_rect.y,
+					wb_layer->src_rect.w, wb_layer->src_rect.h);
+				return -EINVAL;
+			}
+
+			if ((wb_layer->dst_rect.x < 0) || (wb_layer->dst_rect.y < 0) ||
+				(wb_layer->dst_rect.w <= 0) || (wb_layer->dst_rect.h <= 0)) {
+				HISI_FB_ERR("dst_rect(%d, %d, %d, %d) is out of range!\n",
+					wb_layer->dst_rect.x, wb_layer->dst_rect.y,
+					wb_layer->dst_rect.w, wb_layer->dst_rect.h);
+				return -EINVAL;
+			}
+		}
+	}
+
+	return 0;
+}
 
 /*******************************************************************************
 **
@@ -8046,6 +8128,7 @@ int hisi_overlay_ioctl_handler(struct hisi_fb_data_type *hisifd,
 			}
 		}
 		break;
+#if 0
 	case HISIFB_OV_ONLINE_WB:
 		if (hisifd->ov_online_wb) {
 			down(&hisifd->blank_sem);
@@ -8056,7 +8139,7 @@ int hisi_overlay_ioctl_handler(struct hisi_fb_data_type *hisifd,
 			up(&hisifd->blank_sem);
 		}
 		break;
-
+#endif
 	case HISIFB_OV_ONLINE_WB_CTRL:
 		if (hisifd->ov_online_wb_ctrl) {
 			down(&hisifd->blank_sem);
@@ -8067,7 +8150,7 @@ int hisi_overlay_ioctl_handler(struct hisi_fb_data_type *hisifd,
 			up(&hisifd->blank_sem);
 		}
 		break;
-
+#if 0
 	case HISIFB_OV_TEST:
 		{
 			ret = hisi_overlay_test(hisifd, argp);
@@ -8076,7 +8159,7 @@ int hisi_overlay_ioctl_handler(struct hisi_fb_data_type *hisifd,
 			}
 		}
 		break;
-
+#endif
 	case HISIFB_PURE_LAYER_CHECK:
 		{
 			ret = hisi_dss_check_pure_layer(hisifd, argp);
@@ -8260,6 +8343,8 @@ int hisi_vactive0_start_config(struct hisi_fb_data_type *hisifd)
 
 					hisifd->ldi_data_gate_en = 0;
 
+					g_enable_te_debug = 1;
+
 				#if defined (CONFIG_HUAWEI_DSM)
 					outp32(hisifd->dss_base + DSS_MIPI_DSI0_OFFSET + MIPIDSI_GEN_HDR_OFFSET, 0x0A06);
 					if (!mipi_dsi_read(&read_value, hisifd->dss_base + DSS_MIPI_DSI0_OFFSET))
@@ -8321,6 +8406,9 @@ int hisi_vactive0_start_config(struct hisi_fb_data_type *hisifd)
 
 		HISI_FB_ERR("fb%d, isr_s1_mask=0x%x, isr_s2_mask=0x%x, isr_s1=0x%x, isr_s2=0x%x.\n",
 			hisifd->index, isr_s1_mask, isr_s2_mask, isr_s1, isr_s2);
+		HISI_FB_ERR("fb%d, dss_ch_status = 0x%x, dfs_status = 0x%x, dphy_status = 0x%x.\n",
+			hisifd->index, inp32(hisifd->dss_base + DSS_GLB_DSS_CH_STATUS),
+			inp32(hisifd->dss_base + DFS_STATUS), inp32(hisifd->dss_base + DSS_MIPI_DSI0_OFFSET + MIPIDSI_PHY_STATUS_OFFSET));
 
 	#if defined (CONFIG_HUAWEI_DSM)
 		if (s_vactive0_timeout_count > VACTIVE0_TIMEOUT_EXPIRE_COUNT) {

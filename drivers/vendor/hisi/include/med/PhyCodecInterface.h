@@ -66,6 +66,7 @@ enum DSP_VOICE_MSG_ID_ENUM
     ID_VOICE_VOICE_PLAY_IND                           = 0xDD05,                   /* UMTS 下行语音播放,在6ms定时器中断中发送 */               /* _H2ASN_MsgChoice GPHY_VOICE_PLAY_IND_STRU */
     ID_VOICE_VOICE_UPDATE_REQ                         = 0xDD07,                   /* 声码器类型变化时,重新配置上下行处理 */
     ID_VOICE_VOICE_DEC_REQ                            = 0xDD08,                   /* G/U解码消息,在下行DMA搬运完成时发送 */
+    ID_VOICE_VOICE_RX_PROC_REQ                        = 0xDD09,                   /* VOLTE下行开始处理消息 */
 
     /*lwx26324 add @20140327 for external modem，begin*/
     ID_VOICEPP_VOICEPP_MICIN_IND                      = 0xDD10,                 /* micin loop dma start msg */

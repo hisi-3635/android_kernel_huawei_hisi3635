@@ -1,0 +1,7 @@
+kernel/drivers/hisi/modem_hi3xxx/drv/nvim/nv_emmc.ko
+kernel/drivers/hisi/modem_hi3xxx/drv/nvim/NVIM_ResumeId.ko
+kernel/drivers/hisi/modem_hi3xxx/drv/nvim/nv_ctrl.ko
+kernel/drivers/hisi/modem_hi3xxx/drv/nvim/nv_comm.ko
+kernel/drivers/hisi/modem_hi3xxx/drv/nvim/nv_base.ko
+kernel/drivers/hisi/modem_hi3xxx/drv/nvim/nv_xml_dec.ko
+kernel/drivers/hisi/modem_hi3xxx/drv/nvim/nvchar.ko

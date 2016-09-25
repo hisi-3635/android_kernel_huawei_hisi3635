@@ -6,6 +6,7 @@
 #include "AtCmdFtmProc.h"
 #include "ATCmdProc.h"
 #include "AtMtaInterface.h"
+#include "dms_core.h"
 
 #if (FEATURE_ON == FEATURE_LTE)
 #include "msp_diag.h"
@@ -796,6 +797,168 @@ VOS_UINT32 AT_RcvMtaSetGFreqLockCnf(
 
     At_FormatResultData(ucIndex, ulResult);
     return VOS_OK;
+}
+
+
+
+/*****************************************************************************
+ 函 数 名  : AT_SetLogEnablePara
+ 功能描述  : ^LOGENABLE
+ 输入参数  : ucIndex - 端口索引
+ 输出参数  : 无
+ 返 回 值  : AT_XXX
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年10月21日
+    作    者   : z00301431
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT32 AT_SetLogEnablePara(VOS_UINT8 ucIndex)
+{
+    /* 参数检查 */
+    if (AT_CMD_OPT_SET_PARA_CMD != g_stATParseCmd.ucCmdOptType)
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    /* 参数个数检查 */
+    if (1 != gucAtParaIndex)
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    if(0 == gastAtParaList[0].usParaLen)
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    /* AT设置1表示允许抓取modemlog，设置0表示不允许抓取modemlog */
+    if (1 == gastAtParaList[0].ulParaValue)
+    {
+        /* 设置为FALSE表示允许抓MODEM LOG */
+        DMS_SET_PRINT_MODEM_LOG_TYPE(VOS_FALSE);
+    }
+    else
+    {
+        /* 设置为TRUE表示不允许抓MODEM LOG */
+        DMS_SET_PRINT_MODEM_LOG_TYPE(VOS_TRUE);
+    }
+
+    return AT_OK;
+}
+
+/*****************************************************************************
+ 函 数 名  : AT_QryLogEnable
+ 功能描述  : ^LOGENABLE
+ 输入参数  : ucIndex - 端口索引
+ 输出参数  : 无
+ 返 回 值  : AT_XXX
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年10月21日
+    作    者   : z00301431
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT32 AT_QryLogEnable(VOS_UINT8 ucIndex)
+{
+    VOS_UINT16                          usLength;
+    VOS_UINT32                          ulEnableFlag;
+
+    /* 参数检查 */
+    if (AT_CMD_OPT_READ_CMD != g_stATParseCmd.ucCmdOptType)
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    usLength                            = 0;
+
+    if (VOS_FALSE == DMS_GET_PRINT_MODEM_LOG_TYPE())
+    {
+        /* DMS当前允许抓MODEM LOG，返回enable为TRUE */
+        ulEnableFlag = VOS_TRUE;
+    }
+    else
+    {
+        /* DMS当前不允许抓MODEM LOG，返回enable为FALSE */
+        ulEnableFlag = VOS_FALSE;
+    }
+
+    usLength  = (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
+                                       (VOS_CHAR*)pgucAtSndCodeAddr,
+                                       (VOS_CHAR*)pgucAtSndCodeAddr,
+                                       "%s: ",
+                                       g_stParseContext[ucIndex].pstCmdElement->pszCmdName);
+
+    usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
+                                       (VOS_CHAR*)pgucAtSndCodeAddr,
+                                       (VOS_CHAR*)pgucAtSndCodeAddr + usLength,
+                                       "%d",
+                                       ulEnableFlag);
+
+    gstAtSendData.usBufLen = usLength;
+
+    return AT_OK;
+}
+
+
+/*****************************************************************************
+ 函 数 名  : AT_SetActPdpStubPara
+ 功能描述  : ^ACTPDPSTUB
+ 输入参数  : ucIndex - 端口索引
+ 输出参数  : 无
+ 返 回 值  : AT_XXX
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年11月04日
+    作    者   : z00301431
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT32 AT_SetActPdpStubPara(VOS_UINT8 ucIndex)
+{
+    VOS_UINT8                           ucFlag;
+
+    /* 参数检查 */
+    if (AT_CMD_OPT_SET_PARA_CMD != g_stATParseCmd.ucCmdOptType)
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    /* 参数个数检查 */
+    if (2 != gucAtParaIndex)
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    if((0 == gastAtParaList[0].usParaLen)
+    || (0 == gastAtParaList[1].usParaLen))
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    /* 获取设置的标志 */
+    ucFlag = (VOS_UINT8)gastAtParaList[1].ulParaValue;
+
+    /* 根据MODEM ID调用不同的桩函数 */
+    if (0 == gastAtParaList[0].ulParaValue)
+    {
+        AT_SetPcuiPsCallFlag(ucFlag, AT_CLIENT_TAB_APP_INDEX);
+    }
+    else if (1 == gastAtParaList[0].ulParaValue)
+    {
+        AT_SetCtrlPsCallFlag(ucFlag, AT_CLIENT_TAB_APP_INDEX);
+    }
+    else
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    return AT_OK;
 }
 
 

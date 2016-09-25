@@ -30,14 +30,16 @@
 /include/ "hi3635_vdec.dtsi"
 /include/ "hi3635_vpp.dtsi"
 /include/ "hisi_sim_hotplug.dtsi"
+/include/ "huawei_connectivity.dtsi"
 /include/ "huawei_wifi.dtsi"
 /include/ "huawei_bluetooth.dtsi"
 /include/ "huawei_gps.dtsi"
 /include/ "huawei-sensor.dtsi"
 /include/ "bq_bci_battery.dtsi"
 /include/ "huawei_charger.dtsi"
+/include/ "scudatl_2620_10k.dtsi"
+/include/ "sunwodalg_2620_68k.dtsi"
 /include/ "hisi_battery.dtsi"
-/include/ "batterys.dtsi"
 /include/ "hisi_coul_drv_test.dtsi"
 /include/ "CARRERA_TUGL_V1_modem_pin.dtsi"
 /include/ "huawei_touchscreen.dtsi"
@@ -61,13 +63,12 @@
 	hisi,boardid = <1 4 8 0 >;
 	hisi,boardname = "CARRERA_TUGL_V1";
 	hisi,modem_id = <0x3EF5B000>;
-	hisi,platform_num = <3>;
+	hisi,platform_num = <2>;
 	hisi,provider0 = "HUAWEI_K3";
-	hisi,sub_platform_info0 = "Kirin930";
+	hisi,sub_platform_info0 = "Kirin935";
 	hisi,provider1 = "BALONG";
-	hisi,sub_platform_info1 = "V7R2";
-	hisi,provider2 = "VIA";
-	hisi,sub_platform_info2 = "cpb82d";
+	hisi,sub_platform_info1 = "Kirin935";
+
 	hisi,config_profile = "high";
 
 	target-cpu {
@@ -439,7 +440,7 @@
 			};
 
 			fingerprint: fingerprint@2 {
-				compatible = "fpc,fpc1020";
+				compatible = "fpc,fingerprint";
 				spi-max-frequency = <5000000>;
 				reg = <2>;
 				pl022,com-mode = <2>;
@@ -451,11 +452,11 @@
 				pl022,duplex = <0>;
 				pl022,slave-tx-disable = <0>;
 
-				fpc1020,reset_gpio = <157>;
-				fpc1020,cs_gpio = <68>;
-				fpc1020,irq_gpio = <201>;
+				fingerprint,reset_gpio = <157>;
+				fingerprint,cs_gpio = <68>;
+				fingerprint,irq_gpio = <201>;
+				fingerprint,moduleid_gpio = <17>;
 
-				fpc1020,moduleid_gpio = <17>;
 			};
 
 			spi_dev3: spi_dev3@3 {
@@ -1101,8 +1102,8 @@
 			hisilicon,hs_det = <0>;
 			hisilicon,hs_3_pole_min_voltage = <0>;
 			hisilicon,hs_3_pole_max_voltage = <8>;
-			hisilicon,hs_4_pole_min_voltage = <1350>;
-			hisilicon,hs_4_pole_max_voltage = <2565>;
+			hisilicon,hs_4_pole_min_voltage = <900>;
+			hisilicon,hs_4_pole_max_voltage = <2650>;
 			hisilicon,btn_play_min_voltage = <0>;
 			hisilicon,btn_play_max_voltage = <100>;
 			hisilicon,btn_volume_up_min_voltage = <130>;
@@ -1281,6 +1282,12 @@
 
 	anc_hs: anc_hs@0{
 		gpios = <&gpio4 2 0>, <&gpio31 6 0>;
+		anc_hs_btn_hook_min_voltage = <150>;
+		anc_hs_btn_hook_max_voltage = <190>;
+		anc_hs_btn_volume_up_min_voltage = <194>;
+		anc_hs_btn_volume_up_max_voltage = <240>;
+		anc_hs_btn_volume_down_min_voltage = <245>;
+		anc_hs_btn_volume_down_max_voltage = <304>;
 		//0 means soc gpios, 1 means codec gpios
 		gpio_type = <1>;
 		status = "ok";
@@ -1374,6 +1381,31 @@
 				status = "ok";
 			};
 			als2{
+				compatible="huawei,avago_apds9251";
+				bus_number=<0>;
+				reg=<0x52>;
+				chip_id_register=<0x06>;
+				chip_id_value=<0xB2>;
+				file_id=<0x1e>;
+				sensor_list_info_id=<0xd>;
+				sensor_type="als";
+				sensor-vdd-supply = <&ldo24>;
+				poll_interval=<120>;
+				threshold_value=<1>;
+				GA1=<0>;
+				GA2=<0>;
+				GA3=<0>;
+				tp_color =<0>;
+				again=<5>;
+				gpio_int1=<&gpio25 6 0>;
+				atime=<0>;
+				init_time = <150>;
+				als_phone_type = <10>;
+				als_phone_version = <12>;
+				als_extend_data = <7768 4388 2627 1971 5066 2315 1106 687 1032 1605 1904 2864>;
+				status = "ok";
+			};
+			als3{
 				compatible="huawei,mura-lt_1pa01";
 				bus_number=<0>;
 				reg=<0x44>;
@@ -1412,14 +1444,14 @@
 				min_proximity_value=<220>;
 				pwindows_value=<8>;
 				pwave_value=<12>;
-				threshold_value=<30>;
+				threshold_value=<25>;
 				ps_pulse_count=<0>;
 				persistent=<1>;
 				rdata_under_sun=<5500>;
 				gpio_int1=<&gpio25 6 0>;
 				ptime=<0xFF>;
 				p_on = <2>;
-				poll_interval = <100>;
+				poll_interval = <30>;
 				init_time = <50>;
 				status = "ok";
 			};

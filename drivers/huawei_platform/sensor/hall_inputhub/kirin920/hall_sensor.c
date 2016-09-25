@@ -22,12 +22,24 @@
 static struct hall_dev *pdev_hall[HALL_MAX_SUPPORT_NUM] = {NULL, NULL};
 static int hall_count = 0;
 struct workqueue_struct *hall_wq;
+struct hall_dev *hall_dev_client = NULL;
 
 static const struct of_device_id hall_match_table[] = {
 	{.compatible = "hall,sensor",},
 	{},
 };
 MODULE_DEVICE_TABLE(of, hall_match_table);
+
+int ak8789_register_report_data(int ms)
+{
+	struct hall_dev *phall_dev = NULL;
+	phall_dev = hall_dev_client;
+
+	schedule_delayed_work(&(phall_dev->hall_delay_work), msecs_to_jiffies(50));
+	hwlog_info("[hall][%s] ms:%d\n", __func__, ms);
+
+	return 1;
+}
 
 int hall_first_report(bool enable)
 {
@@ -83,6 +95,36 @@ static void hall_work(struct work_struct *work)
 	struct hall_dev *phall_dev = NULL;
 
 	phall_dev = container_of(work, struct hall_dev, hall_work);
+
+	if (phall_dev->ops && phall_dev->ops->packet_event_data) {
+		event_value = phall_dev->ops->packet_event_data(phall_dev);
+	} else {
+		hwlog_err("[hall][%s] packet event data failed!\n", __func__);
+		return ;
+	}
+
+	if(phall_dev->ops && phall_dev->ops->hall_event_report) {
+		ret = phall_dev->ops->hall_event_report(event_value);
+		if(!ret) {
+			hwlog_err("[hall][%s] hall report value failed.\n", __func__);
+			return ;
+		}
+	} else {
+		hwlog_err("[hall][%s]ops null\n", __func__);
+	}
+	hwlog_info("[hall][%s] hall report value :%d.\n", __func__, event_value);
+	return ;
+}
+
+static void hall_ak8789_delay_report(struct work_struct *work)
+{
+
+	int ret = 0;
+
+	packet_data event_value = 0;
+	struct hall_dev *phall_dev = NULL;
+
+	phall_dev = container_of(work, struct hall_dev, hall_delay_work.work);
 
 	if (phall_dev->ops && phall_dev->ops->packet_event_data) {
 		event_value = phall_dev->ops->packet_event_data(phall_dev);
@@ -264,6 +306,7 @@ static int __init hall_probe(struct platform_device *pdev)
 		goto hall_dev_kzalloc_err;
 	}
 
+	hall_dev_client = hall_dev;
 	hall_wq = create_singlethread_workqueue("hall_wq");
 	if(IS_ERR(hall_wq)) {
 		hwlog_err("[hall][%s]work_wq kmalloc error!\n", __func__);
@@ -280,6 +323,8 @@ static int __init hall_probe(struct platform_device *pdev)
 
 	hall_dev->ops = &hall_device_ops;
 	INIT_WORK(&(hall_dev->hall_work), hall_work);
+	INIT_DELAYED_WORK(&(hall_dev->hall_delay_work), hall_ak8789_delay_report);
+
 	if (hall_dev->ops && hall_dev->ops->hall_device_init) {
 		hall_dev->ops->hall_device_init(pdev, hall_dev);
 		hwlog_info("[hall][%s]hall_device_init enter!\n", __func__);
@@ -399,7 +444,7 @@ static int __exit hall_remove(struct platform_device *pdev)
         if( hall_data->ops && hall_data->ops->hall_release) {
                 ret = hall_data->ops->hall_release(hall_data);
         }
-
+	cancel_delayed_work(&hall_data->hall_delay_work);
 	kfree(hall_data);
 	platform_set_drvdata(pdev, NULL);
 

@@ -309,6 +309,9 @@ const AT_PS_EVT_FUNC_TBL_STRU           g_astAtPsEvtFuncTbl[] =
         AT_RcvTafPsEvtSetDsFlowNvWriteCfgCnf},
     {ID_EVT_TAF_PS_GET_DSFLOW_NV_WRITE_CFG_CNF,
         AT_RcvTafPsEvtGetDsFlowNvWriteCfgCnf},
+
+    {ID_EVT_TAF_PS_SET_IMS_PDP_CFG_CNF,
+        AT_RcvTafPsEvtSetImsPdpCfgCnf},
 };
 
 /* 主动上报命令与控制Bit位对应表 */
@@ -1469,6 +1472,26 @@ VOS_VOID  AT_CsRspEvtConnectProc(
     /* Video下，通过At_FormatResultData来上报CONNECT */
     if (AT_EVT_IS_VIDEO_CALL(pstCallInfo->enCallType))
     {
+        /* IMS Video不给上层报CONNECT，上报^CONN */
+        if (TAF_CALL_VOICE_DOMAIN_IMS == pstCallInfo->enVoiceDomain)
+        {
+            if (VOS_TRUE == AT_CheckRptCmdStatus(pstCallInfo->aucCurcRptCfg, AT_CMD_RPT_CTRL_BY_CURC, AT_RPT_CMD_CONN))
+            {
+                usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
+                                                   (VOS_CHAR *)pgucAtSndCodeAddr,
+                                                   (VOS_CHAR *)pgucAtSndCodeAddr + usLength,
+                                                   "%s^CONN:%d,%d%s",
+                                                   gaucAtCrLf,
+                                                   pstCallInfo->callId,
+                                                   pstCallInfo->enCallType,
+                                                   gaucAtCrLf);
+
+                At_SendResultData(ucIndex, pgucAtSndCodeAddr, usLength);
+            }
+
+            return;
+        }
+
         gastAtClientTab[ucIndex].ucCsRabId = pstCallInfo->ucRabId;
         ulResult = AT_CONNECT;
 
@@ -1502,8 +1525,6 @@ VOS_VOID  AT_CsRspEvtConnectProc(
     At_FormatResultData(ucIndex,ulResult);
 
 }
-
-
 VOS_VOID  AT_ProcCsRspEvtOrig(
     TAF_UINT8                           ucIndex,
     MN_CALL_INFO_STRU                  *pstCallInfo
@@ -3165,10 +3186,7 @@ TAF_VOID At_CsIndProc(
         case MN_CALL_EVT_RELEASED:
 
             /* 记录cause值 */
-            if (TAF_CS_CAUSE_SUCCESS != pstCallInfo->enCause)
-            {
-                AT_SetCsCallErrCause(ucIndex, pstCallInfo->enCause);
-            }
+            AT_SetCsCallErrCause(ucIndex, pstCallInfo->enCause);
 
             /* 如果是可视电话，因为在INCOMING的时候拉高了DCD的管脚信号，现在拉低DCD的管脚信号 */
             if (AT_EVT_IS_CS_VIDEO_CALL(pstCallInfo->enCallType, pstCallInfo->enVoiceDomain))
@@ -21590,7 +21608,8 @@ VOS_VOID At_RcvTafCallSupsCmdCnf(
         if ((AT_CMD_H_SET == gastAtClientTab[ucIndex].CmdCurrentOpt)
          || (AT_CMD_CHUP_SET == gastAtClientTab[ucIndex].CmdCurrentOpt)
          || (((AT_CMD_A_SET == gastAtClientTab[ucIndex].CmdCurrentOpt)
-           || (AT_CMD_CHLD_SET == gastAtClientTab[ucIndex].CmdCurrentOpt))
+           || (AT_CMD_CHLD_SET == gastAtClientTab[ucIndex].CmdCurrentOpt)
+           || (AT_CMD_CHLD_EX_SET == gastAtClientTab[ucIndex].CmdCurrentOpt))
            && (VOS_TRUE == pstCallInfo->ucAtaReportOkAsyncFlag)))
         {
             ulResult = AT_OK;
@@ -22184,7 +22203,41 @@ VOS_VOID AT_RcvTafEconfNotifyInd(
 }
 #endif
 
+/*****************************************************************************
+ 函 数 名  : AT_RcvTafPsEvtSetImsPdpCfgCnf
+ 功能描述  :
+ 输入参数  : pEvtInfo                   - 事件内容, MN_PS_EVT_STRU去除EvtId
+ 输出参数  : 无
+ 返 回 值  : VOS_UINT32
+ 调用函数  :
+ 被调函数  :
 
+ 修改历史      :
+  1.日    期   : 2015年7月30日
+    作    者   : z00301431
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+VOS_UINT32 AT_RcvTafPsEvtSetImsPdpCfgCnf(
+    VOS_UINT8                           ucIndex,
+    VOS_VOID                           *pEvtInfo
+)
+{
+    TAF_PS_SET_IMS_PDP_CFG_CNF_STRU  *pstSetImsPdpCfgCnf;
+
+    pstSetImsPdpCfgCnf = (TAF_PS_SET_IMS_PDP_CFG_CNF_STRU*)pEvtInfo;
+
+    /* 检查当前命令的操作类型 */
+    if ( AT_CMD_IMSPDPCFG_SET != gastAtClientTab[ucIndex].CmdCurrentOpt )
+    {
+        return VOS_ERR;
+    }
+
+    /* 处理错误码 */
+    AT_PrcoPsEvtErrCode(ucIndex, pstSetImsPdpCfgCnf->enCause);
+
+    return VOS_OK;
+}
 #ifdef  __cplusplus
   #if  __cplusplus
   }

@@ -222,13 +222,13 @@ extern VOS_VOID   PPP_UpdateWinsConfig(VOS_UINT8 ucWins);
 extern VOS_UINT32 PPP_PullPacketEvent(VOS_UINT16 usPppId, IMM_ZC_STRU *pstImmZc);
 
 /* IP方式下提供的下行数据接收接口 */
-extern VOS_UINT32 PPP_PushPacketEvent(VOS_UINT8 ucRabId, IMM_ZC_STRU *pstImmZc, ADS_PKT_TYPE_ENUM_UINT8 enPktType);
+extern VOS_UINT32 PPP_PushPacketEvent(VOS_UINT8 ucRabId, IMM_ZC_STRU *pstImmZc, ADS_PKT_TYPE_ENUM_UINT8 enPktType, VOS_UINT32 ulExParam);
 
 /* PPP方式下提供的上行数据接收接口 */
 extern VOS_UINT32 PPP_PullRawDataEvent(VOS_UINT16 usPppId, IMM_ZC_STRU *pstImmZc);
 
 /* PPP方式下提供的下行数据接收接口 */
-extern VOS_UINT32 PPP_PushRawDataEvent(VOS_UINT8 ucRabId, IMM_ZC_STRU *pstImmZc, ADS_PKT_TYPE_ENUM_UINT8 enPktType);
+extern VOS_UINT32 PPP_PushRawDataEvent(VOS_UINT8 ucRabId, IMM_ZC_STRU *pstImmZc, ADS_PKT_TYPE_ENUM_UINT8 enPktType, VOS_UINT32 ulExParam);
 #endif
 
 

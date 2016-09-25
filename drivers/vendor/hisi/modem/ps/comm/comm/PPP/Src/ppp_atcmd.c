@@ -432,7 +432,7 @@ VOS_UINT32 Ppp_RcvConfigInfoInd
     }
 
     /* 这个时候PDP已经激活，注册上行数据接收接口。另外当前不支持PPP类型拨号。 */
-    ulResult= ADS_DL_RegDlDataCallback(ucRabId, (RCV_DL_DATA_FUNC)PPP_PushPacketEvent);
+    ulResult= ADS_DL_RegDlDataCallback(ucRabId, (RCV_DL_DATA_FUNC)PPP_PushPacketEvent, 0);
 
     if ( VOS_OK != ulResult )
     {
@@ -706,7 +706,7 @@ VOS_UINT32 Ppp_RegDlDataCallback(PPP_ID usPppId)
     }
 
     /* 这个时候PDP已经激活，注册上行数据接收接口 */
-    ulResult= ADS_DL_RegDlDataCallback(ucRabId, (RCV_DL_DATA_FUNC)PPP_PushRawDataEvent);
+    ulResult= ADS_DL_RegDlDataCallback(ucRabId, (RCV_DL_DATA_FUNC)PPP_PushRawDataEvent, 0);
 
     if ( VOS_OK != ulResult )
     {

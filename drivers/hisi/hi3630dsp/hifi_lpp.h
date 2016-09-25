@@ -37,9 +37,11 @@ extern "C" {
 #define HIFI_RESERVE1_SIZE				(0x1e000)
 #define HIFI_IMAGE_OCRAMBAK_SIZE		(0x40000)
 #define HIFI_IMAGE_TCMBAK_SIZE			(0x15000)
-#define HIFI_RESERVE2_SIZE				(0xb000)
+#define HIFI_RESERVE2_SIZE				(0xABF0)
 #define HIFI_IMAGE_SIZE 				(0x380000)
 #define HIFI_SIZE						(0x900000)
+#define HIFI_SEC_HEAD_SIZE				(0x400)
+#define HIFI_WTD_FLAG_SIZE				(0x10)
 
 #define HIFI_BASE_ADDR					(0x37700000)
 #define HIFI_RUN_LOCATION				(HIFI_BASE_ADDR)											/*Code run*/
@@ -48,8 +50,10 @@ extern "C" {
 #define HIFI_RESERVE1_LOCATION			(HIFI_SOCP_LOCATION + HIFI_SOCP_SIZE)						/*reserv1*/
 #define HIFI_IMAGE_OCRAMBAK_LOCATION	(HIFI_RESERVE1_LOCATION + HIFI_RESERVE1_SIZE)				/*OCRAM*/
 #define HIFI_IMAGE_TCMBAK_LOCATION		(HIFI_IMAGE_OCRAMBAK_LOCATION + HIFI_IMAGE_OCRAMBAK_SIZE)	/*TCM*/
-#define HIFI_RESERVE2_LOCATION			(HIFI_IMAGE_TCMBAK_LOCATION + HIFI_IMAGE_TCMBAK_SIZE)		/*reserv2*/
-#define HIFI_IMAGE_LOCATION 			(HIFI_RESERVE2_LOCATION + HIFI_RESERVE2_SIZE)				/*Code backup*/
+#define HIFI_SEC_HEAD_BACKUP            (HIFI_IMAGE_TCMBAK_LOCATION + HIFI_IMAGE_TCMBAK_SIZE)		/*SEC HEAD backup*/
+#define HIFI_WTD_FLAG_BASE				(HIFI_SEC_HEAD_BACKUP + HIFI_SEC_HEAD_SIZE)					/*Watchdog flag*/
+#define HIFI_RESERVE2_LOCATION			(HIFI_WTD_FLAG_BASE + HIFI_WTD_FLAG_SIZE)                   /*reserv2*/
+#define HIFI_IMAGE_LOCATION 			(HIFI_RESERVE2_LOCATION + HIFI_RESERVE2_SIZE)               /*Code backup*/
 
 #define HIFI_OFFSET_MUSIC_DATA			(HIFI_RUN_SIZE)
 #define HIFI_OFFSET_IMG 				(HIFI_SIZE - HIFI_IMAGE_SIZE)
@@ -91,10 +95,6 @@ extern "C" {
 /*****************************************************************************
   3 Ã¶¾Ù¶¨Òå
 *****************************************************************************/
-typedef enum {
-	HIFI_CLOSE,
-	HIFI_OPENED,
-}HIFI_STATUS;
 
 typedef enum {
 	DUMP_DSP_LOG,

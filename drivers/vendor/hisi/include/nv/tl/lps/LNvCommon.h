@@ -83,7 +83,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_PS_BEARER_CNTXT_PARA3                  = 0xD216,
     EN_NV_ID_PS_BEARER_CNTXT_PARA4                  = 0xD217,
     EN_NV_ID_PS_BEARER_CNTXT_PARA5                  = 0xD218,
-    EN_NV_ID_PS_BEARER_CNTXT_PARA6                  = 0xD219,
+    EN_NV_ID_LNAS_SWITCH_PARA                       = 0xD219,
     EN_NV_ID_CONFIG_NWCAUSE                         = 0xD21a,/* modify by leili 2014-02-15 for self-adaption NW cause*/
     EN_NV_ID_DAM_CONFIG_PARA                        = 0xD21b,
     EN_NV_ID_LNAS_COMM_CONFIG_PARA                  = 0xD21c,
@@ -129,10 +129,10 @@ enum NV_ITEM_ID_ENUM
 
     EN_NV_ID_RF_HW                                  = 0xD242,
     EN_NV_ID_USIM_BEGIN                             = 0xD250,
-    EN_NV_ID_UST_FILE                               = 0xD251,
+    EN_NV_ID_VOLTE_CARD_LOCK                        = 0xD251,
     EN_NV_ID_MNC_LEN_FILE                           = 0xD252,
-    EN_NV_ID_FORBIDDEN_PLMN_LIST_FILE               = 0xD253,
-    EN_NV_ID_UPLMN_SEL_FILE                         = 0xD254,
+    EN_NV_ID_IMSA_COMM_PARA_CONFIG                  = 0xD253,
+    EN_NV_ID_IMS_PARM_UE_CAPABILITY                 = 0xD254,
     EN_NV_ID_OPLMN_SEL_FILE                         = 0xD255,
     EN_NV_ID_HPLMN_PERI_FILE                        = 0xD256,
     EN_NV_ID_SEC_CONTEXT_FILE                       = 0xD257,

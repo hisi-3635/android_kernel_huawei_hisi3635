@@ -15,7 +15,7 @@
 #include <linux/notifier.h>    /*for struct charge_device_info*/
 #include <linux/workqueue.h>    /*for struct charge_device_info*/
 #include <linux/power_supply.h>    /*for struct charge_device_info*/
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #ifndef _HUAWEI_CHARGER
 #define _HUAWEI_CHARGER
 
@@ -33,6 +33,21 @@
 #define ERROR_ADAPTER_OVLT             (10425)
 #define ERROR_ADAPTER_OCCURRENT             (10426)
 #define ERROR_ADAPTER_OTEMP             (10427)
+#define ERROR_SAFE_PLOICY_LEARN         (10428)
+#define ERROR_SAFE_PLOICY_LEARN1        (10429)
+#define ERROR_SAFE_PLOICY_LEARN2        (10430)
+#define ERROR_SAFE_PLOICY_LEARN3        (10431)
+#define INFO_FCC_DMD_BASE               (10432)
+#define INFO_FCC_DMD_BASE_1             (10433)
+#define INFO_FCC_DMD_BASE_2             (10434)
+#define INFO_FCC_DMD_BASE_3             (10435)
+#define INFO_FCC_DMD_BASE_4             (10436)
+#define INFO_FCC_DMD_BASE_5             (10437)
+#define INFO_FCC_DMD_BASE_6             (10438)
+#define INFO_FCC_DMD_BASE_7             (10439)
+#define INFO_FCC_DMD_BASE_8             (10440)
+
+
 #define get_index(x) (x-ERROR_FCP_VOL_OVER_HIGH)
 #define ERR_NO_STRING_SIZE 128
 #define CHARGELOG_SIZE      (1024)
@@ -129,6 +144,10 @@ enum charge_sysfs_type{
     CHARGE_SYSFS_IBUS,
     CHARGE_SYSFS_HIZ,
     CHARGE_SYSFS_CHARGE_TYPE,
+    CHARGE_SYSFS_BOOTLOADER_CHARGER_INFO,
+#ifdef CONFIG_GRACE_SELECT_2A_1A_AC
+    CHARGE_SYSFS_SELECTED_AC,
+#endif
 };
 
 enum fcp_check_stage_type{
@@ -167,8 +186,13 @@ struct charge_sysfs_data{
     int ibus;
     struct mutex dump_reg_lock;
     struct mutex dump_reg_head_lock;
+    struct mutex bootloader_info_lock;
     char reg_value[CHARGELOG_SIZE];
     char reg_head[CHARGELOG_SIZE];
+    char bootloader_info[CHARGELOG_SIZE];
+#ifdef CONFIG_GRACE_SELECT_2A_1A_AC
+    unsigned int selected_AC;
+#endif
 };
 
 struct charge_core_data{
@@ -190,6 +214,7 @@ struct charge_core_data{
     unsigned int iin_max;
     unsigned int ichg_max;
     unsigned int otg_curr;
+    unsigned int basp_flag;
 };
 
 struct charge_device_ops{
@@ -247,6 +272,10 @@ struct charge_device_info{
     unsigned int input_current;
     unsigned int charge_current;
     unsigned int check_full_count;
+#ifdef CONFIG_GRACE_SELECT_2A_1A_AC
+    unsigned int pre_start_select_AC;
+    unsigned int start_select_AC;
+#endif
 };
 
 /****************variable and function declarationn area******************/

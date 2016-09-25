@@ -2043,8 +2043,59 @@ VOS_UINT32 AT_QryDsFlowNvWriteCfgPara(VOS_UINT8 ucIndex)
     return AT_WAIT_ASYNC_RETURN;
 }
 
+/*****************************************************************************
+ 函 数 名  : AT_SetImsPdpCfg
+ 功能描述  : ^IMSPNDPCFG
+ 输入参数  : ucIndex --- 端口索引
+ 输出参数  : 无
+ 返 回 值  : AT_XXX  --- ATC返回码
+ 调用函数  :
+ 被调函数  :
 
+ 修改历史      :
+  1.日    期   : 2015年7月29日
+    作    者   : z00301431
+    修改内容   : 新生成函数
 
+*****************************************************************************/
+VOS_UINT32 AT_SetImsPdpCfg(VOS_UINT8 ucIndex)
+{
+    TAF_IMS_PDP_CFG_STRU                stImsPdpCfg;
+
+    /* 参数过多 */
+    if (gucAtParaIndex != 2)
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    /* 参数检查 */
+    if ((0 == gastAtParaList[0].usParaLen)
+     || (0 == gastAtParaList[1].usParaLen))
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    PS_MEM_SET(&stImsPdpCfg, 0, sizeof(stImsPdpCfg));
+
+    /* 参数赋值 */
+    stImsPdpCfg.ucCid           = (VOS_UINT8)gastAtParaList[0].ulParaValue;
+    stImsPdpCfg.ucImsFlag       = (VOS_UINT8)gastAtParaList[1].ulParaValue;
+
+    /* 发送跨核消息 */
+    if ( VOS_OK != TAF_PS_SetImsPdpCfg(WUEPS_PID_AT,
+                                       gastAtClientTab[ucIndex].usClientId,
+                                       0,
+                                       &stImsPdpCfg) )
+    {
+        return AT_ERROR;
+    }
+
+    /* 设置当前操作类型 */
+    gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_IMSPDPCFG_SET;
+
+    /* 返回命令处理挂起状态 */
+    return AT_WAIT_ASYNC_RETURN;
+}
 #ifdef  __cplusplus
   #if  __cplusplus
   }

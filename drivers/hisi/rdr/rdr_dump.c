@@ -58,10 +58,16 @@ int rdr_wait4partition(char *path, int timeouts)
 	return 0;
 }
 
+#ifdef CONFIG_PROC_POSTFSDATA
+extern int wait_for_postfsdata(unsigned int timeout);
+#endif
 int wait_for_fs_ready(void)
 {
 	int ret = 0;
 
+#ifdef CONFIG_PROC_POSTFSDATA
+	wait_for_postfsdata(0);
+#endif
 	ret += rdr_wait4partition("/data/lost+found", 30);
 	ret += rdr_wait4partition("/dev/block", 30);
 
@@ -1413,12 +1419,21 @@ int rdr_loopwrite_open(char *filename, int *fd)
 {
 	int ret = 0;
 
+#ifdef CONFIG_ARM64
 	ret = rdr_create_dir(filename);
 	if (0 != ret) {
 		pr_err("<%s()>, create dir [%s] failed! ret = %d\n",
 				__func__, filename, ret);
 		goto out;
 	}
+#else
+    ret = rdr_create_dir(OM_ROOT_PATH);
+	if (0 != ret) {
+		pr_err("<%s()>, create dir [%s] failed! ret = %d\n",
+				__func__, OM_ROOT_PATH, ret);
+		goto out;
+	}
+#endif
 
 	ret = sys_access(filename, 0);
 	if (ret == 0) {

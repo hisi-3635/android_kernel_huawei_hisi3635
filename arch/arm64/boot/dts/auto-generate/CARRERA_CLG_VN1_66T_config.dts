@@ -22,7 +22,7 @@
 	antenna_fpga{
 		compatible = "antenna_fpga";
 		antenna_fpga,power-disable = <1>;
-		antenna_fpga,pre-image-filename = "CARRERA_CLG_VN1.bin";
+		antenna_fpga,pre-image-filename = "CARRERA_CLG_VN2.bin";
 		status = "ok";
 	};
 	sensorhub{

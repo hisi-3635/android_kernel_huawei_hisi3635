@@ -288,6 +288,10 @@
 #include "wifipro_tcp_monitor.h"
 #endif
 
+#ifdef CONFIG_HW_WIFI
+#include "wifi_tcp_statistics.h"
+#endif
+
 int sysctl_tcp_fin_timeout __read_mostly = TCP_FIN_TIMEOUT;
 
 int sysctl_tcp_min_tso_segs __read_mostly = 2;
@@ -425,6 +429,11 @@ void tcp_init_sock(struct sock *sk)
 	 */
 	sk->sk_sndbuf = sysctl_tcp_wmem[1];
 	sk->sk_rcvbuf = sysctl_tcp_rmem[1];
+
+#ifdef CONFIG_HW_WIFI
+	tp->dack_rcv_nxt = 0;
+	tp->dack_seq_num = 0;
+#endif
 
 	local_bh_disable();
 	sock_update_memcg(sk);
@@ -2004,17 +2013,16 @@ void tcp_set_state(struct sock *sk, int state)
 		if (oldstate == TCP_CLOSE_WAIT || oldstate == TCP_ESTABLISHED)
 			TCP_INC_STATS(sock_net(sk), TCP_MIB_ESTABRESETS);
 
+#ifdef CONFIG_HW_WIFI
+		if ( oldstate == TCP_ESTABLISHED)
+			wifi_IncrEstabliseRstSegs(sk, 1);
+#endif
+
 		sk->sk_prot->unhash(sk);
 		if (inet_csk(sk)->icsk_bind_hash &&
 		    !(sk->sk_userlocks & SOCK_BINDPORT_LOCK))
 			inet_put_port(sk);
 		/* fall through */
-
-#ifdef CONFIG_HW_WIFIPRO
-		if(is_wifipro_on && is_mcc_china && wifipro_is_not_local_or_lan_sock(dest_addr)){
-			wifipro_google_sock_del(dest_addr);
-		}
-#endif
 	default:
 		if (oldstate == TCP_ESTABLISHED)
 			TCP_DEC_STATS(sock_net(sk), TCP_MIB_CURRESTAB);
@@ -2029,6 +2037,7 @@ void tcp_set_state(struct sock *sk, int state)
     if(state == TCP_SYN_SENT){
         if(is_wifipro_on && is_mcc_china && wifipro_is_not_local_or_lan_sock(dest_addr)){
             if(wifipro_is_google_sock(current, dest_addr)){
+                sk->wifipro_is_google_sock = 1;
                 WIFIPRO_DEBUG("add a google sock:%s", wifipro_ntoa(dest_addr));
             }
         }
@@ -2698,6 +2707,11 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
 		else
 			tp->tsoffset = val - tcp_time_stamp;
 		break;
+#ifdef CONFIG_HUAWEI_BASTET
+	case TCP_RECONN:
+		bastet_reconn_config(sk, val);
+		break;
+#endif
 	default:
 		err = -ENOPROTOOPT;
 		break;
@@ -3606,14 +3620,20 @@ restart:
 			sock_hold(sk);
 			spin_unlock_bh(lock);
 
+			lock_sock(sk);
 			local_bh_disable();
 			bh_lock_sock(sk);
-			sk->sk_err = ETIMEDOUT;
-			sk->sk_error_report(sk);
 
-			tcp_done(sk);
+			if (!sock_flag(sk, SOCK_DEAD)) {
+				smp_wmb();  /* be consistent with tcp_reset */
+				sk->sk_err = ETIMEDOUT;
+				sk->sk_error_report(sk);
+				tcp_done(sk);
+			}
+
 			bh_unlock_sock(sk);
 			local_bh_enable();
+			release_sock(sk);
 			sock_put(sk);
 
 			goto restart;

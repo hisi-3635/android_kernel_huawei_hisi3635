@@ -92,7 +92,7 @@ extern VOS_UINT32 DIPC_AtMsgProc( const MsgBlock *pMsgBlock );
 extern VOS_UINT32 MUX_Pid_InitFunc( enum VOS_INIT_PHASE_DEFINE ip );
 extern VOS_UINT32 MUX_AtMsgProc( const MsgBlock *pMsgBlock );
 extern VOS_UINT8* BSP_GetMacAddr( VOS_VOID );
-VOS_UINT32 Ndis_DlAdsDataRcv(VOS_UINT8 ucExRabId, IMM_ZC_STRU *pData, ADS_PKT_TYPE_ENUM_UINT8 enPktType)
+VOS_UINT32 Ndis_DlAdsDataRcv(VOS_UINT8 ucExRabId, IMM_ZC_STRU *pData, ADS_PKT_TYPE_ENUM_UINT8 enPktType, VOS_UINT32 ulExParam)
 {
     if (VOS_NULL_PTR == pData)
     {
@@ -1299,7 +1299,7 @@ VOS_VOID Ndis_PdnInfoCfgProc(const AT_FW_CMD_BINARY_MSG_STRU *pstAtReq)
     }
 
     /*向ADS注册下行回调:只注册一次*/
-    if (VOS_OK != (ADS_DL_RegDlDataCallback(ucExRabId, Ndis_DlAdsDataRcv)))
+    if (VOS_OK != (ADS_DL_RegDlDataCallback(ucExRabId, Ndis_DlAdsDataRcv, 0)))
     {
         NDIS_ERROR_LOG(NDIS_TASK_PID, "Ndis_PdnInfoCfgProc, ADS_DL_RegDlDataCallback fail!");
         return;

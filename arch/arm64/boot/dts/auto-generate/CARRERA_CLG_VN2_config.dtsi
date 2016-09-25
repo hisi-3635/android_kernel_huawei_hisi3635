@@ -1,0 +1,22 @@
+
+/**
+ * Huawei Ltd.
+ * PhosphorV660
+ */
+
+
+/include/ "CARRERA_CLG_VN2_32G_config.dtsi"
+
+/ {
+	hisi,boardid = <1 4 9 7 >;
+	hisi,boardname = "CARRERA_CLG_VN2";
+	hisi,config_profile = "highhigh";
+	sensorhub{
+		als_sensor:light{
+			als1{
+				als_phone_version = <12>;
+			};
+		};
+	};
+};
+

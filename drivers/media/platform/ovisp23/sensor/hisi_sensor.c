@@ -453,6 +453,10 @@ static int hisi_sensor_init(struct hisi_sensor_ctrl_t *s_ctrl)
 
 int hisi_sensor_config(struct hisi_sensor_ctrl_t *s_ctrl, void *arg)
 {
+    if (NULL == arg) {
+        cam_err("%s: arg is NULL", __func__);
+        return -EFAULT;
+    }
 	struct sensor_cfg_data *cdata = (struct sensor_cfg_data *)arg;
 	long   rc = 0;
 	static bool power_on = false;
@@ -488,6 +492,7 @@ int hisi_sensor_config(struct hisi_sensor_ctrl_t *s_ctrl, void *arg)
 		rc = s_ctrl->sensor->func_tbl->sensor_i2c_write_seq(s_ctrl, arg);
 		break;
 	case CFG_SENSOR_GET_SENSOR_NAME:
+        memset(cdata->cfg.name, 0, sizeof(cdata->cfg.name));
 		strncpy(cdata->cfg.name, s_ctrl->sensor->sensor_info->name,
 			sizeof(cdata->cfg.name) - 1);
 		rc = 0;
@@ -499,8 +504,12 @@ int hisi_sensor_config(struct hisi_sensor_ctrl_t *s_ctrl, void *arg)
 		rc = s_ctrl->sensor->func_tbl->sensor_suspend_eg_task(s_ctrl, arg);
 			break;
 	case CFG_SENSOR_GET_PRODUCT_NAME:
+        memset(cdata->cfg.name, 0, sizeof(cdata->cfg.name));
 		strncpy(cdata->cfg.name, get_product_name(), sizeof(cdata->cfg.name) - 1);
 		rc = 0;
+		break;
+	case CFG_SENSOR_APPLY_BSHUTTER_EXPO_GAIN:
+		rc = s_ctrl->sensor->func_tbl->sensor_apply_bshutter_expo_gain(s_ctrl, arg);
 		break;
 	default:
 		rc = s_ctrl->sensor->func_tbl->sensor_ioctl(s_ctrl, arg);
@@ -658,9 +667,9 @@ static int32_t sensor_platform_probe(struct platform_device *pdev)
 
 	match = of_match_device(hisi_sensor_dt_match, &pdev->dev);
 	if(!match) {
-		cam_err("pmu led match device failed");
+		cam_err("sensor match device failed");
 		return -1;
-	}	
+	}
 	cam_notice("%s compatible=%s.\n", __func__, match->compatible);
 	return hisi_sensor_platform_probe(pdev, (void*)match->data);
 }

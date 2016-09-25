@@ -1,0 +1,16 @@
+
+/**
+ * Huawei Ltd.
+ * PhosphorV660
+ */
+
+
+/include/ "CARRERA_CLG_VN2_config.dtsi"
+
+/ {
+	hisi,boardid = <1 4 9 8 >;
+	hisi,boardname = "CARRERA_CLG_LV_PA";
+	hisi,config_profile = "high";
+	hisi,modem_id = <0x3EBE9400>;
+};
+

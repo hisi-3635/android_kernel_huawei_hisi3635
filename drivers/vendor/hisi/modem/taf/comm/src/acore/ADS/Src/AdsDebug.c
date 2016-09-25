@@ -71,12 +71,12 @@ VOS_VOID ADS_RecordRcvFunc(VOS_UINT8 ucRabId)
 VOS_VOID ADS_ResumeRcvFunc(VOS_UINT8 ucRabId)
 {
     vos_printf("ADS_ResumeRcvFunc:\r\n");
-    ADS_DL_RegDlDataCallback(ucRabId, g_pDebugRcvFunc);
+    ADS_DL_RegDlDataCallback(ucRabId, g_pDebugRcvFunc, 0);
 }
 VOS_VOID ADS_SetEmptyRcvFunc(VOS_UINT8 ucRabId)
 {
     vos_printf("ADS_SetEmptyRcvFunc:\r\n");
-    ADS_DL_RegDlDataCallback(ucRabId, VOS_NULL_PTR);
+    ADS_DL_RegDlDataCallback(ucRabId, VOS_NULL_PTR, 0);
 }
 
 VOS_VOID ADS_Debug_DL_RdNum(VOS_VOID)
@@ -124,6 +124,20 @@ VOS_VOID ADS_ShowPeriodPktNum(VOS_VOID)
     vos_printf("ADS_ShowPeriodPktNum Cur DL PeriodPktNum is %d\r\n", g_stAdsCtx.astAdsSpecCtx[0].stAdsStatsInfoCtx.stDLDataStats.ulDLCurDataRate);
     vos_printf("ADS_ShowPeriodPktNum Cur UL PeriodPktNum is %d\r\n", g_stAdsCtx.astAdsSpecCtx[0].stAdsStatsInfoCtx.stULDataStats.ulULCurDataRate);
 }
+VOS_VOID ADS_SetTxWakeLockTmrLen(VOS_UINT32 ulValue)
+{
+    g_stAdsCtx.stAdsIpfCtx.ulTxWakeLockTmrLen = ulValue;
+    return;
+}
+
+
+VOS_VOID ADS_SetRxWakeLockTmrLen(VOS_UINT32 ulValue)
+{
+    g_stAdsCtx.stAdsIpfCtx.ulRxWakeLockTmrLen = ulValue;
+    return;
+}
+
+
 VOS_VOID ADS_ShowEntityStats(VOS_VOID)
 {
     VOS_UINT8                           i;

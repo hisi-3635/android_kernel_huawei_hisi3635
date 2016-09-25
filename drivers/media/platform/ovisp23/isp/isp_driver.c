@@ -15,7 +15,11 @@
 
 int hisi_isp_config(struct hisi_isp_ctrl_t *isp_ctrl, void *data)
 {
-	int rc = 0;
+    int rc = 0;
+    if (NULL == data) {
+        cam_err("%s: data is NULL", __func__);
+        return -EFAULT;
+    }
 	struct isp_cfg_data *cdata = (struct isp_cfg_data *)data;
 
 	cam_debug("%s enter: cfgtype=%d. \n", __func__, cdata->cfgtype);

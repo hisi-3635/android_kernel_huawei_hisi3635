@@ -1,0 +1,4 @@
+kernel/drivers/thermal/thermal_sys.ko
+kernel/drivers/thermal/hisi_tsens.ko
+kernel/drivers/thermal/hisi_peripheral_tm.ko
+kernel/drivers/thermal/hisi_ntc_tm_table.ko

@@ -219,25 +219,20 @@ static ssize_t adc_debugfs_write(struct file *file,
 					size_t count,
 					loff_t *ppos)
 {
-	char *buf;
+	char buf[64];
 	int ret;
 	long val;
 
-	buf = kzalloc(sizeof(char) * count, GFP_KERNEL);
-	if (!buf) {
-		pr_err("%s_debug: failed to alloc buffer for debugfs!\n", MODULE_NAME);
-		return count;
-	}
+	memset(buf, 0, sizeof(buf));
 
-	if (copy_from_user(buf, user_buf, count)) {
-		kfree(buf);
+	if (copy_from_user(buf, user_buf, min_t(size_t, sizeof(buf) - 1, count))) {
+		pr_err("[%s]copy error!\n", __func__);
 		return -EFAULT;
 	}
 
 	ret = kstrtol(buf, 10, &val);
 	if (ret < 0) {
 		pr_err("%s: input error!\n", MODULE_NAME);
-		kfree(buf);
 		return count;
 	}
 
@@ -247,7 +242,7 @@ static ssize_t adc_debugfs_write(struct file *file,
 					MODULE_NAME,
 					buff[0],
 					buff[1]);
-	kfree(buf);
+
 	return count;
 }
 

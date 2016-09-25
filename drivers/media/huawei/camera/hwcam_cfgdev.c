@@ -23,8 +23,10 @@
 
 #include "hwcam_intf.h"
 #include "cam_log.h"
+#ifdef CONFIG_COMPAT
 #include "hwcam_compat32.h"
-#include <huawei_platform/dsm/dsm_pub.h>
+#endif
+#include <dsm/dsm_pub.h>
 
 #define CREATE_TRACE_POINTS
 #include "trace_hwcam.h"
@@ -371,7 +373,7 @@ hwcam_cfgdev_import_data_table(
     }
 
     hdl = ion_import_dma_buf(s_ion_client, bi->fd);
-    if (!hdl) { 
+    if (IS_ERR_OR_NULL(hdl)) {
         HWCAM_CFG_ERR("failed to import ion buffer(%d)!", bi->fd);
         goto exit_import_data_table; 
     }
@@ -409,7 +411,7 @@ hwcam_cfgdev_release_data_table(
         struct ion_handle* handle)
 {
     mutex_lock(&s_cfgsvr_lock);
-    if (s_ion_client && handle) {
+    if (s_ion_client && !IS_ERR_OR_NULL(handle)) {
         ion_unmap_kernel(s_ion_client, handle);
         ion_free(s_ion_client, handle);
     }
@@ -428,7 +430,7 @@ hwcam_cfgdev_import_graphic_buffer(
     }
 
     hdl = ion_import_dma_buf(s_ion_client, fd);
-    if (!hdl) {
+    if (IS_ERR_OR_NULL(hdl)) {
         HWCAM_CFG_ERR("failed to import ion buffer(%d)!", fd);
     }
 

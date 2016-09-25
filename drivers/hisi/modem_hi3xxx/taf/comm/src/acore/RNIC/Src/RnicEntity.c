@@ -1011,24 +1011,18 @@ VOS_UINT32 RNIC_RcvSdioDlData(
 }
 #endif
 VOS_UINT32  RNIC_RcvAdsDlData(
-    VOS_UINT8                           ucRabid,
+    VOS_UINT8                           ucExRabid,
     IMM_ZC_STRU                        *pstImmZc,
-    ADS_PKT_TYPE_ENUM_UINT8             enPktType
+    ADS_PKT_TYPE_ENUM_UINT8             enPktType,
+    VOS_UINT32                          ulExParam
 )
 {
-    VOS_UINT8                           ucNetIndex;
-    VOS_UINT8                           ucUseRabid;
-    VOS_UINT16                          usModemId;
     VOS_UINT32                          ulRet;
+    VOS_UINT8                           ucRmNetId;
 
-    /* ADS带的RABID，是由ModemId和RABID组合而成 */
-    usModemId  = (ucRabid & RNIC_RABID_TAKE_MODEM_1_MASK) >> 6;
-    ucUseRabid = ucRabid & RNIC_RABID_UNTAKE_MODEM_1_MASK;
+    ucRmNetId = RNIC_GET_RMNETID_FROM_EXPARAM(ulExParam);
 
-    /* 根据RABID获取对应网卡ID */
-    ucNetIndex     = RNIC_GET_RM_NET_ID_BY_MODEM_ID(usModemId, ucUseRabid);
-
-    ulRet = RNIC_SendDlData(ucNetIndex, pstImmZc, enPktType);
+    ulRet = RNIC_SendDlData(ucRmNetId, pstImmZc, enPktType);
 
     return ulRet;
 }

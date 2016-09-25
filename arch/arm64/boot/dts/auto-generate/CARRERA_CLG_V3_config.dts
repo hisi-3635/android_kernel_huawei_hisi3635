@@ -50,8 +50,10 @@
 			};
 		};
 	};
-	huawei,pmu_led {
-		status = "disabled";
+	pmic: pmic@FFF34000 {
+		huawei,pmu_led {
+			status = "disabled";
+		};
 	};
 
 	/*

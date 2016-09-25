@@ -9,12 +9,16 @@ const struct cntry_locales_custom hw_translate_custom_table[] = {
     /* Table should be filled out based
     on custom platform regulatory requirement */
     {"",   "XZ", 0},  /* Universal if Country code is unknown or empty */
+    {"GL", "XZ", 0},  // add by huawei
     {"IR", "CN", 0},  // add by huawei
     {"CU", "CN", 0},  // add by huawei
     {"KP", "CN", 0},   // add by huawei
     {"PK", "CN", 0},  // add by huawei
     {"SD", "CN", 0},  //add by huawei
     {"SY", "CN", 0},    //add by huawei
+    {"BD", "CN", 0},   /* Hw CN if Country code is Bangladesh*/
+    {"UA", "CN", 0},   /* Hw CN if Country code is Ukraine*/
+    {"AO", "CN", 0},   /* Hw CN if Country code is Angola*/
     {"AE", "AE", 1},
     {"AR", "AR", 1},
     {"AT", "AT", 1},

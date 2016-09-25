@@ -41,6 +41,8 @@ const AT_IMSA_MSG_PRO_FUNC_STRU g_astAtImsaMsgTab[]=
     {ID_IMSA_AT_CCWAI_SET_CNF,              AT_RcvImsaCcwaiSetCnf},
     {ID_IMSA_AT_VT_PDP_ACTIVATE_IND,        AT_RcvImsaVtPdpActInd},
     {ID_IMSA_AT_VT_PDP_DEACTIVATE_IND,      AT_RcvImsaVtPdpDeactInd},
+    {ID_IMSA_AT_MT_STATES_IND,              AT_RcvImsaMtStateInd}
+
 };
 
 
@@ -783,6 +785,41 @@ VOS_UINT32 AT_RcvImsaVtPdpDeactInd(VOS_VOID * pMsg)
 
     return VOS_OK;
 
+}
+VOS_UINT32 AT_RcvImsaMtStateInd(VOS_VOID * pMsg)
+{
+    /* 定义局部变量 */
+    IMSA_AT_MT_STATES_IND_STRU          *pstMtStatusInd;
+    VOS_UINT8                           ucIndex;
+    VOS_CHAR                            acString[AT_IMSA_CALL_ASCII_NUM_MAX_LENGTH + 1];
+
+    /* 初始化消息变量 */
+    ucIndex     = 0;
+    pstMtStatusInd  = (IMSA_AT_MT_STATES_IND_STRU*)pMsg;
+
+    /* 通过ClientId获取ucIndex */
+    if ( AT_FAILURE == At_ClientIdToUserId(pstMtStatusInd->usClientId, &ucIndex) )
+    {
+        AT_WARN_LOG("AT_RcvImsaImpuSetCnf: WARNING:AT INDEX NOT FOUND!");
+        return VOS_ERR;
+    }
+
+    VOS_MemSet(acString, 0, sizeof(acString));
+    VOS_MemCpy(acString, pstMtStatusInd->aucAsciiCallNum, AT_IMSA_CALL_ASCII_NUM_MAX_LENGTH);
+
+    gstAtSendData.usBufLen= (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
+                                                   (VOS_CHAR *)pgucAtSndCodeAddr,
+                                                   (VOS_CHAR *)pgucAtSndCodeAddr,
+                                                   "%s^IMSMTRPT: %s,%d,%d%s",
+                                                   gaucAtCrLf,
+                                                   acString,
+                                                   pstMtStatusInd->ucMtStatus,
+                                                   pstMtStatusInd->ulCauseCode,
+                                                   gaucAtCrLf);
+    /* 调用At_SendResultData发送命令结果 */
+    At_SendResultData(ucIndex, pgucAtSndCodeAddr, gstAtSendData.usBufLen);
+
+    return VOS_OK;
 }
 
 #endif

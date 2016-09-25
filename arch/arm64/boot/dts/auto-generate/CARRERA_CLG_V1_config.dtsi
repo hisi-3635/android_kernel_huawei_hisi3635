@@ -5,20 +5,20 @@
  */
 
 
-/include/ "fastboot.dtsi"
 /include/ "CARRERA_TUGL_V1_config.dtsi"
-/include/ "CARRERA_CLG_V1_pin.dtsi"
-/include/ "CARRERA_CLG_V1_hi6402_pin.dtsi"
-/include/ "CARRERA_CLG_V1_modem_pin.dtsi"
-///include/ "CARRERA_CLG_V1_charger.dtsi"
-///include/ "CARRERA_CLG_V1_pmic.dtsi"
-///include/ "CARRERA_CLG_V1_gpio_logic.dtsi"
 /include/ "huawei_ext_modem.dtsi"
 
 / {
 	hisi,boardid = <1 4 9 0 >;
 	hisi,boardname = "CARRERA_CLG_V1";
 	hisi,modem_id = <0x3EBE8000>;
+	hisi,platform_num = <3>;
+	hisi,provider0 = "HUAWEI_K3";
+	hisi,sub_platform_info0 = "Kirin935";
+	hisi,provider1 = "BALONG";
+	hisi,sub_platform_info1 = "Kirin935";
+	hisi,provider2 = "VIA";
+	hisi,sub_platform_info2 = "cpb82d";
 
 	bcm_wifi {
 		wifi_nvram_name = "/vendor/firmware/nvram4334_hw_carrera_clg.txt";
@@ -41,7 +41,7 @@
 
 		spi0:spi@fdf07000 {
                         fingerprint: fingerprint@2 {
-                               fpc1020,moduleid_gpio = <226>;
+                               fingerprint,moduleid_gpio = <226>;
                         };
                 };
 
@@ -115,6 +115,9 @@
 	rnic_adapter:rnic_adapter {
 		status = "ok";
 	};
+	viacbp82d_flashless_boot_dl_uart:viacbp82d_flashless_boot_dl_uart {
+		status = "ok";
+	};
 	antenna_fpga{
 		compatible = "antenna_fpga";
 		antenna_fpga,gpio-cdone = <&gpio4 1 0>;
@@ -150,21 +153,23 @@
 		status = "disabled";
 	};
 
-	/* pmu led flash */
-	huawei,pmu_led {
-		compatible = "huawei,pmu_led";
-		huawei,flash-name = "pmu_led";
-		huawei,flash-index = <1>;
-		huawei,flash-type = <0>;
-		huawei,slave-address = <0x0>;
-		huawei,flash_led_num = <9>;
-		huawei,torch_led_num = <2>;
-		huawei,flash_led = <0x1 0x2 0x3 0x4 0x5 0x6 0x7 0x8 0x9>;
-		huawei,torch_led = <0x0 0x3>;
-		huawei,led_ctrl_flash = <0x13 0x00 0x75 0x0a 0xd0 0xc8 0x1b>;
-		huawei,led_ctrl_torch = <0x13 0x00 0x75 0x0a 0xd0 0x48 0x1b>;
-		huawei,flash-position = "front";
-		status = "ok";
+	pmic: pmic@FFF34000 {
+		/* pmu led flash */
+		huawei,pmu_led {
+			compatible = "huawei,pmu_led";
+			huawei,flash-name = "pmu_led";
+			huawei,flash-index = <1>;
+			huawei,flash-type = <0>;
+			huawei,slave-address = <0x0>;
+			huawei,flash_led_num = <9>;
+			huawei,torch_led_num = <2>;
+			huawei,flash_led = <0x1 0x2 0x3 0x4 0x5 0x6 0x7 0x8 0x9>;
+			huawei,torch_led = <0x0 0x3>;
+			huawei,led_ctrl_flash = <0x13 0x00 0x75 0x0a 0xd0 0xc8 0x1b>;
+			huawei,led_ctrl_torch = <0x13 0x00 0x75 0x0a 0xd0 0x48 0x1b>;
+			huawei,flash-position = "front";
+			status = "ok";
+		};
 	};
 
 	/*

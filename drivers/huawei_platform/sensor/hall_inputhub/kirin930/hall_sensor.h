@@ -61,6 +61,7 @@ struct hall_cdev {
 };
 
 int hall_first_report(bool enable);
+int ak8789_register_report_data(int ms);
 int hall_register(struct hall_cdev *cdev);
 void hall_unregister(struct hall_cdev *cdev);
 #endif

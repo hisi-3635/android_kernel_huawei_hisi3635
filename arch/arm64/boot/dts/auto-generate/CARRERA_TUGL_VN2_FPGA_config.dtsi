@@ -1,0 +1,22 @@
+
+/**
+ * Huawei Ltd.
+ * PhosphorV660
+ */
+
+
+/include/ "CARRERA_TUGL_VN2_config.dtsi"
+
+/ {
+	hisi,boardid = <1 4 8 8 >;
+	hisi,boardname = "CARRERA_TUGL_VN2_FPGA";
+	hisi,config_profile = "highhigh";
+	sensorhub{
+		als_sensor:light{
+			als1{
+				als_phone_version = <12>;
+			};
+		};
+	};
+};
+

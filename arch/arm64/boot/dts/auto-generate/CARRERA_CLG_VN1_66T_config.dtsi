@@ -5,14 +5,7 @@
  */
 
 
-/include/ "fastboot.dtsi"
 /include/ "CARRERA_CLG_V4_66T_config.dtsi"
-/include/ "CARRERA_CLG_VN1_66T_pin.dtsi"
-/include/ "CARRERA_CLG_VN1_66T_hi6402_pin.dtsi"
-/include/ "CARRERA_CLG_VN1_66T_modem_pin.dtsi"
-///include/ "CARRERA_CLG_VN1_66T_charger.dtsi"
-///include/ "CARRERA_CLG_VN1_66T_pmic.dtsi"
-///include/ "CARRERA_CLG_VN1_66T_gpio_logic.dtsi"
 
 / {
 	hisi,boardid = <1 4 9 4 >;
@@ -21,7 +14,7 @@
 	antenna_fpga{
 		compatible = "antenna_fpga";
 		antenna_fpga,power-disable = <1>;
-		antenna_fpga,pre-image-filename = "CARRERA_CLG_VN1.bin";
+		antenna_fpga,pre-image-filename = "CARRERA_CLG_VN2.bin";
 		status = "ok";
 	};
 	sensorhub{

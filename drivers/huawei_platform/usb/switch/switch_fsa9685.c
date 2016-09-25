@@ -33,7 +33,7 @@
 #include <linux/hw_dev_dec.h>
 #endif
 #include <huawei_platform/log/hw_log.h>
-#include <huawei_platform/usb/hw_rwswitch.h>
+#include <chipset_common/hwusb/hw_usb_rwswitch.h>
 #include <huawei_platform/usb/switch/switch_fsa9685.h>
 #include <huawei_platform/power/huawei_charger.h>
 
@@ -49,8 +49,10 @@ static struct work_struct   g_intb_work;
 static struct delayed_work   detach_delayed_work;
 #ifdef CONFIG_FSA9685_DEBUG_FS
 static int reg_locked = 1;
-static char chip_regs[0x5c] = { 0 };
+static char chip_regs[0x5c+2] = { 0 };
 #endif
+static struct device *otg_status_dev = NULL;
+
 int is_support_fcp(void);
 static int fsa9685_write_reg(int reg, int val)
 {
@@ -288,6 +290,9 @@ static void fsa9685_intb_work(struct work_struct *work)
     static int invalid_times = 0;
     static int otg_attach = 0;
     static int pedestal_attach = 0;
+    char event_string[13] ={0};
+    char *envp[] = { event_string, NULL };
+
     reg_intrpt = fsa9685_read_reg(FSA9685_REG_INTERRUPT);
     vbus_status = fsa9685_read_reg(FSA9685_REG_VBUS_STATUS);
     hwlog_info("%s: read FSA9685_REG_INTERRUPT. reg_intrpt=0x%x\n", __func__, reg_intrpt);
@@ -339,6 +344,12 @@ static void fsa9685_intb_work(struct work_struct *work)
                 hwlog_info("%s: FSA9685_USBOTG_DETECTED\n", __func__);
                 otg_attach = 1;
                 hisi_usb_id_change(ID_FALL_EVENT);
+                if(otg_status_dev != NULL) {
+                    snprintf(event_string, sizeof(event_string), "OTG_STATUS=1");
+                    kobject_uevent_env(&otg_status_dev->kobj, KOBJ_CHANGE,envp);
+                } else {
+                    hwlog_err("%s: otg status dev is NULL!!!\n", __func__);
+                }
             }
             if (reg_dev_type1 & FSA9685_DEVICE_TYPE1_UNAVAILABLE) {
                 id_valid_status = ID_INVALID;
@@ -353,7 +364,7 @@ static void fsa9685_intb_work(struct work_struct *work)
             }
             if (reg_dev_type3 & FSA9685_CUSTOMER_ACCESSORY7) {
                 fsa9685_manual_sw(FSA9685_USB1_ID_TO_IDBYPASS);
-                ret = usb_port_switch_request(INDEX_USB_REWORK_SN);
+                ret = hw_usb_port_switch_request(INDEX_USB_REWORK_SN);
                 hwlog_info("%s: FSA9685_CUSTOMER_ACCESSORY7 USB_REWORK_SN ret %d\n", __func__, ret);
             }
             if (reg_dev_type3 & FSA9685_CUSTOMER_ACCESSORY5) {
@@ -406,6 +417,12 @@ static void fsa9685_intb_work(struct work_struct *work)
                 hwlog_info("%s: FSA9685_USBOTG_DETACH\n", __func__);
                 hisi_usb_id_change(ID_RISE_EVENT);
                 otg_attach = 0;
+                if(otg_status_dev != NULL) {
+                    snprintf(event_string, sizeof(event_string), "OTG_STATUS=0");
+                    kobject_uevent_env(&otg_status_dev->kobj, KOBJ_CHANGE,envp);
+                } else {
+                    hwlog_err("%s: otg status dev is NULL!!!\n", __func__);
+                }
             }
             if (pedestal_attach ==1) {
                 hwlog_info("%s: FSA9685_CUSTOMER_ACCESSORY5_DETACH\n", __func__);
@@ -580,6 +597,7 @@ int switch_chip_reset(void)
     }
 
     /* disable accp interrupt */
+    ret |= fsa9685_write_reg_mask(FSA9685_REG_CONTROL2, FSA9685_ACCP_OSC_ENABLE,FSA9685_ACCP_OSC_ENABLE);
     ret |= fsa9685_write_reg(FSA9685_REG_ACCP_INTERRUPT_MASK1, 0xFF);
     ret |= fsa9685_write_reg(FSA9685_REG_ACCP_INTERRUPT_MASK2, 0xFF);
     if(ret < 0)
@@ -677,6 +695,7 @@ int fcp_cmd_transfer_check(void)
 void fcp_protocol_restart(void)
 {
     int reg_val =0;
+    int ret = 0;
     /* disable accp protocol */
     fsa9685_write_reg_mask(FSA9685_REG_ACCP_CNTL, 0,FAS9685_ACCP_CNTL_MASK);
     msleep(100);
@@ -694,6 +713,15 @@ void fcp_protocol_restart(void)
     {
         hwlog_err("%s : enable accp enable bit failed, accp status [0x40]=0x%x  \n",__func__,reg_val);
     }
+    /* disable accp interrupt */
+    ret |= fsa9685_write_reg_mask(FSA9685_REG_CONTROL2, FSA9685_ACCP_OSC_ENABLE,FSA9685_ACCP_OSC_ENABLE);
+    ret |= fsa9685_write_reg(FSA9685_REG_ACCP_INTERRUPT_MASK1, 0xFF);
+    ret |= fsa9685_write_reg(FSA9685_REG_ACCP_INTERRUPT_MASK2, 0xFF);
+    if(ret < 0)
+    {
+        hwlog_err("accp interrupt mask write failed \n");
+    }
+
     hwlog_info("%s :disable and enable accp protocol accp status  is 0x%x \n",__func__,reg_val);
 }
 /****************************************************************************
@@ -1246,6 +1274,8 @@ static int fsa9685_probe(
         hwlog_err("%s:device create failed!\n", __func__);
         goto err_create_link_failed;
     }
+    otg_status_dev = new_dev;
+
     ret = sysfs_create_link(&new_dev->kobj, &client->dev.kobj, "manual_ctrl");
     if (ret < 0) {
         hwlog_err("%s:create link to switch failed!\n", __func__);
@@ -1290,6 +1320,7 @@ static int fsa9685_probe(
     /* if support fcp ,disable fcp interrupt */
     if( 0 == is_support_fcp())
     {
+        ret |= fsa9685_write_reg_mask(FSA9685_REG_CONTROL2, FSA9685_ACCP_OSC_ENABLE,FSA9685_ACCP_OSC_ENABLE);
         ret |= fsa9685_write_reg(FSA9685_REG_ACCP_INTERRUPT_MASK1, 0xFF);
         ret |= fsa9685_write_reg(FSA9685_REG_ACCP_INTERRUPT_MASK2, 0xFF);
         if(ret < 0)
@@ -1340,7 +1371,12 @@ static int fsa9685_probe(
     }
 
     /* if chip support fcp ,register fcp adapter ops */
-    if( 0 == is_support_fcp() && 0 ==fcp_adapter_ops_register(&fcp_fsa9688_ops))
+    if( 0 == is_support_fcp()
+#ifdef CONFIG_HI6521_CHARGER
+    )
+#else
+    && 0 ==fcp_adapter_ops_register(&fcp_fsa9688_ops))
+#endif
     {
         hwlog_info(" fcp adapter ops register success!\n");
     }

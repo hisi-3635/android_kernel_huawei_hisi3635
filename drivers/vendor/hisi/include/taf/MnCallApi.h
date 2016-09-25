@@ -1120,6 +1120,8 @@ enum TAF_CS_CAUSE_ENUM
     TAF_CS_CAUSE_IMS_DECLINE                                        = (TAF_CS_CAUSE_IMS_BEGIN + 603),
     TAF_CS_CAUSE_IMS_DOES_NOT_EXIST_ANYWHERE                        = (TAF_CS_CAUSE_IMS_BEGIN + 604),
     TAF_CS_CAUSE_IMS_GLOBAL_NOT_ACCEPTABLE                          = (TAF_CS_CAUSE_IMS_BEGIN + 606),
+    /* 新增原因值, 该原因值用于不用去CS域重播时的IMS SIP原因值转换 */
+    TAF_CS_CAUSE_IMS_OTHERS                                         = (TAF_CS_CAUSE_IMS_BEGIN + 699),
 
     /* IMSA的错误原因值 */
     TAF_CS_CAUSE_IMSA_ERROR                                         = (TAF_CS_CAUSE_IMSA_BEGIN + 1),            /* 一般错误 */
@@ -1135,6 +1137,9 @@ enum TAF_CS_CAUSE_ENUM
     TAF_CS_CAUSE_IMSA_SRVCC_ABNORMAL_DEREG                          = (TAF_CS_CAUSE_IMSA_BEGIN + 11),           /* SRVCC过程中出现DEREG */
     TAF_CS_CAUSE_IMSA_CMCC_TCALL_TIMEOUT                            = (TAF_CS_CAUSE_IMSA_BEGIN + 12),           /* 中国移动需求, Tcall超时后CS域重播*/
     TAF_CS_CAUSE_IMSA_CMCC_TQOS_TIMEOUT                             = (TAF_CS_CAUSE_IMSA_BEGIN + 13),           /* 中国移动需求, Tqos超时后CS域重播*/
+    TAF_CS_CAUSE_IMSA_STRM_RTP_BREAK                                = (TAF_CS_CAUSE_IMSA_BEGIN + 14),           /* 通话中没有语音包 */
+    /* 新增原因值, 该原因值用于不用去CS域重播时的IMS内部原因值转换 */
+    TAF_CS_CAUSE_IMSA_IMS_ERROR                                     = (TAF_CS_CAUSE_IMSA_BEGIN + 15),
 
     TAF_CS_CAUSE_BUTT                                               = (0xFFFFFFFF)
 };
@@ -1161,9 +1166,6 @@ typedef enum                                                                    
     MN_CALL_PRESENTATION_RESERVED                            = 3                /*      1 1 Reserved                 */
 }MN_CALL_PRESENTATION_IND_ENUM;
 typedef VOS_UINT8   MN_CALL_PRESENTATION_IND_ENUM_UINT8;
-
-
-
 enum MN_CALL_MODIFY_STATUS_ENUM
 {
     MN_CALL_MODIFY_REMOTE_USER_REQUIRE_TO_MODIFY,                               /* 远程用户发起的modify */

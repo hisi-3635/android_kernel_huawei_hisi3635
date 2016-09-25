@@ -226,12 +226,15 @@ typedef struct
 {
     VOS_MSG_HEADER                                                              /*_H2ASN_Skip*/
     MMA_IMSA_MSG_ID_ENUM_UINT32                             ulMsgId;            /*_H2ASN_Skip*/
+    VOS_UINT32                                              bitRoamingValid : 1;
+    VOS_UINT32                                              bitSpare        : 31;
     MMA_IMSA_IMS_VOPS_INDICATOR_ENUM_UINT8                  enImsVoPsInd;
     MMA_IMSA_EMS_INDICATOR_ENUM_UINT8                       enEmsInd;
     MMA_IMSA_SERVICE_STATUS_ENUM_UINT8                      enPsServiceStatus;
     VOS_UINT8                                               ucPsSimValid;       /* VOS_TRUE :有效，VOS_FALSE :无效*/
     MMA_IMSA_RAT_TYPE_ENUM_UINT8                            enRat;              /* 当前接入技术 */
-    VOS_UINT8                                               aucReserve[3];
+    VOS_UINT8                                               ucRoamingFlg;       /* VOS_TRUE :漫游，VOS_FALSE :非漫游*/
+    VOS_UINT8                                               aucReserve[2];
 }MMA_IMSA_SERVICE_CHANGE_IND_STRU;
 
 
@@ -239,10 +242,9 @@ typedef struct
 {
     VOS_MSG_HEADER                                                  /*_H2ASN_Skip*/
     MMA_IMSA_MSG_ID_ENUM_UINT32         ulMsgId;                    /*_H2ASN_Skip*/
-    VOS_UINT8                           ucRoamingFlg;               /* VOS_TRUE :漫游，VOS_FALSE :非漫游 */
 
     MMA_IMSA_ACCESS_TYPE_ENUM_UINT8     enAccessType;
-    VOS_UINT8                           aucReserved[2];
+    VOS_UINT8                           aucReserved[3];
     VOS_UINT16                          usLac;
     VOS_UINT16                          usTac;
     MMA_IMSA_PLMN_ID_STRU               stPlmnId;

@@ -79,6 +79,7 @@ struct sensor_cfg_data;
 #define LDO_VOLTAGE_1P2V		1200000
 #define LDO_VOLTAGE_1P5V		1500000
 #define LDO_VOLTAGE_1P8V		1800000
+#define LDO_VOLTAGE_2P7V		2700000
 #define LDO_VOLTAGE_2P8V		2850000
 //add by hefei
 #define LDO_VOLTAGE_V2P8V		2800000

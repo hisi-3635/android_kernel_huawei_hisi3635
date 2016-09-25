@@ -63,7 +63,7 @@
 #include "cam_log.h"
 
 #if defined (CONFIG_HUAWEI_DSM)
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #endif
 
 #if defined (CONFIG_HUAWEI_DSM)
@@ -526,7 +526,7 @@ void ispv1_csi_phy_set(camera_power_state type, csi_index_t index)
 
 
 
-
+#ifdef DPHY_DEBUG
 int ispv1_load_phy_setting(char *filename, u8 *settle_time, u8 *camera_source)
 {
 	struct kstat stat;
@@ -596,7 +596,7 @@ error_out:
 		filp_close(fp, 0);
 	return ret;
 }
-
+#endif
 /*
  **************************************************************************
  * FunctionName: ispv1_init_csi;

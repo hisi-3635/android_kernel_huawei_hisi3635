@@ -264,6 +264,9 @@ enum TAF_PS_MSG_ID_ENUM
     ID_MSG_TAF_PS_SET_DSFLOW_NV_WRITE_CFG_REQ               = TAF_PS_MSG_ID_BASE + 0x011B,  /* _H2ASN_MsgChoice TAF_PS_SET_DSFLOW_NV_WRITE_CFG_REQ_STRU */
     ID_MSG_TAF_PS_GET_DSFLOW_NV_WRITE_CFG_REQ               = TAF_PS_MSG_ID_BASE + 0x011C,  /* _H2ASN_MsgChoice TAF_PS_GET_DSFLOW_NV_WRITE_CFG_REQ_STRU */
 
+    /* ^IMSPDPCFG */
+    ID_MSG_TAF_PS_SET_IMS_PDP_CFG_REQ                       = TAF_PS_MSG_ID_BASE + 0x0121,  /* _H2ASN_MsgChoice TAF_PS_SET_IMS_PDP_CFG_REQ_STRU */
+
     /*----------------------------------------------------------------------
        APS内部消息[0x0200, 0x0299]
     *---------------------------------------------------------------------*/
@@ -430,12 +433,11 @@ enum TAF_PS_EVT_ID_ENUM
     /* APS->IMSA通知SRVCC CANCEL */
     ID_EVT_TAF_PS_SRVCC_CANCEL_NOTIFY_IND                   = TAF_PS_EVT_ID_BASE + 0x0200,           /* _H2ASN_MsgChoice TAF_SRVCC_CANCEL_NOTIFY_IND_STRU */
 
+    ID_EVT_TAF_PS_SET_IMS_PDP_CFG_CNF                       = TAF_PS_EVT_ID_BASE + 0x0201,           /* _H2ASN_MsgChoice TAF_PS_SET_IMS_PDP_CFG_CNF_STRU */
+
     ID_EVT_TAF_PS_BUTT
 };
 typedef VOS_UINT32 TAF_PS_EVT_ID_ENUM_UINT32;
-
-
-
 enum TAF_PS_CAUSE_ENUM
 {
     /*----------------------------------------------------------------------
@@ -1403,6 +1405,40 @@ typedef struct
 
 typedef TAF_PS_COMMON_CNF_STRU TAF_PS_SET_PRIM_PDP_CONTEXT_INFO_CNF_STRU;
 
+/*****************************************************************************
+ 结构名称: TAF_SET_IMS_PDP_CFG_STRU
+ 结构说明: ^IMSPDPCFG命令参数
+
+ 修改历史      :
+  1.日    期   : 2015年07月30日
+    作    者   : z00301431
+    修改内容   : 新增结构
+*****************************************************************************/
+typedef struct
+{
+    VOS_UINT8                           ucCid;
+    VOS_UINT8                           ucImsFlag;
+    VOS_UINT8                           aucReserved[2];
+} TAF_IMS_PDP_CFG_STRU;
+
+/*****************************************************************************
+ 结构名称: TAF_PS_SET_IMS_PDP_CFG_REQ_STRU
+ 结构说明: ID_MSG_TAF_PS_SET_IMS_PDP_CFG_REQ
+           ID_EVT_TAF_PS_SET_IMS_PDP_CFG_CNF消息
+
+ 修改历史      :
+  1.日    期   : 2015年07月30日
+    作    者   : z00301431
+    修改内容   : 新增结构
+*****************************************************************************/
+typedef struct
+{
+    TAF_CTRL_STRU                       stCtrl;
+
+    TAF_IMS_PDP_CFG_STRU                stImsPdpCfg;
+} TAF_PS_SET_IMS_PDP_CFG_REQ_STRU;
+
+typedef TAF_PS_COMMON_CNF_STRU TAF_PS_SET_IMS_PDP_CFG_CNF_STRU;
 
 
 typedef struct
@@ -3043,7 +3079,8 @@ typedef struct
     VOS_UINT32                          bitOpIpv4AddrAllocType: 1;
     VOS_UINT32                          bitOpPcscfDiscovery : 1;
     VOS_UINT32                          bitOpImCnSignalFlg  : 1;
-    VOS_UINT32                          bitOpSpare          : 22;
+    VOS_UINT32                          bitOpImsSuppFlg     : 1;
+    VOS_UINT32                          bitOpSpare          : 21;
 
     VOS_UINT8                           ucCid;
     VOS_UINT8                           ucLinkdCid;
@@ -3054,6 +3091,8 @@ typedef struct
     TAF_PDP_PCSCF_DISCOVERY_ENUM_UINT8  enPcscfDiscovery;
     TAF_PDP_IM_CN_SIG_FLAG_ENUM_UINT8   enImCnSignalFlg;
     VOS_UINT8                           ucPfNum;
+    VOS_UINT8                           ucImsSuppFlg;
+    VOS_UINT8                           aucReserved[3];
 
     TAF_UMTS_QOS_STRU                   stUmtsQosInfo;
     TAF_EPS_QOS_STRU                    stEpsQosInfo;
@@ -4079,6 +4118,12 @@ VOS_UINT32 TAF_PS_GetDsFlowNvWriteCfg(
 );
 
 
+VOS_UINT32 TAF_PS_SetImsPdpCfg(
+    VOS_UINT32                          ulModuleId,
+    VOS_UINT16                          usClientId,
+    VOS_UINT8                           ucOpId,
+    TAF_IMS_PDP_CFG_STRU               *pstImsPdpCfg
+);
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

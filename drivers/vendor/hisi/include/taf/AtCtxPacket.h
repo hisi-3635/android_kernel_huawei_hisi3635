@@ -57,6 +57,7 @@ extern "C" {
 #define AT_PS_INVALID_RABID             (0xFF)              /* RABID无效值 */
 #define AT_PS_RABID_MODEM_1_MASK        (0x40)
 
+#define IPV6_ADDRESS_TEST_MODE_ENABLE                    (0x55aa55aa)           /* 0x55aa55aa值IPV6地址为测试模式 */
 
 /*****************************************************************************
   3 枚举定义
@@ -353,7 +354,8 @@ typedef struct
 {
 #if (FEATURE_ON == FEATURE_IPV6)
     VOS_UINT8                           ucIpv6Capability;
-    VOS_UINT8                           aucReserved1[7];
+    VOS_UINT8                           aucReserved1[3];
+    VOS_UINT32                          ulIpv6AddrTestModeCfg;
 
     /* 保存用户定制的用于回退处理的PS域原因值 */
     AT_PS_IPV6_BACKPROC_EXT_CAUSE_STRU  stIpv6BackProcExtCauseTbl;

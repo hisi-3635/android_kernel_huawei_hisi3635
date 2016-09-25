@@ -57,6 +57,8 @@ enum CALL_IMSA_MSG_TYPE_ENUM
 
     ID_IMSA_CALL_MSG_SYNC_IND,                                                   /* _H2ASN_MsgChoice IMSA_CALL_MSG_SYNC_IND_STRU */
 
+    ID_IMSA_CALL_CCWA_CAP_NOTIFY,                                                /* _H2ASN_MsgChoice IMSA_CALL_CCWA_CAP_NOTIFY_STRU */
+
     ID_CALL_IMSA_MSG_TYPE_BUTT
 };
 typedef  VOS_UINT32  CALL_IMSA_MSG_TYPE_ENUM_UINT32;
@@ -109,7 +111,8 @@ typedef struct
     VOS_MSG_HEADER
     VOS_UINT32                          ulMsgId;
     VOS_UINT8                           ucCallNum;
-    VOS_UINT8                           aucReserve[3];
+    VOS_UINT8                           ucStartedHifiFlag;
+    VOS_UINT8                           aucReserve[2];
     CALL_IMSA_SRVCC_CALL_INFO_STRU      astCallInfo[CALL_IMSA_MAX_ENTITY_NUM];
     TAF_CALL_DTMF_BUFF_STRU             stDtmfBuffInfo;
 }CALL_IMSA_SRVCC_CALL_INFO_NOTIFY_STRU;
@@ -156,6 +159,15 @@ typedef struct
     VOS_UINT8                           aucReserve[3];
     IMSA_CALL_MSG_UNION                 astMsgArray[IMSA_CALL_MSG_SYNC_MAX_NUM];
 }IMSA_CALL_MSG_SYNC_IND_STRU;
+
+
+typedef struct
+{
+    VOS_MSG_HEADER                                                              /* _H2ASN_Skip */
+    VOS_UINT32                          ulMsgId;                                /* _H2ASN_Skip */
+    VOS_UINT8                           ucCcwaCap;                              /* 0:不支持ccwa; 1:支持ccwa */
+    VOS_UINT8                           aucReserve[3];
+}IMSA_CALL_CCWA_CAP_NOTIFY_STRU;
 /*****************************************************************************
   4 宏定义
 *****************************************************************************/

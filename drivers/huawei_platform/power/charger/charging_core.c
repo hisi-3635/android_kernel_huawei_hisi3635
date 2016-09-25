@@ -161,6 +161,7 @@ static void charge_core_cbatt_handler(int cbat, struct charge_vdpm_data vdpm_dat
 *                      data:charge parameters
 *  return value:  NULL
 **********************************************************/
+static int segment_flag = 0;
 static void charge_core_sbatt_handler(int vbat, struct charge_segment_data segment_data[], struct charge_core_data *data)
 {
     int i,ichg;
@@ -217,6 +218,7 @@ static void charge_core_sbatt_handler(int vbat, struct charge_segment_data segme
         __func__,ichg,vbat,last_i,i,segment_data[i].ichg_segment,data->ichg,last_ichg);
 
     last_i = i;
+    segment_flag = i;
     flag_running_first = 0;
     last_vbat = vbat;
     last_ichg = data->ichg;
@@ -270,6 +272,60 @@ static void charge_core_protect_inductance_handler(int cbat, struct charge_induc
     hwlog_info("%s : battery capacity is %%%d, last_iin set to %d ma,i = %d \n",__func__, cbat, data->iin,i);
 }
 
+/* apply battery aging safe policy */
+static void charge_core_safe_policy_handler(struct charge_core_data *data)
+{
+    AGING_SAFE_POLICY_TYPE asp = {0};
+    static AGING_SAFE_POLICY_TYPE prev_asp = {0};
+    int vterm_max = 0;
+    int ret = 0, change = 0;
+    unsigned int tmp_ratio = 0;
+
+    ret = hisi_battery_aging_safe_policy(&asp);
+    if (ret)
+    {
+        hwlog_err(BASP_TAG"[%s], get basp fail, ret:%d!\n", __func__, ret);
+        return;
+    }
+    if (asp.volt_dec != prev_asp.volt_dec || asp.cur_ratio != prev_asp.cur_ratio || asp.learned_fcc != prev_asp.learned_fcc)
+    {
+        change = 1;
+        prev_asp.volt_dec = asp.volt_dec;
+        prev_asp.cur_ratio = asp.cur_ratio;
+        prev_asp.learned_fcc = asp.learned_fcc;
+    }
+
+    vterm_max = hisi_battery_vbat_max();
+    if (vterm_max < 0)
+    {
+        hwlog_err(BASP_TAG"[%s], get vterm_max fail, vterm_max:%d!\n", __func__, vterm_max);
+        vterm_max = VTERM_MAX_DEFAULT_MV;
+    }
+
+    if (change)
+    {
+        hwlog_info(BASP_TAG"volt_dec:%dmV, cur_ratio:%d/10, learned_fcc:%d, vterm_max:%dmV\n", asp.volt_dec, asp.cur_ratio, asp.learned_fcc, vterm_max);
+        hwlog_info(BASP_TAG"before apply asp, data->ichg:%dmA, data->vterm:%dmV\n", data->ichg, data->vterm);
+    }
+
+    if(FCP_STAGE_SUCESS == fcp_get_stage_status())
+    {
+        if (segment_flag > 0)
+            tmp_ratio = (asp.cur_ratio < MAX_BATT_CHARGE_CUR_RATIO) ? asp.cur_ratio : MAX_BATT_CHARGE_CUR_RATIO; /* second segment max current is 0.7C */
+        else
+            tmp_ratio = asp.cur_ratio;
+    } else {
+        tmp_ratio = (asp.cur_ratio < MAX_BATT_CHARGE_CUR_RATIO) ? asp.cur_ratio : MAX_BATT_CHARGE_CUR_RATIO; /* plain charger max current is 0.7C */
+    }
+    data->ichg = data->ichg <= asp.learned_fcc*tmp_ratio/10 ? data->ichg : asp.learned_fcc*tmp_ratio/10;
+    data->vterm = data->vterm <= (vterm_max-asp.volt_dec) ? data->vterm : (vterm_max-asp.volt_dec);
+
+    if (change)
+    {
+        hwlog_info(BASP_TAG"after apply asp, data->ichg:%dmA, data->vterm:%dmV, tmp_ratio:%d\n", data->ichg, data->vterm, tmp_ratio);
+    }
+}
+
 
 
 /**********************************************************
@@ -290,6 +346,10 @@ struct charge_core_data *charge_core_get_params(void)
     charge_core_cbatt_handler(cbatt,di->vdpm_para,&di->data);
     charge_core_sbatt_handler(vbatt,di->segment_para,&di->data);
     charge_core_protect_inductance_handler(cbatt,di->inductance_para,&di->data);
+    if(di->data.basp_flag)
+    {
+        charge_core_safe_policy_handler(&di->data);
+    }
 
     return &di->data;
 }
@@ -506,6 +566,13 @@ static int charge_core_parse_dts(struct device_node* np, struct charge_core_info
         return -EINVAL;
     }
     hwlog_debug("otg_curr = %d\n",di->data.otg_curr);
+    di->data.basp_flag = 0;
+    ret = of_property_read_u32(np, "basp_flag", &(di->data.basp_flag));
+    if(ret)
+    {
+        hwlog_err("get basp_flag failed\n");
+    }
+    hwlog_info("basp_falg = %d\n",di->data.basp_flag);
 
     //vdpm_para
     array_len = of_property_count_strings(np, "vdpm_para");

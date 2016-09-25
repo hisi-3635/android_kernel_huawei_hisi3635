@@ -1549,8 +1549,51 @@ VOS_UINT32 TAF_PS_GetDsFlowNvWriteCfg(
     return ulResult;
 }
 
+/*****************************************************************************
+ 函 数 名  : TAF_PS_SetImsPdpCfg
+ 功能描述  : 设置IMS PDP
+ 输入参数  : usClientId                 - 客户端ID
+             ucOpId                     - 操作码ID
+             pstImsPdpCfg               - IMS PDP配置
+ 输出参数  : 无
+ 返 回 值  : VOS_OK                     - 发送消息成功
+             VOS_ERR                    - 发送消息失败
+ 调用函数  :
+ 被调函数  :
 
+ 修改历史      :
+  1.日    期   : 2015年7月30日
+    作    者   : z00301431
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT32 TAF_PS_SetImsPdpCfg(
+    VOS_UINT32                          ulModuleId,
+    VOS_UINT16                          usClientId,
+    VOS_UINT8                           ucOpId,
+    TAF_IMS_PDP_CFG_STRU               *pstImsPdpCfg
+)
+{
+    VOS_UINT32                          ulResult;
+    TAF_PS_SET_IMS_PDP_CFG_REQ_STRU     stSetImsPdpCfgReq;
 
+    /* 初始化 */
+    ulResult = VOS_OK;
+    PS_MEM_SET(&stSetImsPdpCfgReq, 0x00, sizeof(TAF_PS_SET_IMS_PDP_CFG_REQ_STRU));
+
+    /* 构造ID_MSG_TAF_PS_SET_IMS_PDP_CFG_REQ消息 */
+    stSetImsPdpCfgReq.stCtrl.ulModuleId = ulModuleId;
+    stSetImsPdpCfgReq.stCtrl.usClientId = usClientId;
+    stSetImsPdpCfgReq.stCtrl.ucOpId     = ucOpId;
+    stSetImsPdpCfgReq.stImsPdpCfg       = *pstImsPdpCfg;
+
+    /* 发送消息 */
+    ulResult = TAF_PS_SndMsg(I0_WUEPS_PID_TAF,
+                             ID_MSG_TAF_PS_SET_IMS_PDP_CFG_REQ,
+                             &stSetImsPdpCfgReq,
+                             sizeof(TAF_PS_SET_IMS_PDP_CFG_REQ_STRU));
+
+    return ulResult;
+}
 #ifdef  __cplusplus
   #if  __cplusplus
   }

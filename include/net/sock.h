@@ -336,6 +336,11 @@ struct sock {
 	struct bastet_sock *bastet;
 #endif
 
+#ifdef CONFIG_HW_WIFIPRO
+	int wifipro_is_google_sock;
+	char wifipro_dev_name[IFNAMSIZ];
+#endif
+
 #ifdef CONFIG_NET_DMA
 	struct sk_buff_head	sk_async_wait_queue;
 #endif

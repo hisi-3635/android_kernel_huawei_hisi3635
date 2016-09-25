@@ -1,0 +1,7 @@
+kernel/drivers/mfd/mfd-core.ko
+kernel/drivers/mfd/hi3xxx_hi6421v300.ko
+kernel/drivers/mfd/hi3xxx_pmic_mntn.ko
+kernel/drivers/mfd/hi3xxx_hi3630.ko
+kernel/drivers/mfd/hi6402_irq.ko
+kernel/drivers/mfd/hi6402es_irq.ko
+kernel/drivers/mfd/hi3630_asp_irq.ko

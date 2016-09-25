@@ -57,13 +57,6 @@ extern "C"{
 #define TLPHY_OM_SEND_MSG_COUNT               ( 3 )   /*TLPHY每次申请重传OM消息的条数*/
 #define TLPHY_OM_SEND_CONTENT_LENGTH_IN_16BIT ( 2 )   /*TLPHY重传OM消息信息长度*/
 #define TLPHY_RTTAGENT_MSG_HEADLEN_IN_8BIT    ( 8 )   /* enMsgType+ulMsgLen 的字节长度*/
-
-#define MTA_PHY_MSG_HEADER      VOS_MSG_HEADER \
-                                VOS_UINT16  usMsgID; \
-                                VOS_UINT16  ausReserved[1];
-
-#define TLPHY_RTTAGENT_AFCLOCK_STATUS_INFO_LENGTH_IN_16BIT  (2)       /*TLPHY发送给RTT AGENT的AFC锁定状态消息长度*/
-#define UNLIMITED_COUNT_REPORT                              (65535)   /*上报次数为无限次*/
 /*****************************************************************************
   3 枚举定义
 *****************************************************************************/
@@ -86,9 +79,6 @@ enum RTTAGENT_TLPHY_MSGTYPE_ENUM
 	LPHY_AGENT_STORE_OM_REQ,                  /* LPHY上报OM缓存请求 */
 	LPHY_AGENT_SEND_OM_REQ,                   /* LPHY上报OM重传请求 */
 
-    /*TLPHY 发送给代理的消息类型*/
-	TLPHY_AGENT_SEND_AFCLOCK_STATUS_INFO_CNF = 56,     /* TLPHY上报AFC锁定状态请求*/
-
     /* 以下是RTT AGENT发送给TLPHY的消息类型 */
 	AGENT_TO_TLPHY_INFO_START = 63,
 
@@ -98,36 +88,10 @@ enum RTTAGENT_TLPHY_MSGTYPE_ENUM
 
 	/* 代理发送给LPHY 的消息类型 */
 	AGENT_LPHY_SEND_OM_CNF,                   /* LPHY OM消息重传确认 */
-
-	AGENT_TLPHY_AFC_STATUS_REQ,                /* 代理发送给物理层的AFC锁定状态上报请求*/
-
 	AGENT_TLPHY_MSG_BUTT
 };
 typedef VOS_UINT32 RTTAGENT_TLPHY_MSGTYPE_ENUM_UINT32;
 
-/*****************************************************************************
-枚举名    : TLPHY_MTA_AFCLOCK_STATUS_ENUM
-枚举说明  : GPS 参考时钟频率锁定状态枚举
-*****************************************************************************/
-enum TLPHY_MTA_AFCLOCK_STATUS_ENUM
-{
-    TLPHY_MTA_AFCLOCK_UNLOCKED = 0,    /*GPS 参考时钟频率非锁定状态*/
-    TLPHY_MTA_AFCLOCK_LOCKED,          /*GPS 参考时钟频率锁定状态*/
-    TLPHY_MTA_AFCLOCK_STATUS_BUTT
-};
-typedef VOS_UINT16 TLPHY_MTA_AFCLOCK_STATUS_ENUM_UINT16;
-
-/*****************************************************************************
-枚举名    : RTTAGENT_AFCLOCK_STATUS_REPORT_CONTROL_FLAG_ENUM
-枚举说明  : AFC 锁定状态上报控制枚举
-*****************************************************************************/
-enum RTTAGENT_AFCLOCK_STATUS_REPORT_CONTROL_FLAG_ENUM
-{
-    RTTAGENT_STOP_REPORT_CONTROL_FLAG = 0,    /* 停止上报控制标记 */
-    RTTAGENT_ALLOW_REPORT_CONTROL_FLAG,       /* 允许上报控制标记 */
-    RTTAGENT_REPORT_CONTROL_FLAG_BUTT
-};
-typedef VOS_UINT16 RTTAGENT_AFCLOCK_STATUS_REPORT_CONTROL_FLAG_ENUM_UINT16;
 /*****************************************************************************
   4 消息头定义
 *****************************************************************************/
@@ -249,45 +213,7 @@ typedef struct
     VOS_UINT16                             usAlmLevel;         /* ERRLOG上报级别 */
 }AGENT_TLPHY_ERRLOG_CTRL_INFO_STRU;
 
-/*****************************************************************************
- 结构名    : TLPHY_MTA_AFCLOCK_STATUS_RPT_STRU
- 结构说明  : TLPHY 上报到RTT AGENT的AFC锁定状态消息结构体
-*****************************************************************************/
-typedef struct
-{
-    VOS_MSG_HEADER
-    RTTAGENT_TLPHY_MSGTYPE_ENUM_UINT32        enMsgType; //消息类型
-    VOS_UINT32                                ulMsgLen;  //消息长度
-    TLPHY_MTA_AFCLOCK_STATUS_ENUM_UINT16      enStatus;  //锁定状态
-    VOS_UINT16                                ausReserved1[1];
-}TLPHY_AGENT_AFCLOCK_STATUS_RPT_STRU;
 
-/*****************************************************************************
- 结构名    : MTA_AGENT_AFCLOCK_STATUS_PRT_NTF_STRU
- 结构说明  : 由NAS下发到RTT Agent的AFC锁定状态查询消息结构体
-*****************************************************************************/
-typedef struct
-{
-    MTA_PHY_MSG_HEADER
-    VOS_UINT16            usReportCtrolFlag;   //0:停止上报，1:启动上报，无限次上报时需要下发停止上报时才停止上报，其他情况DSP上报次数达到最大次数时才停止上报
-    VOS_UINT16            usReportCount;       //上报次数，若是0xffff则无限次上报
-    VOS_UINT16            usReportDuration;    //上报间隔，以ms为单位，粒度为10ms的整数倍，上报次数大于1时有效
-    VOS_UINT16            ausReserved1[1];
-}MTA_AGENT_AFCLOCK_STATUS_RPT_NTF_STRU;
-
-/*****************************************************************************
- 结构名    : AGENT_TLPHY_AFCLOCK_STATUS_RPT_NTF_STRU
- 结构说明  : 由RTT Agent下发到TLPHY的AFC锁定状态查询消息结构体
-*****************************************************************************/
-typedef struct
-{
-    RTTAGENT_TLPHY_MSGTYPE_ENUM_UINT32        enMsgType; //消息类型
-    VOS_UINT32                                ulMsgLen;  //消息长度
-    VOS_UINT16                                usReportCtrolFlag;   //0:停止上报，1:启动上报，无限次上报时需要下发停止上报时才停止上报，其他情况DSP上报次数达到最大次数时才停止上报
-    VOS_UINT16                                usReportCount;       //上报次数，若是0xffff则无限次上报
-    VOS_UINT16                                usReportDuration;    //上报间隔，以ms为单位，粒度为10ms的整数倍，上报次数大于1时有效
-    VOS_UINT16                                ausReserved[1];
-}AGENT_TLPHY_AFCLOCK_STATUS_RPT_NTF_STRU;
 
 /*****************************************************************************
   7 UNION定义

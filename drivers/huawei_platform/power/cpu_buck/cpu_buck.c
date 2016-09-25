@@ -12,7 +12,7 @@
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <huawei_platform/log/hw_log.h>
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #include <cpu_buck.h>
 
 #define HWLOG_TAG cpu_buck

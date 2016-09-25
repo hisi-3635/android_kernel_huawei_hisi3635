@@ -436,6 +436,40 @@
 		status = "disabled";
 	};
 
+	huawei,ar1335{
+                compatible = "huawei,ar1335";
+                huawei,sensor_name = "ar1335";
+                huawei,extisp_type = <4>;
+                huawei,sensor_index = <0>;
+                huawei,interface_type = <1>;
+                huawei,csi_lane = <3>;
+                huawei,csi_index = <0>;
+                huawei,csi_mipi_clk = <0x2c>;
+                huawei,pd_valid = <1>;
+                huawei,reset_valid = <1>;
+                huawei,vcmpd_valid = <0>;
+                huawei,i2c-index = <0>;
+                huawei,i2c-speed = <0x0a>;
+                huawei,i2c-addr = <0x34>;
+                huawei,i2c-addr_bits = <1>;
+                huawei,i2c-val_bits = <0>;
+                huawei,sensor_chipid = <0x13850>;
+                huawei,camif_id = <0>;
+                huawei,vcm_name = "dw9714";
+                huawei,vcm_enable = <1>;
+                huawei,sensor_type = <0>;
+                dvdd-supply = <&ldo20>;
+                avdd-supply = <&ldo21>;
+                iopw-supply = <&lsw52>;
+                vcm-supply = <&ldo25>;
+                miniisp-supply = <&lsw51>;
+                huawei,ldo-names = "dvdd", "avdd", "iopw", "vcm","miniisp";
+                /* RESETB, FSIN, PWDN, PWDN2 */
+                gpios = <&gpio3 1 0  &gpio3 3 0 &gpio2 5 0 &gpio2 6 0 &gpio3 6 0 &gpio4 1 0>;
+                huawei,gpio-ctrl-types = "reset", "fsin", "suspend", "reset2", "pwdn", "vcm_pwdn";
+                status = "disabled";
+        };
+
 	huawei,s5k4e1ga_sunny {
 		compatible = "huawei,s5k4e1ga_sunny";
 		huawei,sensor_name = "s5k4e1ga";
@@ -631,27 +665,6 @@
 				status = "disabled";
 			};
 		};
-	};
-
-	/* pmu led flash */
-	huawei,pmu_led {
-		compatible = "huawei,pmu_led";
-		huawei,flash-name = "pmu_led";
-		huawei,flash-index = <1>;
-		huawei,flash-type = <0>;
-		huawei,slave-address = <0x0>;
-
-		huawei,flash_led_num = <9>;
-		huawei,torch_led_num = <2>;
-		huawei,flash_led = <0x1 0x2 0x3 0x4 0x5 0x6 0x7 0x8 0x9>;
-		huawei,torch_led = <0x0 0x3>;
-
-		huawei,led_ctrl_flash = <0x13 0x00 0x75 0x0a 0xd0 0xc8 0x1b>;
-		huawei,led_ctrl_torch = <0x13 0x00 0x75 0x0a 0xd0 0x48 0x1b>;
-		
-		huawei,flash-position = "front";
-
-		status = "disabled";
 	};
 
 	/*ois device*/

@@ -134,18 +134,23 @@ VOS_UINT32 ADS_UL_SendPacket(
     VOS_UINT8                           ucRabId
 );
 
-typedef VOS_UINT32 (*RCV_DL_DATA_FUNC)(VOS_UINT8 ucRabId, IMM_ZC_STRU *pData, ADS_PKT_TYPE_ENUM_UINT8 enPktType);
+typedef VOS_UINT32 (*RCV_DL_DATA_FUNC)(VOS_UINT8 ucExRabId, IMM_ZC_STRU *pData, ADS_PKT_TYPE_ENUM_UINT8 enPktType, VOS_UINT32 ulExParam);
 
 /*****************************************************************************
  函 数 名  : ADS_DL_RegDlDataCallback
  功能描述  : ADS下行数据处理模块为上层模块提供的注册下行数据接收函数接口
- 输入参数  : VOS_UINT8                           ucRabId
-             (*****ucRabId为扩展的RabId，高2bit表示ModemId，低6bit表示RabId*****)
-             RCV_DL_DATA_FUNC                    pFunc
+ 输入参数  : ucExRabId --- 扩展承载号
+             (*****ucExRabId为扩展的RabId，高2bit表示ModemId，低6bit表示RabId*****)
+             pFunc     --- 数据接收回调函数指针
+             ulExParam --- 扩展参数
  输出参数  : 无
- 返 回 值  : VOS_UINT32
+ 返 回 值  : VOS_OK/VOS_ERR
 *****************************************************************************/
-VOS_UINT32 ADS_DL_RegDlDataCallback(VOS_UINT8 ucRabId, RCV_DL_DATA_FUNC pFunc);
+VOS_UINT32 ADS_DL_RegDlDataCallback(
+    VOS_UINT8                           ucExRabId,
+    RCV_DL_DATA_FUNC                    pFunc,
+    VOS_UINT32                          ulExParam
+);
 
 /*****************************************************************************
  函 数 名  : ADS_UL_IsSendPermit

@@ -298,13 +298,15 @@ static void avc_operation_decision_free(
 
 static void avc_operation_free(struct avc_operation_node *ops_node)
 {
-	struct avc_operation_decision_node *od_node;
+	struct avc_operation_decision_node *od_node, *tmp;
 
 	if (!ops_node)
 		return;
 
-	list_for_each_entry(od_node, &ops_node->od_head, od_list)
+	list_for_each_entry_safe(od_node, tmp, &ops_node->od_head, od_list) {
+		list_del(&od_node->od_list);
 		avc_operation_decision_free(od_node);
+	}
 	kmem_cache_free(avc_operation_node_cachep, ops_node);
 }
 
@@ -725,6 +727,7 @@ static void avc_audit_pre_callback(struct audit_buffer *ab, void *a)
 	audit_log_format(ab, " for ");
 }
 
+
 /**
  * avc_audit_post_callback - SELinux specific information
  * will be called by generic audit code
@@ -742,6 +745,11 @@ static void avc_audit_post_callback(struct audit_buffer *ab, void *a)
 		audit_log_format(ab, " permissive=%u",
 				 ad->selinux_audit_data->result ? 0 : 1);
 	}
+#ifdef CONFIG_HUAWEI_SELINUX_DSM
+
+    selinux_dsm_upload(ab, ad);
+#endif
+
 }
 
 /* This is the slow part of avc audit with big stack footprint */

@@ -75,7 +75,10 @@ extern "C" {
 #define IMSA_IMS_IMEI_LEN                    (15)
 #define IMSA_IMS_MCC_LEN                     (3)
 #define IMSA_IMS_MNC_MAX_LEN                 (3)
-
+#define IMSA_IMS_WAIT_ACPT_MAX_LEN           (185)
+/* Begin add by yangfan 00345883 from MT recv invite to send 180ring timer on 2016-6-6 */
+#define IMSA_IMS_MT_RECV_INVITE_TO_SEND_RING (180)
+/* End add by yangfan 00345883 from MT recv invite to send 180ring timer on 2016-6-6 */
 
 #define IMSA_IMS_USSD_STRING_SZ               (182*2)
 
@@ -141,6 +144,7 @@ typedef VOS_UINT32 IMSA_IMS_INPUT_CALL_REASON_ENUM_UINT32;
 enum IMSA_IMS_INPUT_SMS_REASON_ENUM{
     IMSA_IMS_INPUT_SMS_REASON_SEND_MESSAGE,
     IMSA_IMS_INPUT_SMS_REASON_TR1M_EXP,
+    IMSA_IMS_INPUT_SMS_REASON_TR2M_EXP,
     IMSA_IMS_INPUT_SMS_REASON_BUTT
 };
 typedef VOS_UINT32 IMSA_IMS_INPUT_SMS_REASON_ENUM_UINT32;
@@ -188,7 +192,7 @@ enum IMAS_IMS_INPUT_PARA_REASON_ENUM{
     IMAS_IMS_INPUT_PARA_REASON_SET_TIMER_LENGTH,
     IMAS_IMS_INPUT_PARA_REASON_SET_IMEI,
     IMAS_IMS_INPUT_PARA_REASON_SET_CALL_WAITING,
-
+    IMAS_IMS_INPUT_PARA_REASON_SET_ERR_LOG_CTRL_INFO,
     IMAS_IMS_INPUT_PARA_REASON_QUERY_IMPU  = 0x100,
     IMAS_IMS_INPUT_PARA_REASON_BUTT
 };
@@ -221,6 +225,8 @@ enum IMSA_IMS_INPUT_NV_INFO_REASON_ENUM{
     IMSA_IMS_INPUT_NV_INFO_REASON_SS_CONF,
     IMSA_IMS_INPUT_NV_INFO_REASON_SECURITY,
     IMSA_IMS_INPUT_NV_INFO_REASON_MEDIA,
+    IMSA_IMS_INPUT_NV_INFO_REASON_CAPABILITY,
+
     IMSA_IMS_INPUT_NV_INFO_REASON_BUTT
 };
 typedef VOS_UINT32 IMSA_IMS_INPUT_NV_INFO_REASON_ENUM_UINT32;
@@ -253,6 +259,9 @@ enum IMSA_IMS_OUTPUT_CALL_REASON_ENUM{
     IMSA_IMS_OUTPUT_CALL_REASON_MODIFY_END,   /* Event to end modifying */
 
     IMSA_IMS_OUTPUT_CALL_REASON_ECONF_NOTIFY_IND,   /* 上报增强型多方通话的参与者的状态 */
+
+    IMSA_IMS_OUTPUT_CALL_REASON_MT_BEGIN,    /* Event indicating INVITE received */
+
     IMSA_IMS_OUTPUT_CALL_REASON_BUTT
  } ;
 typedef VOS_UINT32 IMSA_IMS_OUTPUT_CALL_REASON_ENUM_UINT32;
@@ -499,6 +508,14 @@ enum IMSA_IMS_NW_ACCESS_TYPE_ENUM
 };
 typedef VOS_UINT8 IMSA_IMS_NW_ACCESS_TYPE_ENUM_UINT8;
 
+enum IMSA_IMS_RAT_TYPE_ENUM
+{
+    IMSA_IMS_RAT_TYPE_GSM              =0,
+    IMSA_IMS_RAT_TYPE_UTRAN,
+    IMSA_IMS_RAT_TYPE_LTE,
+    IMSA_IMS_RAT_TYPE_BUTT
+};
+typedef VOS_UINT8 IMSA_IMS_RAT_TYPE_ENUM_UINT8;
 
 enum IMSA_IMS_EVENT_TYPE_ENUM
 {
@@ -537,6 +554,19 @@ enum IMSA_IMS_INT_ERROR_CODE_ENUM
     IMSA_IMS_INT_ERROR_CODE_NOTIFY_DEREGISTER,  /* Notify sip message indicates user terminates.*/
 
     IMSA_IMS_INT_ERROR_CODE_REGISTER_TIMER_OUT,
+
+    /* Begin: reserved for Call error. */
+    IMSA_IMS_INT_ERROR_CODE_STRM_RTP_BREAK                      = 100,
+    IMSA_IMS_INT_ERROR_CODE_CALL_INNER,
+    IMSA_IMS_INT_ERROR_CODE_CALL_ADD_STREAM,
+    IMSA_IMS_INT_ERROR_CODE_CALL_AUDIO_PORT,
+    IMSA_IMS_INT_ERROR_CODE_CALL_VIDEO_PORT,
+    IMSA_IMS_INT_ERROR_CODE_CALL_BFCP_PORT                      = 105,
+    IMSA_IMS_INT_ERROR_CODE_CALL_EXIST_VIDEO,
+    IMSA_IMS_INT_ERROR_CODE_CALL_EXIST_CONF,
+    IMSA_IMS_INT_ERROR_CODE_CALL_EXIST_TOO_MUCH_CALL,
+    IMSA_IMS_INT_ERROR_CODE_CALL_ERROR_MAX                      = 200,
+    /* End: reserved for Call error. */
 
     IMSA_IMS_INT_ERROR_CODE_BUTT
 };
@@ -598,6 +628,16 @@ enum IMSA_IMS_SERVICE_NOTIFY_EVENT_ENUM
     IMSA_IMS_SERVICE_NOTIFY_EVENT_REJED            /* rejected */
 };
 typedef VOS_UINT8 IMSA_IMS_SERVICE_NOTIFY_EVENT_ENUM_UINT8;
+
+enum IMSA_IMS_CALL_FAIL_DETAIL_REASON_ENUM
+{
+    IMSA_IMS_CALL_FAIL_DETAIL_REASON_NULL       = 0,
+    IMSA_IMS_CALL_FAIL_DETAIL_REASON_START_HIFI = 1,
+
+    IMSA_IMS_CALL_FAIL_DETAIL_REASON_BUTT
+};
+typedef VOS_UINT8 IMSA_IMS_CALL_FAIL_DETAIL_REASON_ENUM_UINT8;
+
 /*****************************************************************************
   5 STRUCT
 *****************************************************************************/
@@ -632,6 +672,7 @@ typedef struct {
     IMSA_IMS_INPUT_CALL_REASON_ENUM_UINT32  enInputCallReason;
     VOS_UINT32                              ulOpId;
     VOS_UINT32                              ulCallIndex;
+    VOS_UINT32                              ulDlgId;  /*Added for forking, indicates the dialog id*/
     IMSA_IMS_CALL_MODE_ENUM_UINT8           enCallType;
     IMSA_IMS_EMERGENCY_TYPE_ENUM_UINT8      enEmergencyType;
     VOS_CHAR                                aucRemoteAddress[IMSA_IMS_EVENT_STRING_SZ + 1];
@@ -768,14 +809,26 @@ typedef struct{
             VOS_UINT8     aucRsv[3];
         } stUeCapability;
         struct{
-            VOS_UINT8     ucVoice;                /*0 不支持，1 支持*/
-            VOS_UINT8     aucRsv[3];
+            VOS_UINT8                               ucVoice;                /*0 不支持，1 支持*/
+            IMSA_IMS_RAT_TYPE_ENUM_UINT8            enNwRatType;
+            VOS_UINT8                               aucRsv[2];
         } stNetworkCapability;
         struct{
             VOS_UINT32    ulRetryTimerLength;     /*长度为0，表示不生效*/
             VOS_UINT32    ulPeriodRergisterTimerLength;/*长度为0，表示不生效*/
         } stTimerLength;
         VOS_CHAR       cImei[IMSA_IMS_IMEI_LEN + 1];
+        struct
+        {
+            VOS_UINT8     ucErrlogCtrlFlag;       /* 告警状态，默认0:close;1:open */
+            VOS_UINT8     ucReserved;
+            VOS_UINT16    usAlmLevel;             /* 故障&告警级别
+                                                  Warning: 0x04代表提示
+                                                  Minor: 0x03代表次要
+                                                  Major: 0x02代表重要
+                                                  Critical: 0x01代表紧急(默认)
+                                                  说明：值为0x03， 0x03/0x02/0x01都上报 */
+        }stErrlogCtrlInfo;
     }u;
 
 }IMSA_IMS_INPUT_PARA_EVENT_STRU;
@@ -851,7 +904,11 @@ typedef struct{
     VOS_UINT32      ulRetryAfter;    /* the retry-after header in SIP Oxx message,单位为s,0表示无效 */
     VOS_UINT8       ucEmergencyType; /* the emergency service type <IMSA_IMS_EMERGENCY_TYPE_ENUM> */
     VOS_UINT8       ucServerNtyEvent;  /* @IMSA_IMS_SERVICE_NOTIFY_EVENT_ENUM_UINT8*/
-    VOS_CHAR        acReserved[2];
+
+    /* 新增子原因值用于判断是否不需要重播 */
+    IMSA_IMS_CALL_FAIL_DETAIL_REASON_ENUM_UINT8 enCallFailDetailReason;
+    VOS_CHAR        acReserved[1];
+
 }IMSA_IMS_OUTPUT_ERROR_STRU;
 
 typedef struct {
@@ -885,6 +942,7 @@ typedef struct {
  */
 typedef struct {
     VOS_UINT32                             ulCallIndex; /* The 'identifier or index of the call. */
+    VOS_UINT32                             ulDlgId; /* Indicates the dialog id */
     IMSA_IMS_CALL_DIRECTION_ENUM_UINT8     enCallDirection; /* The direction of the call e.g. mobile originated or terminated. */
     IMSA_IMS_CALL_STATE_ENUM_UINT8         enCallState; /* The state of the call. */
     IMSA_IMS_CALL_MODE_ENUM_UINT8          enCallMode;
@@ -892,7 +950,7 @@ typedef struct {
     VOS_CHAR                               acNumber[IMSA_IMS_NUMBER_STRING_SZ + 1]; /* The address of the remote party. */
     VOS_CHAR                               acConnectNumber[IMSA_IMS_NUMBER_STRING_SZ + 1]; /* The address of the remote party. */
     VOS_CHAR                               acRedirectNumber[IMSA_IMS_NUMBER_STRING_SZ + 1]; /* The address of the remote party. */
-    VOS_UINT8                              ucRsv;
+    VOS_UINT8                              ucIsLocalAlertingFlag; /* 0 = is early media. 1 = is local ring */
     IMSA_IMS_CALL_ADDRESS_TYPE_ENUM_UINT32 enCallAddreeType; /* The 'type' of address. */
     VOS_CHAR                               acAlpha[IMSA_IMS_ALPHA_STRING_SZ + 1];
     VOS_UINT8                              aucRsv2[3];
@@ -931,6 +989,8 @@ typedef struct {
 typedef struct {
     VOS_UINT32                              ulCallNum;
     IMSA_IMS_SRVCC_CALL_INFO_STRU           astCallInfo[IMSA_IMS_EVENT_MAX_CALL_LIST_SIZE];
+    VOS_UINT8                               ucHifiStatus;   /* 0:关闭； 1:打开 */
+    VOS_UINT8                               aucRsv[3];
 }IMSA_IMS_SRVCC_CALL_LIST_STRU;
 
 

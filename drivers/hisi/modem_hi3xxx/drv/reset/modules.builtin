@@ -1,0 +1,2 @@
+kernel/drivers/hisi/modem_hi3xxx/drv/reset/reset_balong.ko
+kernel/drivers/hisi/modem_hi3xxx/drv/reset/load_image.ko

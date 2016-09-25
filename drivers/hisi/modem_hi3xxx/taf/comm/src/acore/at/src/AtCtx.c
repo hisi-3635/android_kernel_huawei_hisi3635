@@ -241,6 +241,8 @@ VOS_VOID AT_InitCommPsCtx(VOS_VOID)
     pstPsCtx->ucIpv6Capability = AT_IPV6_CAPABILITY_IPV4_ONLY;
 
     pstPsCtx->stIpv6BackProcExtCauseTbl.ulCauseNum = 0;
+
+    pstPsCtx->ulIpv6AddrTestModeCfg = 0;
 #endif
 
     pstPsCtx->ucSharePdpFlag = VOS_FALSE;

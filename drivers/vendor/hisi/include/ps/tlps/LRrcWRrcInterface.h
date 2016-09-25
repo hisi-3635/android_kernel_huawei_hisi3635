@@ -852,6 +852,12 @@ typedef struct
 
     /* L通知W当前驻留的国家码 */
     VOS_UINT8                                               aucMcc[3];
+
+    /* begin：add for chr */
+    VOS_UINT32                                              ulHoBeginTimeStampHigh;
+    VOS_UINT32                                              ulHoBeginTimeStampLow;
+    /* end：add for chr */
+
     VOS_UINT8                                               aucReserved[2];
 
     VOS_UINT16                                              usHoDatalen;

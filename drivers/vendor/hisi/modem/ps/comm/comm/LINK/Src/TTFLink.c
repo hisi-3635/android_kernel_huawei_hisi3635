@@ -62,14 +62,18 @@ VOS_VOID TTF_LinkInit(VOS_UINT32 ulPid, TTF_LINK_ST *pLink)
 
 } /* TTF_LinkInit */
 
-#ifdef WTTF_PC_ST_SWITCH
 VOS_UINT32 TTF_LinkCheckNodeInLink(VOS_UINT32 ulPid, TTF_LINK_ST *pLink, TTF_NODE_ST *pCurr)
 {
-    TTF_NODE_ST *pNode;
+    TTF_NODE_ST     *pNode;
+
+    if ( (VOS_NULL_PTR == pLink) || (VOS_NULL_PTR == pCurr ))
+    {
+        PS_LOG(ulPid, 0, PS_PRINT_WARNING, "Warning: pLink Or pCurr is Null!");
+        return PS_FAIL;
+    }
 
     pNode = pLink->stHead.pNext;
-
-    while ((&pLink->stHead) != pNode)
+    while (&(pLink->stHead) != pNode)
     {
         if (pCurr == pNode)
         {
@@ -82,9 +86,6 @@ VOS_UINT32 TTF_LinkCheckNodeInLink(VOS_UINT32 ulPid, TTF_LINK_ST *pLink, TTF_NOD
     /*遍历链表，未查找到对应的结点*/
     return PS_FALSE;
 }
-#endif
-
-
 
 #ifndef _lint
 VOS_UINT32 TTF_LinkInsertHead(VOS_UINT32 ulPid, TTF_LINK_ST * pLink, TTF_NODE_ST *pInsert)

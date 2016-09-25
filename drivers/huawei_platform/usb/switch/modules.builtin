@@ -1,0 +1,2 @@
+kernel/drivers/huawei_platform/usb/switch/switch_usb_class.ko
+kernel/drivers/huawei_platform/usb/switch/switch_fsa9685.ko

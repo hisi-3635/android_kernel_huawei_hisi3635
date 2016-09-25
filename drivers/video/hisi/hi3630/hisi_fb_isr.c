@@ -130,13 +130,14 @@ irqreturn_t dss_pdp_isr(int irq, void *ptr)
 				hisifd->mipi_dsi_bit_clk_upt_isr_handler(hisifd);
 			}
 
-			if (hisifd->panel_info.esd_enable && hisifd->esd_hrtimer_enable) {
+			if (!hisifd->dsi_bit_clk_updated && hisifd->panel_info.esd_enable && hisifd->esd_hrtimer_enable) {
 				if (is_mipi_cmd_panel(hisifd)) {
 					if (hisifd->frame_end_wq) {
 						queue_work(hisifd->frame_end_wq, &(hisifd->frame_end_work));
 					}
 				}
 			}
+            hisifd->dsi_bit_clk_updated = false;
 		}
 
 		if (isr_s2 & BIT_VACTIVE0_START_INT) {
@@ -145,6 +146,11 @@ irqreturn_t dss_pdp_isr(int irq, void *ptr)
 		}
 
 		if (isr_s2 & vsync_isr_bit) {
+			if (g_enable_te_debug) {
+				HISI_FB_INFO("te isr received!\n");
+				g_enable_te_debug = 0;
+			}
+
 			if (hisifd->vsync_isr_handler) {
 				hisifd->vsync_isr_handler(hisifd);
 			}

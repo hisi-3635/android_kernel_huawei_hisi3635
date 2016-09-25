@@ -1,0 +1,2 @@
+kernel/drivers/hisi/modem_hi3xxx/drv/balong_timer/hardtimer_k3.ko
+kernel/drivers/hisi/modem_hi3xxx/drv/balong_timer/softtimer_balong.ko

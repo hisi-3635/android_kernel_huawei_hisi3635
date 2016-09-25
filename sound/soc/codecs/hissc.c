@@ -99,7 +99,7 @@ enum hissc_jack_states {
 
 enum headset_voltage {/*mV*/
 	HS_3_POLE_MAX_VOLTAGE = 8,
-	HS_4_POLE_MIN_VOLTAGE = 1350,
+	HS_4_POLE_MIN_VOLTAGE = 900,
 	HS_4_POLE_MAX_VOLTAGE = 2565,
 	HS_MAX_VOLTAGE = 2650,
 };
@@ -5077,7 +5077,7 @@ static int set_headset_keys_config(struct hissc_priv *priv)
 {
 	/* config the headset */
 	priv->headset_voltage->hs_3_pole_max_voltage = 8;
-	priv->headset_voltage->hs_4_pole_min_voltage = 1350;
+	priv->headset_voltage->hs_4_pole_min_voltage = 900;
 	priv->headset_voltage->hs_4_pole_max_voltage = 2565;
 	logi("headset_voltage {3pole=%d, 4pole=(%d-%d)}\n",
 		priv->headset_voltage->hs_3_pole_max_voltage,

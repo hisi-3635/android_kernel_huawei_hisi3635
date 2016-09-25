@@ -195,6 +195,10 @@ struct ion_heap {
 	struct task_struct *task;
 
 	int (*debug_show)(struct ion_heap *heap, struct seq_file *, void *);
+#if defined(CONFIG_ARCH_HI3630)
+	__kernel_ulong_t (*free_memory)(struct ion_heap *heap);
+#endif
+
 };
 
 /**

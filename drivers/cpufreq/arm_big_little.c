@@ -437,7 +437,7 @@ static void put_cluster_clk_and_freq_table(struct device *cpu_dev)
 }
 
 #ifdef CONFIG_ARCH_HI3630
-#ifdef CONFIG_HI3XXX_EFUSE
+#if defined(CONFIG_HI3XXX_EFUSE)||defined(CONFIG_HI3630_EFUSE)
 extern int bsp_efuse_read(unsigned int* buf,
                           const unsigned int group,
                           const unsigned int size);
@@ -451,7 +451,7 @@ int hisi_efuse_read(unsigned int* buf,
 	int loop = 2;
 
 	do{
-#ifdef CONFIG_HI3XXX_EFUSE
+#if defined(CONFIG_HI3XXX_EFUSE)||defined(CONFIG_HI3630_EFUSE)
 		ret = bsp_efuse_read(buf, group, size);
 #endif
 		loop--;

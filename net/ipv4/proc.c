@@ -54,7 +54,9 @@
 #ifdef CONFIG_HW_WIFIPRO_PROC
 #include "wifipro_tcp_monitor.h"
 #endif
-
+#ifdef CONFIG_HW_WIFI
+#include "wifi_tcp_statistics.h"
+#endif
 /*
  *	Report socket allocation statistics [mea@utu.fi]
  */
@@ -499,6 +501,12 @@ static __net_init int ip_proc_init_net(struct net *net)
         WIFIPRO_WARNING("wifipro_init_proc fail!");
     }
 #endif
+#ifdef CONFIG_HW_WIFI
+    if (wifi_tcp_init_proc(net)){
+        WIFIPRO_WARNING("wifi_tcp_init_proc fail!");
+    }
+#endif
+
 
 	return 0;
 

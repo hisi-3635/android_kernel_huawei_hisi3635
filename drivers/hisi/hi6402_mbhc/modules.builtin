@@ -1,0 +1,2 @@
+kernel/drivers/hisi/hi6402_mbhc/hi6402_mbhc.ko
+kernel/drivers/hisi/hi6402_mbhc/hi6402es_mbhc.ko

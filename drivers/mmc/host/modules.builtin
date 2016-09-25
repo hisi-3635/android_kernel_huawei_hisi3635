@@ -1,0 +1,5 @@
+kernel/drivers/mmc/host/mmci.ko
+kernel/drivers/mmc/host/dw_mmc.ko
+kernel/drivers/mmc/host/k3v3_mmc_raw.ko
+kernel/drivers/mmc/host/dw_mmc-pltfm.ko
+kernel/drivers/mmc/host/dw_mmc_hi3xxx.ko

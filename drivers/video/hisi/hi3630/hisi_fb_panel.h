@@ -86,6 +86,12 @@
 #define BL_SET_BY_BLPWM	BIT(2)
 #define BL_SET_BY_MIPI	BIT(3)
 
+/* supported display effect type */
+#define COMFORM_MODE                 BIT(0)
+#define ACM_COLOR_ENHANCE_MODE       BIT(1)
+#define IC_COLOR_ENHANCE_MODE        BIT(2)
+#define LED_RG_COLOR_TEMP_MODE       BIT(16)
+
 /* LCD init step */
 enum {
 	LCD_INIT_NONE = 0,
@@ -315,6 +321,8 @@ struct hisi_panel_info {
 
 	uint8_t acm_support;
 	u8 acm_color_enhancement_mode_support;
+	u8 lcd_ic_color_enhancement_mode_support;
+	u8 lcd_ipc_mode_support;
 	uint32_t acm_valid_num;
 	uint32_t r0_hh;
 	uint32_t r0_lh;
@@ -415,6 +423,10 @@ struct hisi_fb_panel_data {
 	ssize_t (*lcd_test_config_store) (struct platform_device *pdev, const char *buf, size_t count);
 	ssize_t (*lcd_test_config_show) (struct platform_device *pdev, char *buf);
 	ssize_t (*lcd_filter_show) (struct platform_device *pdev, char *buf);
+	ssize_t (*pic_enhance_mode_store) (struct platform_device *pdev, const char *buf, size_t count);
+	ssize_t (*pic_enhance_mode_show) (struct platform_device *pdev, char *buf);	
+	ssize_t (*lcd_support_mode_store) (struct platform_device *pdev, const char *buf, size_t count);
+	ssize_t (*lcd_support_mode_show) (struct platform_device *pdev, char *buf);
 
 	struct platform_device *next;
 };
@@ -465,6 +477,8 @@ ssize_t panel_next_lcd_cabc_mode_show(struct platform_device *pdev, char *buf);
 ssize_t panel_next_lcd_cabc_mode_store(struct platform_device *pdev, const char *buf, size_t count);
 ssize_t panel_next_lcd_ic_color_enhancement_mode_show(struct platform_device *pdev, char *buf);
 ssize_t panel_next_lcd_ic_color_enhancement_mode_store(struct platform_device *pdev,const char *buf, size_t count);
+ssize_t panel_next_lcd_support_mode_show(struct platform_device *pdev, char *buf);
+ssize_t panel_next_lcd_support_mode_store(struct platform_device *pdev,const char *buf, size_t count);
 ssize_t panel_next_lcd_check_reg(struct platform_device *pdev, char *buf);
 ssize_t panel_next_lcd_mipi_detect(struct platform_device *pdev, char *buf);
 ssize_t panel_next_mipi_dsi_bit_clk_upt_store(struct platform_device *pdev, const char *buf, size_t count);

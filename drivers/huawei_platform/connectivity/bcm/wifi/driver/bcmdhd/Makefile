@@ -23,7 +23,7 @@ DHDOFILES = aiutils.o siutils.o sbutils.o bcmutils.o bcmwifi_channels.o \
 	dhd_linux.o dhd_linux_platdev.o dhd_linux_sched.o dhd_pno.o \
 	dhd_common.o dhd_ip.o dhd_linux_wq.o dhd_custom_gpio.o \
 	bcmevent.o hndpmu.o linux_osl.o wldev_common.o wl_android.o hw_wifi.o \
-	hnd_pktq.o hnd_pktpool.o
+	hnd_pktq.o hnd_pktpool.o dhd_cfg_vendor.o
 
 obj-$(CONFIG_BCMDHD) += bcmdhd.o
 bcmdhd-objs += $(DHDOFILES)
@@ -83,6 +83,12 @@ DHDCFLAGS += -DHW_SOFTAP_MANAGEMENT
 DHDCFLAGS += -DHW_SOFTAP_MANAGEMENT_BUG
 DHDCFLAGS += -DHW_WIFI_POLL_ENABLE
 DHDCFLAGS += -DHW_WIFI_WAKELOCK_BUGFIX
+DHDCFLAGS += -DHW_WIFI_ALLOC_IF_PANIC
+DHDCFLAGS += -DSUPPORT_WL_TXPOWER
+DHDCFLAGS += -DHW_WIFI_CONFIG_FROM_FILE_BUG
+
+DHDCFLAGS += -DBCM_PATCH_CVE_2016_2475
+DHDCFLAGS += -DBCM_PATCH_CVE_2016_2493
 #huawei feature macro
 DHDCFLAGS += -DHW_WIFI_FIRST_SCAN_OPTIMIZE
 DHDCFLAGS += -DHW_WIFI_SHUTDOWN
@@ -98,6 +104,7 @@ DHDCFLAGS += -DHW_HANG_EVENT
 DHDCFLAGS += -DHW_P2P_CANNOT_CONNECT
 DHDCFLAGS += -DBCM_PATCH_GO_DETECT_GC_TIMEOUT
 DHDCFLAGS += -DHW_TX_802_1X_PRIO
+DHDCFLAGS += -DHW_MEM_OVERFLOW_BUGFIX
 #end define custom macro for all chip
 
 # SKB TAILPAD to avoid out of boundary memory access
@@ -136,6 +143,10 @@ DHDCFLAGS += -DHW_WIFI_WAKEUP_SRC_PARSE
 DHDCFLAGS += -DCUSTOM_MAX_TXGLOM_SIZE=32
 DHDCFLAGS += -DHW_PKT_FILTER_PATCH_FOR_64
 DHDCFLAGS += -DHW_WIFI_DMD_CLOSE_CMD52_LOG
+
+ifeq ($(IS_DOCOMO), true)
+DHDCFLAGS += -DHW_DOCOMO_FEATURE
+endif
 
 ifeq ($(CONFIG_HW_WIFI_FREQ_CTRL_FLAG),y)
 #throughput tuning begin
@@ -185,6 +196,7 @@ DHDCFLAGS += -DPROP_TXSTATUS_VSDB
 
 DHDCFLAGS += -DREPEAT_READFRAME
 DHDCFLAGS += -DROAM_AP_ENV_DETECTION
+DHDCFLAGS += -DHW_HTCLK_AVL_TIMEOUT_PATCH
 #custom define for bcm4334
 #bcm bug and feature macro
 DHDCFLAGS += -DUSE_DYNAMIC_F2_BLKSIZE -DDYNAMIC_F2_BLKSIZE_FOR_NONLEGACY=128

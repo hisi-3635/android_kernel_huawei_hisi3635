@@ -335,6 +335,23 @@ VOS_UINT32 Taf_NetScanHandle(
 }
 
 
+/* Modified by c00318887 for file refresh需要触发背景搜, 2015-3-9, begin */
+
+VOS_UINT32 TAF_SetRefreshStub(
+    MN_CLIENT_ID_T                      usClientId,
+    MN_OPERATION_ID_T                   ucOpId,
+    TAF_MMA_REFRESH_STUB_SET_REQ_STRU  *pstRefreshStub
+)
+{
+    return MN_FillAndSndAppReqMsg(usClientId,
+                                  ucOpId,
+                                  TAF_MSG_MMA_REFRESH_STUB_SET_REQ,
+                                  pstRefreshStub,
+                                  sizeof(TAF_MMA_REFRESH_STUB_SET_REQ_STRU),
+                                  I0_WUEPS_PID_MMA);
+}
+
+/* Modified by c00318887 for file refresh需要触发背景搜, 2015-3-9, end */
 
 VOS_UINT32 TAF_SetAutoReselStub(
     MN_CLIENT_ID_T                                          usClientId,

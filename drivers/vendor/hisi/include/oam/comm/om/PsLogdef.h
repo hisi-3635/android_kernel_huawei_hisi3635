@@ -2239,6 +2239,8 @@ typedef enum
                  /* Added by w0014666 for CALL DROP CHR, 2015-01-19, end */
 				 
                   PS_FILE_ID_NASTCMTCMSGPROC_C,
+                  PS_FILE_ID_GAS_MNTN_L2G_C,
+
                   PS_FILE_ID_BUTT
 
 }PS_FILE_ID_DEFINE_ENUM;

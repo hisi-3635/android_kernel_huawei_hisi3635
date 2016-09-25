@@ -47,119 +47,119 @@ char select_page3_step1[] = {
 
 /*truly*/
 char truly_gamma_red_param1[] = {
-	0xC0,0x14,      
+	0xC0,0x12,      
 };                
                   
 char truly_gamma_red_param2[] = {
-	0xC1,0x15,      
+	0xC1,0x14,      
 };                
                   
 char truly_gamma_red_param3[] = {
-	0xC2,0x23,      
+	0xC2,0x20,      
 };                
                   
 char truly_gamma_red_param4[] = {
-	0xC3,0x31,      
+	0xC3,0x2E,      
 };                
                   
 char truly_gamma_red_param5[] = {
-	0xC4,0x3D,      
+	0xC4,0x3A,      
 };                
                   
 char truly_gamma_red_param6[] = {
-	0xC5,0x47,      
+	0xC5,0x44,      
 };                
                   
 char truly_gamma_red_param7[] = {
-	0xC6,0x50,      
+	0xC6,0x4D,      
 };                
                   
 char truly_gamma_red_param8[] = {
-	0xC7,0x58,      
+	0xC7,0x54,      
 };                
                   
 char truly_gamma_red_param9[] = {
-	0xC8,0x5F,      
+	0xC8,0x5C,      
 };                
                   
 char truly_gamma_red_param10[] = {
-	0xC9,0xCF,      
+	0xC9,0xC5,      
 };                
                   
 char truly_gamma_red_param11[] = {
-	0xCA,0xD2,      
+	0xCA,0xC8,      
 };                
                   
 char truly_gamma_red_param12[] = {
-	0xCB,0xE8,      
+	0xCB,0xDC,      
 };                
                   
 char truly_gamma_red_param13[] = {
-	0xCC,0xF2,      
+	0xCC,0xE4,      
 };                
                   
 char truly_gamma_red_param14[] = {
-	0xCD,0xF6,      
+	0xCD,0xE7,      
 };                
                   
 char truly_gamma_red_param15[] = {
-	0xCE,0xF7,      
+	0xCE,0xE6,      
 };                
                   
 char truly_gamma_red_param16[] = {
-	0xCF,0xF8,      
+	0xCF,0xE8,      
 };                
                   
 char truly_gamma_red_param17[] = {
-	0xD0,0xFF,      
+	0xD0,0xED,      
 };                
                   
 char truly_gamma_red_param18[] = {
-	0xD1,0x15,      
+	0xD1,0x02,      
 };                
                   
 char truly_gamma_red_param19[] = {
-	0xD2,0x2A,      
+	0xD2,0x17,      
 };                
                   
 char truly_gamma_red_param20[] = {
-	0xD3,0x4C,      
+	0xD3,0x39,      
 };                
                   
 char truly_gamma_red_param21[] = {
-	0xD4,0x54,      
+	0xD4,0x42,      
 };                
                   
 char truly_gamma_red_param22[] = {
-	0xD5,0xB3,      
+	0xD5,0xAA,      
 };                
                   
 char truly_gamma_red_param23[] = {
-	0xD6,0xBA,      
+	0xD6,0xB2,      
 };                
                   
 char truly_gamma_red_param24[] = {
-	0xD7,0xC1,      
+	0xD7,0xB9,      
 };                
                   
 char truly_gamma_red_param25[] = {
-	0xD8,0xC9,      
+	0xD8,0xC2,      
 };                
                   
 char truly_gamma_red_param26[] = {
-	0xD9,0xD3,      
+	0xD9,0xCC,      
 };                
                   
 char truly_gamma_red_param27[] = {
-	0xDA,0xDD,      
+	0xDA,0xD7,      
 };                
                   
 char truly_gamma_red_param28[] = {
-	0xDB,0xE8,      
+	0xDB,0xE4,      
 };                
                   
 char truly_gamma_red_param29[] = {
-	0xDC,0xF6,      
+	0xDC,0xF4,      
 };                
                   
 char truly_gamma_red_param30[] = {
@@ -175,119 +175,119 @@ char truly_gamma_red_param32[] = {
 };                
                   
 char truly_gamma_red_param33[] = {
-	0xE0,0x14,      
+	0xE0,0x12,      
 };                
                   
 char truly_gamma_red_param34[] = {
-	0xE1,0x15,      
+	0xE1,0x14,      
 };                
                   
 char truly_gamma_red_param35[] = {
-	0xE2,0x23,      
+	0xE2,0x20,      
 };                
                   
 char truly_gamma_red_param36[] = {
-	0xE3,0x31,      
+	0xE3,0x2E,      
 };                
                   
 char truly_gamma_red_param37[] = {
-	0xE4,0x3D,      
+	0xE4,0x3A,      
 };                
                   
 char truly_gamma_red_param38[] = {
-	0xE5,0x47,      
+	0xE5,0x44,      
 };                
                   
 char truly_gamma_red_param39[] = {
-	0xE6,0x50,      
+	0xE6,0x4D,      
 };                
                   
 char truly_gamma_red_param40[] = {
-	0xE7,0x58,      
+	0xE7,0x54,      
 };                
                   
 char truly_gamma_red_param41[] = {
-	0xE8,0x5F,      
+	0xE8,0x5C,      
 };                
                   
 char truly_gamma_red_param42[] = {
-	0xE9,0xCF,      
+	0xE9,0xC5,      
 };                
                   
 char truly_gamma_red_param43[] = {
-	0xEA,0xD2,      
+	0xEA,0xC8,      
 };                
                   
 char truly_gamma_red_param44[] = {
-	0xEB,0xE8,      
+	0xEB,0xDC,      
 };                
                   
 char truly_gamma_red_param45[] = {
-	0xEC,0xF2,      
+	0xEC,0xE4,      
 };                
                   
 char truly_gamma_red_param46[] = {
-	0xED,0xF6,      
+	0xED,0xE7,      
 };                
                   
 char truly_gamma_red_param47[] = {
-	0xEE,0xF7,      
+	0xEE,0xE6,      
 };                
                   
 char truly_gamma_red_param48[] = {
-	0xEF,0xF8,      
+	0xEF,0xE8,      
 };                
                   
 char truly_gamma_red_param49[] = {
-	0xF0,0xFF,      
+	0xF0,0xED,      
 };                
                   
 char truly_gamma_red_param50[] = {
-	0xF1,0x15,      
+	0xF1,0x02,      
 };                
                   
 char truly_gamma_red_param51[] = {
-	0xF2,0x2A,      
+	0xF2,0x17,      
 };                
                   
 char truly_gamma_red_param52[] = {
-	0xF3,0x4C,      
+	0xF3,0x39,      
 };                
                   
 char truly_gamma_red_param53[] = {
-	0xF4,0x54,      
+	0xF4,0x42,      
 };                
                   
 char truly_gamma_red_param54[] = {
-	0xF5,0xB3,      
+	0xF5,0xAA,      
 };                
                   
 char truly_gamma_red_param55[] = {
-	0xF6,0xBA,      
+	0xF6,0xB2,      
 };                
                   
 char truly_gamma_red_param56[] = {
-	0xF7,0xC1,      
+	0xF7,0xB9,      
 };                
                   
 char truly_gamma_red_param57[] = {
-	0xF8,0xC9,      
+	0xF8,0xC2,      
 };                
                   
 char truly_gamma_red_param58[] = {
-	0xF9,0xD3,      
+	0xF9,0xCC,      
 };                
                   
 char truly_gamma_red_param59[] = {
-	0xFA,0xDD,      
+	0xFA,0xD7,      
 };                
                   
 char truly_gamma_red_param60[] = {
-	0xFB,0xE8,      
+	0xFB,0xE4,      
 };                
                   
 char truly_gamma_red_param61[] = {
-	0xFC,0xF6,      
+	0xFC,0xF4,      
 };                
                   
 char truly_gamma_red_param62[] = {
@@ -300,122 +300,122 @@ char truly_gamma_red_param63[] = {
                   
 char truly_gamma_red_param64[] = {
 	0xFF,0x2F,      
-};         
+};
 
 char truly_gamma_green_param1[] = {
-	0xC0,0x14,      
+	0xC0,0x12,      
 };                
                   
 char truly_gamma_green_param2[] = {
-	0xC1,0x15,      
+	0xC1,0x14,      
 };                
                   
 char truly_gamma_green_param3[] = {
-	0xC2,0x23,      
+	0xC2,0x20,      
 };                
                   
 char truly_gamma_green_param4[] = {
-	0xC3,0x31,      
+	0xC3,0x2E,      
 };                
                   
 char truly_gamma_green_param5[] = {
-	0xC4,0x3D,      
+	0xC4,0x3A,      
 };                
                   
 char truly_gamma_green_param6[] = {
-	0xC5,0x47,      
+	0xC5,0x44,      
 };                
                   
 char truly_gamma_green_param7[] = {
-	0xC6,0x50,      
+	0xC6,0x4D,      
 };                
                   
 char truly_gamma_green_param8[] = {
-	0xC7,0x58,      
+	0xC7,0x54,      
 };                
                   
 char truly_gamma_green_param9[] = {
-	0xC8,0x5F,      
+	0xC8,0x5C,      
 };                
                   
 char truly_gamma_green_param10[] = {
-	0xC9,0xCF,      
+	0xC9,0xC5,      
 };                
                   
 char truly_gamma_green_param11[] = {
-	0xCA,0xD2,      
+	0xCA,0xC8,      
 };                
                   
 char truly_gamma_green_param12[] = {
-	0xCB,0xE8,      
+	0xCB,0xDC,      
 };                
                   
 char truly_gamma_green_param13[] = {
-	0xCC,0xF2,      
+	0xCC,0xE4,      
 };                
                   
 char truly_gamma_green_param14[] = {
-	0xCD,0xF6,      
+	0xCD,0xE7,      
 };                
                   
 char truly_gamma_green_param15[] = {
-	0xCE,0xF7,      
+	0xCE,0xE6,      
 };                
                   
 char truly_gamma_green_param16[] = {
-	0xCF,0xF8,      
+	0xCF,0xE8,      
 };                
                   
 char truly_gamma_green_param17[] = {
-	0xD0,0xFF,      
+	0xD0,0xED,      
 };                
                   
 char truly_gamma_green_param18[] = {
-	0xD1,0x15,      
+	0xD1,0x02,      
 };                
                   
 char truly_gamma_green_param19[] = {
-	0xD2,0x2A,      
+	0xD2,0x17,      
 };                
                   
 char truly_gamma_green_param20[] = {
-	0xD3,0x4C,      
+	0xD3,0x39,      
 };                
                   
 char truly_gamma_green_param21[] = {
-	0xD4,0x54,      
+	0xD4,0x42,      
 };                
                   
 char truly_gamma_green_param22[] = {
-	0xD5,0xB3,      
+	0xD5,0xAA,      
 };                
                   
 char truly_gamma_green_param23[] = {
-	0xD6,0xBA,      
+	0xD6,0xB2,      
 };                
                   
 char truly_gamma_green_param24[] = {
-	0xD7,0xC1,      
+	0xD7,0xB9,      
 };                
                   
 char truly_gamma_green_param25[] = {
-	0xD8,0xC9,      
+	0xD8,0xC2,      
 };                
                   
 char truly_gamma_green_param26[] = {
-	0xD9,0xD3,      
+	0xD9,0xCC,      
 };                
                   
 char truly_gamma_green_param27[] = {
-	0xDA,0xDD,      
+	0xDA,0xD7,      
 };                
                   
 char truly_gamma_green_param28[] = {
-	0xDB,0xE8,      
+	0xDB,0xE4,      
 };                
                   
 char truly_gamma_green_param29[] = {
-	0xDC,0xF6,      
+	0xDC,0xF4,      
 };                
                   
 char truly_gamma_green_param30[] = {
@@ -431,119 +431,119 @@ char truly_gamma_green_param32[] = {
 };                
                   
 char truly_gamma_green_param33[] = {
-	0xE0,0x14,      
+	0xE0,0x12,      
 };                
                   
 char truly_gamma_green_param34[] = {
-	0xE1,0x15,      
+	0xE1,0x14,      
 };                
                   
 char truly_gamma_green_param35[] = {
-	0xE2,0x23,      
+	0xE2,0x20,      
 };                
                   
 char truly_gamma_green_param36[] = {
-	0xE3,0x31,      
+	0xE3,0x2E,      
 };                
                   
 char truly_gamma_green_param37[] = {
-	0xE4,0x3D,      
+	0xE4,0x3A,      
 };                
                   
 char truly_gamma_green_param38[] = {
-	0xE5,0x47,      
+	0xE5,0x44,      
 };                
                   
 char truly_gamma_green_param39[] = {
-	0xE6,0x50,      
+	0xE6,0x4D,      
 };                
                   
 char truly_gamma_green_param40[] = {
-	0xE7,0x58,      
+	0xE7,0x54,      
 };                
                   
 char truly_gamma_green_param41[] = {
-	0xE8,0x5F,      
+	0xE8,0x5C,      
 };                
                   
 char truly_gamma_green_param42[] = {
-	0xE9,0xCF,      
+	0xE9,0xC5,      
 };                
                   
 char truly_gamma_green_param43[] = {
-	0xEA,0xD2,      
+	0xEA,0xC8,      
 };                
                   
 char truly_gamma_green_param44[] = {
-	0xEB,0xE8,      
+	0xEB,0xDC,      
 };                
                   
 char truly_gamma_green_param45[] = {
-	0xEC,0xF2,      
+	0xEC,0xE4,      
 };                
                   
 char truly_gamma_green_param46[] = {
-	0xED,0xF6,      
+	0xED,0xE7,      
 };                
                   
 char truly_gamma_green_param47[] = {
-	0xEE,0xF7,      
+	0xEE,0xE6,      
 };                
                   
 char truly_gamma_green_param48[] = {
-	0xEF,0xF8,      
+	0xEF,0xE8,      
 };                
                   
 char truly_gamma_green_param49[] = {
-	0xF0,0xFF,      
+	0xF0,0xED,      
 };                
                   
 char truly_gamma_green_param50[] = {
-	0xF1,0x15,      
+	0xF1,0x02,      
 };                
                   
 char truly_gamma_green_param51[] = {
-	0xF2,0x2A,      
+	0xF2,0x17,      
 };                
                   
 char truly_gamma_green_param52[] = {
-	0xF3,0x4C,      
+	0xF3,0x39,      
 };                
                   
 char truly_gamma_green_param53[] = {
-	0xF4,0x54,      
+	0xF4,0x42,      
 };                
                   
 char truly_gamma_green_param54[] = {
-	0xF5,0xB3,      
+	0xF5,0xAA,      
 };                
                   
 char truly_gamma_green_param55[] = {
-	0xF6,0xBA,      
+	0xF6,0xB2,      
 };                
                   
 char truly_gamma_green_param56[] = {
-	0xF7,0xC1,      
+	0xF7,0xB9,      
 };                
                   
 char truly_gamma_green_param57[] = {
-	0xF8,0xC9,      
+	0xF8,0xC2,      
 };                
                   
 char truly_gamma_green_param58[] = {
-	0xF9,0xD3,      
+	0xF9,0xCC,      
 };                
                   
 char truly_gamma_green_param59[] = {
-	0xFA,0xDD,      
+	0xFA,0xD7,      
 };                
                   
 char truly_gamma_green_param60[] = {
-	0xFB,0xE8,      
+	0xFB,0xE4,      
 };                
                   
 char truly_gamma_green_param61[] = {
-	0xFC,0xF6,      
+	0xFC,0xF4,      
 };                
                   
 char truly_gamma_green_param62[] = {
@@ -556,122 +556,122 @@ char truly_gamma_green_param63[] = {
                   
 char truly_gamma_green_param64[] = {
 	0xFF,0x2F,      
-}; 
+};
 
 char truly_gamma_blue_param1[] = {
-	0xC0,0x14,      
+	0xC0,0x12,      
 };                
                   
 char truly_gamma_blue_param2[] = {
-	0xC1,0x15,      
+	0xC1,0x14,      
 };                
                   
 char truly_gamma_blue_param3[] = {
-	0xC2,0x23,      
+	0xC2,0x20,      
 };                
                   
 char truly_gamma_blue_param4[] = {
-	0xC3,0x31,      
+	0xC3,0x2E,      
 };                
                   
 char truly_gamma_blue_param5[] = {
-	0xC4,0x3D,      
+	0xC4,0x3A,      
 };                
                   
 char truly_gamma_blue_param6[] = {
-	0xC5,0x47,      
+	0xC5,0x44,      
 };                
                   
 char truly_gamma_blue_param7[] = {
-	0xC6,0x50,      
+	0xC6,0x4D,      
 };                
                   
 char truly_gamma_blue_param8[] = {
-	0xC7,0x58,      
+	0xC7,0x54,      
 };                
                   
 char truly_gamma_blue_param9[] = {
-	0xC8,0x5F,      
+	0xC8,0x5C,      
 };                
                   
 char truly_gamma_blue_param10[] = {
-	0xC9,0xCF,      
+	0xC9,0xC5,      
 };                
                   
 char truly_gamma_blue_param11[] = {
-	0xCA,0xD2,      
+	0xCA,0xC8,      
 };                
                   
 char truly_gamma_blue_param12[] = {
-	0xCB,0xE8,      
+	0xCB,0xDC,      
 };                
                   
 char truly_gamma_blue_param13[] = {
-	0xCC,0xF2,      
+	0xCC,0xE4,      
 };                
                   
 char truly_gamma_blue_param14[] = {
-	0xCD,0xF6,      
+	0xCD,0xE7,      
 };                
                   
 char truly_gamma_blue_param15[] = {
-	0xCE,0xF7,      
+	0xCE,0xE6,      
 };                
                   
 char truly_gamma_blue_param16[] = {
-	0xCF,0xF8,      
+	0xCF,0xE8,      
 };                
                   
 char truly_gamma_blue_param17[] = {
-	0xD0,0xFF,      
+	0xD0,0xED,      
 };                
                   
 char truly_gamma_blue_param18[] = {
-	0xD1,0x15,      
+	0xD1,0x02,      
 };                
                   
 char truly_gamma_blue_param19[] = {
-	0xD2,0x2A,      
+	0xD2,0x17,      
 };                
                   
 char truly_gamma_blue_param20[] = {
-	0xD3,0x4C,      
+	0xD3,0x39,      
 };                
                   
 char truly_gamma_blue_param21[] = {
-	0xD4,0x54,      
+	0xD4,0x42,      
 };                
                   
 char truly_gamma_blue_param22[] = {
-	0xD5,0xB3,      
+	0xD5,0xAA,      
 };                
                   
 char truly_gamma_blue_param23[] = {
-	0xD6,0xBA,      
+	0xD6,0xB2,      
 };                
                   
 char truly_gamma_blue_param24[] = {
-	0xD7,0xC1,      
+	0xD7,0xB9,      
 };                
                   
 char truly_gamma_blue_param25[] = {
-	0xD8,0xC9,      
+	0xD8,0xC2,      
 };                
                   
 char truly_gamma_blue_param26[] = {
-	0xD9,0xD3,      
+	0xD9,0xCC,      
 };                
                   
 char truly_gamma_blue_param27[] = {
-	0xDA,0xDD,      
+	0xDA,0xD7,      
 };                
                   
 char truly_gamma_blue_param28[] = {
-	0xDB,0xE8,      
+	0xDB,0xE4,      
 };                
                   
 char truly_gamma_blue_param29[] = {
-	0xDC,0xF6,      
+	0xDC,0xF4,      
 };                
                   
 char truly_gamma_blue_param30[] = {
@@ -687,119 +687,119 @@ char truly_gamma_blue_param32[] = {
 };                
                   
 char truly_gamma_blue_param33[] = {
-	0xE0,0x14,      
+	0xE0,0x12,      
 };                
                   
 char truly_gamma_blue_param34[] = {
-	0xE1,0x15,      
+	0xE1,0x14,      
 };                
                   
 char truly_gamma_blue_param35[] = {
-	0xE2,0x23,      
+	0xE2,0x20,      
 };                
                   
 char truly_gamma_blue_param36[] = {
-	0xE3,0x31,      
+	0xE3,0x2E,      
 };                
                   
 char truly_gamma_blue_param37[] = {
-	0xE4,0x3D,      
+	0xE4,0x3A,      
 };                
                   
 char truly_gamma_blue_param38[] = {
-	0xE5,0x47,      
+	0xE5,0x44,      
 };                
                   
 char truly_gamma_blue_param39[] = {
-	0xE6,0x50,      
+	0xE6,0x4D,      
 };                
                   
 char truly_gamma_blue_param40[] = {
-	0xE7,0x58,      
+	0xE7,0x54,      
 };                
                   
 char truly_gamma_blue_param41[] = {
-	0xE8,0x5F,      
+	0xE8,0x5C,      
 };                
                   
 char truly_gamma_blue_param42[] = {
-	0xE9,0xCF,      
+	0xE9,0xC5,      
 };                
                   
 char truly_gamma_blue_param43[] = {
-	0xEA,0xD2,      
+	0xEA,0xC8,      
 };                
                   
 char truly_gamma_blue_param44[] = {
-	0xEB,0xE8,      
+	0xEB,0xDC,      
 };                
                   
 char truly_gamma_blue_param45[] = {
-	0xEC,0xF2,      
+	0xEC,0xE4,      
 };                
                   
 char truly_gamma_blue_param46[] = {
-	0xED,0xF6,      
+	0xED,0xE7,      
 };                
                   
 char truly_gamma_blue_param47[] = {
-	0xEE,0xF7,      
+	0xEE,0xE6,      
 };                
                   
 char truly_gamma_blue_param48[] = {
-	0xEF,0xF8,      
+	0xEF,0xE8,      
 };                
                   
 char truly_gamma_blue_param49[] = {
-	0xF0,0xFF,      
+	0xF0,0xED,      
 };                
                   
 char truly_gamma_blue_param50[] = {
-	0xF1,0x15,      
+	0xF1,0x02,      
 };                
                   
 char truly_gamma_blue_param51[] = {
-	0xF2,0x2A,      
+	0xF2,0x17,      
 };                
                   
 char truly_gamma_blue_param52[] = {
-	0xF3,0x4C,      
+	0xF3,0x39,      
 };                
                   
 char truly_gamma_blue_param53[] = {
-	0xF4,0x54,      
+	0xF4,0x42,      
 };                
                   
 char truly_gamma_blue_param54[] = {
-	0xF5,0xB3,      
+	0xF5,0xAA,      
 };                
                   
 char truly_gamma_blue_param55[] = {
-	0xF6,0xBA,      
+	0xF6,0xB2,      
 };                
                   
 char truly_gamma_blue_param56[] = {
-	0xF7,0xC1,      
+	0xF7,0xB9,      
 };                
                   
 char truly_gamma_blue_param57[] = {
-	0xF8,0xC9,      
+	0xF8,0xC2,      
 };                
                   
 char truly_gamma_blue_param58[] = {
-	0xF9,0xD3,      
+	0xF9,0xCC,      
 };                
                   
 char truly_gamma_blue_param59[] = {
-	0xFA,0xDD,      
+	0xFA,0xD7,      
 };                
                   
 char truly_gamma_blue_param60[] = {
-	0xFB,0xE8,      
+	0xFB,0xE4,      
 };                
                   
 char truly_gamma_blue_param61[] = {
-	0xFC,0xF6,      
+	0xFC,0xF4,      
 };                
                   
 char truly_gamma_blue_param62[] = {
@@ -812,7 +812,7 @@ char truly_gamma_blue_param63[] = {
                   
 char truly_gamma_blue_param64[] = {
 	0xFF,0x2F,      
-};  
+};
 
 char display_on[] = {
 	0x29,
@@ -876,6 +876,9 @@ char truly_cabc_STILL[] = {
 char truly_cabc_MOVING[] = {
 	0x90, 0xC0,
 };
+char truly_cabc_MOVING_hc[] = {
+	0x9A, 0x10,
+};
 
 //auo cabc mode
 char auo_cabc_off[] = {
@@ -886,6 +889,9 @@ char auo_cabc_STILL[] = {
 };
 char auo_cabc_MOVING[] = {
 	0x90, 0x00,
+};
+char auo_cabc_MOVING_hc[] = {
+	0x9A, 0x10,
 };
 
 //close adl dimming bit[8]:1 ; pwm fre bit[2:1:0]=110; 
@@ -1065,6 +1071,8 @@ struct dsi_cmd_desc truly_cabc_off_cmds[] = {
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page2_step1), select_page2_step1},
 	{DTYPE_DCS_WRITE1, 0, 10, WAIT_TYPE_US,
 		sizeof(truly_cabc_off), truly_cabc_off},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(sel_page_step0), sel_page_step0},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(sel_page_step1), sel_page_step1},
 };
 
 struct dsi_cmd_desc truly_cabc_still_on_cmds[] = {
@@ -1072,6 +1080,8 @@ struct dsi_cmd_desc truly_cabc_still_on_cmds[] = {
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page2_step1), select_page2_step1},
 	{DTYPE_DCS_WRITE1, 0, 10, WAIT_TYPE_US,
 		sizeof(truly_cabc_STILL), truly_cabc_STILL},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(sel_page_step0), sel_page_step0},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(sel_page_step1), sel_page_step1},
 };
 
 struct dsi_cmd_desc truly_cabc_moving_on_cmds[] = {
@@ -1079,6 +1089,8 @@ struct dsi_cmd_desc truly_cabc_moving_on_cmds[] = {
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page2_step1), select_page2_step1},
 	{DTYPE_DCS_WRITE1, 0, 10, WAIT_TYPE_US,
 		sizeof(truly_cabc_MOVING), truly_cabc_MOVING},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(sel_page_step0), sel_page_step0},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(sel_page_step1), sel_page_step1},
 };
 
 struct dsi_cmd_desc auo_cabc_off_cmds[] = {
@@ -1086,6 +1098,8 @@ struct dsi_cmd_desc auo_cabc_off_cmds[] = {
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page2_step1), select_page2_step1},
 	{DTYPE_DCS_WRITE1, 0, 10, WAIT_TYPE_US,
 		sizeof(auo_cabc_off), auo_cabc_off},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(sel_page_step0), sel_page_step0},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(sel_page_step1), sel_page_step1},
 };
 
 struct dsi_cmd_desc auo_cabc_still_on_cmds[] = {
@@ -1093,6 +1107,8 @@ struct dsi_cmd_desc auo_cabc_still_on_cmds[] = {
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page2_step1), select_page2_step1},
 	{DTYPE_DCS_WRITE1, 0, 10, WAIT_TYPE_US,
 		sizeof(auo_cabc_STILL), auo_cabc_STILL},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(sel_page_step0), sel_page_step0},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(sel_page_step1), sel_page_step1},
 };
 
 struct dsi_cmd_desc auo_cabc_moving_on_cmds[] = {
@@ -1100,6 +1116,8 @@ struct dsi_cmd_desc auo_cabc_moving_on_cmds[] = {
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page2_step1), select_page2_step1},
 	{DTYPE_DCS_WRITE1, 0, 10, WAIT_TYPE_US,
 		sizeof(auo_cabc_MOVING), auo_cabc_MOVING},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(sel_page_step0), sel_page_step0},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(sel_page_step1), sel_page_step1},
 };
 
 
@@ -1123,12 +1141,15 @@ struct dsi_cmd_desc dimming_initial_cmd[] = {
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page2_step1), select_page2_step1},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(still_dimming), still_dimming},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_MS, sizeof(moving_dimming), moving_dimming},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(sel_page_step0), sel_page_step0},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(sel_page_step1), sel_page_step1},
 };
 
 struct dsi_cmd_desc truly_cabc_initial_cmd[] = { 
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page2_step0), select_page2_step0},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page2_step1), select_page2_step1},
-	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(truly_cabc_STILL), truly_cabc_STILL},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(truly_cabc_MOVING), truly_cabc_MOVING},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(truly_cabc_MOVING_hc), truly_cabc_MOVING_hc},
 	//{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(auto_moving_mode_detect), auto_moving_mode_detect},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(still_dimming_steps), still_dimming_steps},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(moving_dimming_steps), moving_dimming_steps},
@@ -1152,7 +1173,8 @@ struct dsi_cmd_desc truly_cabc_initial_cmd[] = {
 struct dsi_cmd_desc auo_cabc_initial_cmd[] = { 
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page2_step0), select_page2_step0},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page2_step1), select_page2_step1},
-	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(auo_cabc_STILL), auo_cabc_STILL},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(auo_cabc_MOVING), auo_cabc_MOVING},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(auo_cabc_MOVING_hc), auo_cabc_MOVING_hc},
 	//{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(auto_moving_mode_detect), auto_moving_mode_detect},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(still_dimming_steps), still_dimming_steps},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(moving_dimming_steps), moving_dimming_steps},
@@ -1197,6 +1219,22 @@ struct dsi_cmd_desc truly_ce_initial_cmd[] = {
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(truly_cyan_hue_ratio), truly_cyan_hue_ratio},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(truly_blue_hue_ratio), truly_blue_hue_ratio},
 	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(truly_magenta_hue_ratio), truly_magenta_hue_ratio},
+};
+
+struct dsi_cmd_desc ce_enable_cmd[] = {
+		{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page3_step0), select_page3_step0},
+		{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page3_step1), select_page3_step1},
+		{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(ce_enable), ce_enable},
+		{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(sel_page_step0), sel_page_step0},
+		{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(sel_page_step1), sel_page_step1},
+	};
+
+struct dsi_cmd_desc ce_disable_cmd[] = {
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page3_step0), select_page3_step0},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(select_page3_step1), select_page3_step1},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(ce_disable), ce_disable},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(sel_page_step0), sel_page_step0},
+	{DTYPE_DCS_WRITE1, 0,10, WAIT_TYPE_US, sizeof(sel_page_step1), sel_page_step1},
 };
 
 struct dsi_cmd_desc shift_to_mipi_cmd[] = {

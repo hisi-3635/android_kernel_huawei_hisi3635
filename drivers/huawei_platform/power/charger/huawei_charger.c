@@ -33,7 +33,7 @@
 #include <linux/hw_dev_dec.h>
 #endif
 #include <linux/raid/pq.h>
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #include <huawei_platform_legacy/Seattle/power/bq_bci_battery.h>
 #include <huawei_platform/power/huawei_charger.h>
 #include <huawei_platform_legacy/Seattle/power/hisi_coul_drv.h>
@@ -50,6 +50,17 @@ struct charge_device_ops *g_ops = NULL;
 struct fcp_adapter_device_ops *g_fcp_ops = NULL;
 static enum fcp_check_stage_type fcp_stage = FCP_STAGE_DEFAUTL;
 struct device *charge_dev = NULL;
+#define REG_NUM 21
+struct hisi_charger_bootloader_info{
+    bool info_vaild;
+    int ibus;
+    char reg[REG_NUM];
+};
+extern char* get_charger_info_p();
+static struct hisi_charger_bootloader_info hisi_charger_info = {0};
+#define CHARGER_BASE_ADDR 512
+
+static void charge_turn_on_charging(struct charge_device_info *di);
 
 struct charger_dsm
 {
@@ -66,6 +77,19 @@ static struct charger_dsm err_count[]=
     {ERROR_ADAPTER_OVLT, true, "fcp adapter voltage over high"},
     {ERROR_ADAPTER_OCCURRENT, true, "fcp adapter current over high"},
     {ERROR_ADAPTER_OTEMP, true, "fcp adapter temp over high"},
+    {ERROR_SAFE_PLOICY_LEARN, true, "battery safe ploicy"},
+    {ERROR_SAFE_PLOICY_LEARN1, true, "safe ploicy learn 1"},
+    {ERROR_SAFE_PLOICY_LEARN2, true, "safe ploicy learn 2"},
+    {ERROR_SAFE_PLOICY_LEARN3, true, "safe ploicy learn 3"},
+    {INFO_FCC_DMD_BASE,true, "learn fcc"},
+    {INFO_FCC_DMD_BASE_1,true, "learn fcc"},
+    {INFO_FCC_DMD_BASE_2,true, "learn fcc"},
+    {INFO_FCC_DMD_BASE_3,true, "learn fcc"},
+    {INFO_FCC_DMD_BASE_4,true, "learn fcc"},
+    {INFO_FCC_DMD_BASE_5,true, "learn fcc"},
+    {INFO_FCC_DMD_BASE_6,true, "learn fcc"},
+    {INFO_FCC_DMD_BASE_7,true, "learn fcc"},
+    {INFO_FCC_DMD_BASE_8,true, "learn fcc"},
 };
 /**********************************************************
 *  Function:       dsm_report
@@ -102,6 +126,11 @@ int charger_dsm_report (int err_no,int *val)
     char temp[1024] = {0};
     char buf[ERR_NO_STRING_SIZE] = {0};
     switch_dump_register();/*dump switch register*/
+
+    if(get_index(err_no) > (sizeof(err_count)/sizeof(struct charger_dsm)-1))/*check index*/
+    {
+         return -1;
+    }
     strncpy(temp,err_count[get_index(err_no)].buf,ERR_NO_STRING_SIZE-1);
     if(val)/*need report reg*/
     {
@@ -119,6 +148,69 @@ int charger_dsm_report (int err_no,int *val)
     }
     return -1;
 }
+
+int basp_charger_dsm_report (int err_no,char *val)
+{
+    char temp[512] = {0};
+    char buf[ERR_NO_STRING_SIZE] = {0};
+
+    if(get_index(err_no) > (sizeof(err_count)/sizeof(struct charger_dsm)-1))/*check index*/
+    {
+         return -1;
+    }
+    strncpy(temp,err_count[get_index(err_no)].buf,ERR_NO_STRING_SIZE-1);
+    if(val)/*need report reg*/
+    {
+       snprintf(buf,sizeof(buf),"%s\n",val);
+       strncat(temp,buf,strlen(buf));
+    }
+
+    if(true == err_count[get_index(err_no)].notify_enable)/*every err_no report one times*/
+    {
+        if (!dsm_report(err_no,temp))
+        {
+            err_count[get_index(err_no)].notify_enable = false;/*when it be set 1,it will not report */
+            return 0;
+        }
+    }
+    return -1;
+}
+
+
+static int dump_bootloader_info(char *reg_value)
+{
+    u8 reg[REG_NUM] = {0};
+    char buff[26] = {0};
+    int i = 0;
+
+    memset(reg_value, 0, CHARGELOG_SIZE);
+    snprintf(buff, 26, "%-8.2d", hisi_charger_info.ibus);
+    strncat(reg_value, buff, strlen(buff));
+    for(i = 0;i<REG_NUM;i++)
+    {
+        snprintf(buff, 26, "0x%-8.2x",hisi_charger_info.reg[i]);
+        strncat(reg_value, buff, strlen(buff));
+    }
+    return 0;
+}
+static int copy_bootloader_charger_info(void)
+{
+    char* p = NULL;
+    int i =0 ;
+    p = get_charger_info_p();
+
+    if( NULL == p )
+    {
+       hwlog_err("bootloader pointer NULL!\n");
+       return -1;
+    }
+
+    memcpy(&hisi_charger_info, p+CHARGER_BASE_ADDR, sizeof(hisi_charger_info));
+    hwlog_info("bootloader ibus %d\n",hisi_charger_info.ibus);
+
+    return 0;
+}
+
 /**********************************************************
 *  Function:       fcp_check_switch_status
 *  Discription:    check switch chip status
@@ -533,6 +625,7 @@ static void fcp_charge_check(struct charge_device_info *di)
             if((fcp_retry_pre_operate(FCP_RETRY_OPERATE_RESET_ADAPTER , di)) < 0)
             {
                 hwlog_err("reset adapter failed \n");
+                ret = -1;/*PG NOT GOOD*/
                 break;
             }
             ret = fcp_start_charging(di);
@@ -547,6 +640,7 @@ static void fcp_charge_check(struct charge_device_info *di)
             else
             {
                 hwlog_err("%s : fcp_retry_pre_operate failed \n",__func__);
+                ret = -1;/*PG NOT GOOD*/
             }
         }
 
@@ -574,7 +668,13 @@ static void fcp_charge_check(struct charge_device_info *di)
 static void charge_select_charging_current(struct charge_device_info *di)
 {
     static unsigned int first_in = 1;
-
+#ifdef CONFIG_GRACE_SELECT_2A_1A_AC
+    int i = 0;
+    int iBus_value = 0;
+    int iBus_arg_value = 0;
+    static int iin_current_final = 0;
+    static int ichrg_current_final = 0;
+#endif
     switch(di->charger_type)
     {
         case CHARGER_TYPE_USB:
@@ -624,6 +724,41 @@ static void charge_select_charging_current(struct charge_device_info *di)
             di->charge_current = ((di->charge_current < di->sysfs_data.ichg_rt) ? di->charge_current : di->sysfs_data.ichg_rt);
         }
     }
+ #ifdef CONFIG_GRACE_SELECT_2A_1A_AC
+    if((di->input_current == di->core_data->iin_max)&&(di->charger_type == CHARGER_TYPE_STANDARD)) {
+        if(di->pre_start_select_AC)
+        {
+            di->pre_start_select_AC = 0;
+            di->start_select_AC = 1;
+        }
+        if(di->start_select_AC) {
+            di->input_current = 2000;
+            di->charge_current = 1800;
+            charge_turn_on_charging(di);
+            msleep(500);
+            for(i=0; i<10; i++) {
+                iBus_value = iBus_value + di->ops->get_ibus();
+                msleep(100);
+            }
+            iBus_arg_value = iBus_value/10;
+            if(iBus_arg_value>1400){
+                hwlog_info("charge_monitor_work: select 2A charger!\n");
+                iin_current_final = 2000;
+                ichrg_current_final = 1500;
+                di->sysfs_data.selected_AC = 2;
+            }else{
+                hwlog_info("charge_monitor_work: select 1A charger!\n");
+                iin_current_final = 1200;
+                ichrg_current_final = 1000;
+                di->sysfs_data.selected_AC = 1;
+            }
+            di->start_select_AC = 0;
+        }
+        hwlog_info("charge_monitor_work: iin_current_final is %i, ichrg_current_final is %i\n", iin_current_final, ichrg_current_final);
+        di->input_current = iin_current_final;
+        di->charge_current = ichrg_current_final;
+     }
+#endif
 
     if (1 == di->sysfs_data.batfet_disable)
         di->input_current = CHARGE_CURRENT_2000_MA;
@@ -801,6 +936,10 @@ static void charge_start_charging(struct charge_device_info *di)
     wake_lock(&charge_lock);
     di->sysfs_data.charge_enable = TRUE;
     di->check_full_count = 0;
+#ifdef CONFIG_GRACE_SELECT_2A_1A_AC
+    di->sysfs_data.selected_AC = 0;
+    di->pre_start_select_AC = 1;
+#endif
     /*chip init*/
     ret = di->ops->chip_init();
     if(ret)
@@ -827,6 +966,9 @@ static void charge_stop_charging(struct charge_device_info *di)
     di->check_full_count = 0;
     di->charger_source = POWER_SUPPLY_TYPE_BATTERY;
     hisi_coul_charger_event_rcv(events);
+#ifdef CONFIG_GRACE_SELECT_2A_1A_AC
+    di->sysfs_data.selected_AC = 0;
+#endif
     ret = di->ops->set_charge_enable(FALSE);
     if(ret)
         hwlog_err("[%s]set charge enable fail!\n",__func__);
@@ -995,7 +1137,6 @@ static void charge_turn_on_charging(struct charge_device_info *di)
     di->charge_enable = TRUE;
     /* check vbus voltage ,if vbus is abnormal disable charge or abort from fcp*/
     charge_vbus_voltage_check(di);
-    charge_select_charging_current(di);
     /*set input current*/
     ret = di->ops->set_input_current(di->input_current);
     if(ret > 0)
@@ -1056,6 +1197,8 @@ static void charge_monitor_work(struct work_struct *work)
     fcp_charge_check(di);
 
     di->core_data = charge_core_get_params();
+    charge_select_charging_current(di);
+
     charge_turn_on_charging(di);
 
     charge_full_handle(di);
@@ -1197,6 +1340,10 @@ static struct charge_sysfs_field_info charge_sysfs_field_tbl[] = {
     CHARGE_SYSFS_FIELD_RO(Ibus,    IBUS),
     CHARGE_SYSFS_FIELD_RW(enable_hiz,    HIZ),
     CHARGE_SYSFS_FIELD_RO(chargerType,    CHARGE_TYPE),
+    CHARGE_SYSFS_FIELD_RO(bootloader_charger_info,    BOOTLOADER_CHARGER_INFO),
+#ifdef CONFIG_GRACE_SELECT_2A_1A_AC
+    CHARGE_SYSFS_FIELD_RO(selected_AC,    SELECTED_AC),
+#endif
 };
 
 static struct attribute *charge_sysfs_attrs[ARRAY_SIZE(charge_sysfs_field_tbl) + 1];
@@ -1301,12 +1448,30 @@ static ssize_t charge_sysfs_show(struct device *dev,
         return snprintf(buf,PAGE_SIZE, "%u\n", di->sysfs_data.hiz_enable);
     case CHARGE_SYSFS_CHARGE_TYPE:
         return snprintf(buf,PAGE_SIZE, "%d\n", di->charger_type);
+    case CHARGE_SYSFS_BOOTLOADER_CHARGER_INFO:
+        mutex_lock(&di->sysfs_data.bootloader_info_lock);
+        if(hisi_charger_info.info_vaild)
+        {
+            dump_bootloader_info(di->sysfs_data.bootloader_info);
+            ret = snprintf(buf,PAGE_SIZE, "%s\n", di->sysfs_data.bootloader_info);
+        }
+        else
+        {
+            ret = snprintf(buf,PAGE_SIZE, "\n");
+        }
+        mutex_unlock(&di->sysfs_data.bootloader_info_lock);
+        return ret;
+#ifdef CONFIG_GRACE_SELECT_2A_1A_AC
+    case CHARGE_SYSFS_SELECTED_AC:
+        return snprintf(buf,PAGE_SIZE, "%d\n", di->sysfs_data.selected_AC);
+#endif
     default:
         hwlog_err("(%s)NODE ERR!!HAVE NO THIS NODE:(%d)\n",__func__,info->name);
         break;
     }
     return 0;
 }
+
 /**********************************************************
 *  Function:       charge_sysfs_store
 *  Discription:    set the value for charge_data's node which is can be written
@@ -1629,6 +1794,7 @@ static int charge_probe(struct platform_device *pdev)
     di->sysfs_data.hiz_enable= FALSE;
     mutex_init(&di->sysfs_data.dump_reg_lock);
     mutex_init(&di->sysfs_data.dump_reg_head_lock);
+    mutex_init(&di->sysfs_data.bootloader_info_lock);
 
     di->charge_fault = CHARGE_FAULT_NON;
     di->check_full_count = 0;
@@ -1655,7 +1821,7 @@ static int charge_probe(struct platform_device *pdev)
             goto charge_fail_3;
         }
     }
-
+    copy_bootloader_charger_info();
     hwlog_info("huawei charger probe ok!\n");
     return 0;
 

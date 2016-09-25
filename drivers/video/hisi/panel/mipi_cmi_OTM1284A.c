@@ -42,7 +42,7 @@
 #include <linux/lcd_tuning.h>
 
 #if defined (CONFIG_HUAWEI_DSM)
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #endif
 
 #include <huawei_platform/log/log_jank.h>
@@ -2563,7 +2563,7 @@ static struct dsi_cmd_desc  cmi_lcd_inversion_type_1dot[] =
         sizeof(cmi_power_on_param1), cmi_power_on_param1
     },
     {
-        DTYPE_DCS_WRITE1, 0, 100, WAIT_TYPE_US,
+        DTYPE_DCS_LWRITE, 0, 100, WAIT_TYPE_US,
         sizeof(cmi_power_on_param2), cmi_power_on_param2
     },
     {
@@ -2571,7 +2571,7 @@ static struct dsi_cmd_desc  cmi_lcd_inversion_type_1dot[] =
         sizeof(cmi_power_on_param3), cmi_power_on_param3
     },
     {
-        DTYPE_DCS_WRITE1, 0, 100, WAIT_TYPE_US,
+        DTYPE_DCS_LWRITE, 0, 100, WAIT_TYPE_US,
         sizeof(cmi_power_on_param4), cmi_power_on_param4
     },
     {
@@ -2579,7 +2579,7 @@ static struct dsi_cmd_desc  cmi_lcd_inversion_type_1dot[] =
         sizeof(cmi_power_on_param5), cmi_power_on_param5
     },
     {
-        DTYPE_DCS_WRITE1, 0, 100, WAIT_TYPE_US,
+        DTYPE_DCS_LWRITE, 0, 100, WAIT_TYPE_US,
         sizeof(cmi_power_on_param6), cmi_power_on_param6
     },
     /*Second, set 1dot inversion*/
@@ -2597,7 +2597,7 @@ static struct dsi_cmd_desc  cmi_lcd_inversion_type_1dot[] =
         sizeof(cmi_power_on_param121), cmi_power_on_param121
     },
     {
-        DTYPE_DCS_WRITE1, 0, 100, WAIT_TYPE_US,
+        DTYPE_DCS_LWRITE, 0, 100, WAIT_TYPE_US,
         sizeof(cmi_power_on_param122), cmi_power_on_param122
     },
 };
@@ -2610,7 +2610,7 @@ static struct dsi_cmd_desc  cmi_lcd_inversion_type_column[] =
         sizeof(cmi_power_on_param1), cmi_power_on_param1
     },
     {
-        DTYPE_DCS_WRITE1, 0, 100, WAIT_TYPE_US,
+        DTYPE_DCS_LWRITE, 0, 100, WAIT_TYPE_US,
         sizeof(cmi_power_on_param2), cmi_power_on_param2
     },
     {
@@ -2618,7 +2618,7 @@ static struct dsi_cmd_desc  cmi_lcd_inversion_type_column[] =
         sizeof(cmi_power_on_param3), cmi_power_on_param3
     },
     {
-        DTYPE_DCS_WRITE1, 0, 100, WAIT_TYPE_US,
+        DTYPE_DCS_LWRITE, 0, 100, WAIT_TYPE_US,
         sizeof(cmi_power_on_param4), cmi_power_on_param4
     },
     {
@@ -2626,10 +2626,10 @@ static struct dsi_cmd_desc  cmi_lcd_inversion_type_column[] =
         sizeof(cmi_power_on_param5), cmi_power_on_param5
     },
     {
-        DTYPE_DCS_WRITE1, 0, 100, WAIT_TYPE_US,
+        DTYPE_DCS_LWRITE, 0, 100, WAIT_TYPE_US,
         sizeof(cmi_power_on_param6), cmi_power_on_param6
     },
-    /*Second, set 1dot inversion*/
+    /*Second, set column inversion*/
     {
         DTYPE_DCS_LWRITE, 0, 200, WAIT_TYPE_US,
         sizeof(inversion_mode_column_shift_B4), inversion_mode_column_shift_B4
@@ -2644,7 +2644,7 @@ static struct dsi_cmd_desc  cmi_lcd_inversion_type_column[] =
         sizeof(cmi_power_on_param121), cmi_power_on_param121
     },
     {
-        DTYPE_DCS_WRITE1, 0, 100, WAIT_TYPE_US,
+        DTYPE_DCS_LWRITE, 0, 100, WAIT_TYPE_US,
         sizeof(cmi_power_on_param122), cmi_power_on_param122
     },
 };

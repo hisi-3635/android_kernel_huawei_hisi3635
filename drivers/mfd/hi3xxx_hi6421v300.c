@@ -35,7 +35,7 @@
 #include <linux/of_irq.h>
 #include <linux/mfd/hi3xxx_hi6421v300.h>
 #include <linux/irq.h>
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #ifdef CONFIG_HISI_BALONG_MODEM
 #include "bsp_icc.h"
 #endif

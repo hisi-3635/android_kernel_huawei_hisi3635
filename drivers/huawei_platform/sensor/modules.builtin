@@ -1,0 +1,4 @@
+kernel/drivers/huawei_platform/sensor/fingerprint/fingerprint.ko
+kernel/drivers/huawei_platform/sensor/hall_inputhub/kirin930/ak8789.ko
+kernel/drivers/huawei_platform/sensor/hall_inputhub/kirin930/hall_sensor.ko
+kernel/drivers/huawei_platform/sensor/hall_inputhub/kirin930/ak8789_report.ko

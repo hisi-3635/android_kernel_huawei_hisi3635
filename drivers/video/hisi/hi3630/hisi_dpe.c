@@ -1240,6 +1240,40 @@ static ssize_t dpe_acm_state_store(struct platform_device *pdev,
 	return count;
 }
 
+static ssize_t dpe_lcd_support_mode_show(struct platform_device *pdev, char *buf)
+{
+       ssize_t ret = 0;
+       struct hisi_fb_data_type *hisifd = NULL;
+
+       BUG_ON(pdev == NULL);
+       hisifd = platform_get_drvdata(pdev);
+       BUG_ON(hisifd == NULL);
+
+       HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
+       ret = panel_next_lcd_support_mode_show(pdev, buf);
+       HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
+
+       return ret;
+}
+
+static ssize_t dpe_lcd_support_mode_store(struct platform_device *pdev,
+       const char *buf, size_t count)
+{
+       ssize_t ret = 0;
+       struct hisi_fb_data_type *hisifd = NULL;
+
+       BUG_ON(pdev == NULL);
+       hisifd = platform_get_drvdata(pdev);
+       BUG_ON(hisifd == NULL);
+
+       HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
+       ret = panel_next_lcd_support_mode_store(pdev, buf, count);
+       HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
+
+       return ret;
+}
+
+
 static ssize_t dpe_lcd_voltage_enable_store(struct platform_device *pdev,
 	const char *buf, size_t count)
 {

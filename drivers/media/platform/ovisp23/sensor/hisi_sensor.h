@@ -75,6 +75,7 @@ struct sensor_cfg_data;
 #define CFG_SENSOR_APPLY_EXPO_GAIN		8
 #define CFG_SENSOR_SUSPEND_HISI_EG_TASK 9
 #define CFG_SENSOR_GET_PRODUCT_NAME		10
+#define CFG_SENSOR_APPLY_BSHUTTER_EXPO_GAIN	11
 
 #define CFG_SENSOR_SET_VTS		21
 #define CFG_SENSOR_GET_OTP_AWB	22
@@ -93,7 +94,8 @@ struct sensor_cfg_data;
 #define LDO_VOLTAGE_1P8V		1800000
 #define LDO_VOLTAGE_2P8V		2850000
 
-#define MAX_EG_SEQ_SIZE	5 
+#define MAX_EG_SEQ_SIZE	5
+#define MAX_BSHUTTER_SEQ_SIZE	50
 
 enum sensor_power_state_t{
 	POWER_OFF = 0,
@@ -309,6 +311,9 @@ struct hisi_sensor_fn_t {
 	int (*sensor_suspend_eg_task)(struct hisi_sensor_ctrl_t *, void *);
 	int (*sensor_set_hts)(struct hisi_sensor_t *, u16 hts);
 	int (*sensor_set_vts)(struct hisi_sensor_t *, u16 vts);
+	int (*sensor_set_bshutter_expo_gain)(struct hisi_sensor_t *,u32 expo, u16 gain);
+	int (*sensor_apply_bshutter_expo_gain)(struct hisi_sensor_ctrl_t *, void *);
+
 };
 
 struct hisi_sensor_awb_otp {
@@ -353,6 +358,17 @@ struct expo_gain_seq {
 	int eof_trigger;
 };
 
+struct bshutter_expo_gain_seq {
+	u32 expo[MAX_BSHUTTER_SEQ_SIZE];
+	u32 gain[MAX_BSHUTTER_SEQ_SIZE];
+	u16 vts[MAX_BSHUTTER_SEQ_SIZE];
+	u16 hts[MAX_BSHUTTER_SEQ_SIZE];
+	u32 expo_time[MAX_BSHUTTER_SEQ_SIZE];
+	int seq_size;
+	int expo_gain_offset;
+	int eof_bshutter_trigger;
+};
+
 /********************* cfg data define ************************************/
 
 struct sensor_i2c_reg {
@@ -379,6 +395,7 @@ struct sensor_cfg_data {
 	struct hisi_sensor_af_otp af_otp;
 	struct expo_gain_seq host_ae_seq;
 	struct hisi_sensor_awb_otp awb_otp;
+	struct bshutter_expo_gain_seq bshutter_seq;
 	} cfg;
 };
 

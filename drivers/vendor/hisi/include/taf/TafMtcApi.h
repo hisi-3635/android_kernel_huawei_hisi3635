@@ -21,11 +21,17 @@ extern "C" {
 
 #pragma pack(4)
 
-
 /*****************************************************************************
   2 宏定义
 *****************************************************************************/
 #define TAF_MTC_MSG_ID_BASE             (0x1000)                               /* MTC 提供的消息ID基数, 从0x1001开始，主要为了避免与现有消息重合 */
+
+#define MTC_NONE_CS_VALUE                (0x00)                                /* 无电话 */
+#define MTC_GU_CS_VALUE                  (MTC_SET_BIT(MTC_CS_TYPE_GU))          /* GU电话 */
+#define MTC_IMS_CS_VALUE                 (MTC_SET_BIT(MTC_CS_TYPE_IMS))         /* IMS电话 */
+#define MTC_CDMA_CS_VALUE                (MTC_SET_BIT(MTC_CS_TYPE_CDMA))        /* CDMA电话 */
+
+#define MTC_CS_TYPE_ALL_VALUE            (MTC_GU_CS_VALUE | MTC_IMS_CS_VALUE | MTC_CDMA_CS_VALUE)
 
 /*****************************************************************************
   3 枚举定义
@@ -87,6 +93,16 @@ enum TAF_MTC_CDMA_USIMM_CARD_ENUM
     TAF_MTC_CDMA_USIMM_CARD_BUTT
 };
 typedef VOS_UINT8  TAF_MTC_CDMA_USIMM_CARD_ENUM_UINT8;
+
+enum MTC_CS_TYPE_ENUM
+{
+    MTC_CS_TYPE_GU                      = 0x00,                                 /* GU电话 */
+    MTC_CS_TYPE_IMS,                                                            /* IMS电话 */
+    MTC_CS_TYPE_CDMA,                                                           /* CDMA电话 */
+
+    MTC_CS_TYPE_BUTT
+};
+typedef VOS_UINT8 MTC_CS_TYPE_ENUM_UINT8;
 
 
 

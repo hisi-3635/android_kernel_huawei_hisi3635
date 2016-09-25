@@ -1688,6 +1688,337 @@ typedef struct
 
 }TL_OM_CDS_IMS_PROC_STAT_IND_STRU;
 
+/*****************************************************************************
+ 结构名    : TL_OM_LTE_ROHC_UL_STAT_INFO_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : LTE  ROHC 上行统计信息上报结构体
+*****************************************************************************/
+typedef struct
+{
+    TL_OM_COMM_HEAD_STRU                stCommHead;
+
+    VOS_UINT32                          ulCidNo;
+    VOS_UINT32                          ulUlCompTotalStat;
+    VOS_UINT32                          ulUlCompSuccStat;
+    VOS_UINT32                          ulUlCompFailStat;
+
+    VOS_UINT32                          ulUlRecvFeedbackCnt;
+    VOS_UINT32                          ulUlRecvFeedbackSuccCnt;
+    VOS_UINT32                          ulUlRecvFeedbackeErrCnt;
+
+    VOS_UINT32                          ulUlProfile0Stat;
+    VOS_UINT32                          ulUlProfile1Stat;
+    VOS_UINT32                          ulUlProfile2Stat;
+    VOS_UINT32                          ulUlProfile3Stat;
+    VOS_UINT32                          ulUlProfile4Stat;
+
+    VOS_UINT32                          ulUlIRStatePktsCnt;
+    VOS_UINT32                          ulUlFOStatePktsCnt;
+    VOS_UINT32                          ulUlSOStatePktsCnt;
+
+    VOS_UINT32                          ulUlUModePktsCnt;
+    VOS_UINT32                          ulUlOModePktsCnt;
+    VOS_UINT32                          ulUlRModePktsCnt;
+
+    VOS_UINT32                          ulUlIRPktsCnt;
+    VOS_UINT32                          ulUlIRDynPktsCnt;
+    VOS_UINT32                          ulUlUO0PktsCnt;
+    VOS_UINT32                          ulUlUO1PktsCnt;
+
+    VOS_UINT32                          ulUlUO1_IdPktsCnt;
+    VOS_UINT32                          ulUlUO1_TsPktsCnt;
+    VOS_UINT32                          ulUlR0PktsCnt;
+    VOS_UINT32                          ulUlR0CrcPktsCnt;
+
+    VOS_UINT32                          ulUlUO1_Id_Ex0PktsCnt;
+    VOS_UINT32                          ulUlUO1_Id_Ex1PktsCnt;
+    VOS_UINT32                          ulUlUO1_Id_Ex2PktsCnt;
+    VOS_UINT32                          ulUlUO1_Id_Ex3PktsCnt;
+
+    VOS_UINT32                          ulUlR1PktsCnt;
+    VOS_UINT32                          ulUlR1_Ex0PktsCnt;
+    VOS_UINT32                          ulUlR1_Ex1PktsCnt;
+    VOS_UINT32                          ulUlR1_Ex2PktsCnt;
+    VOS_UINT32                          ulUlR1_Ex3PktsCnt;
+
+    VOS_UINT32                          ulUlR1_IdPktsCnt;
+    VOS_UINT32                          ulUlR1_Id_Ex0PktsCnt;
+    VOS_UINT32                          ulUlR1_Id_Ex1PktsCnt;
+    VOS_UINT32                          ulUlR1_Id_Ex2PktsCnt;
+    VOS_UINT32                          ulUlR1_Id_Ex3PktsCnt;
+
+    VOS_UINT32                          ulUlR1_TsPktsCnt;
+    VOS_UINT32                          ulUlR1_Ts_Ex0PktsCnt;
+    VOS_UINT32                          ulUlR1_Ts_Ex1PktsCnt;
+    VOS_UINT32                          ulUlR1_Ts_Ex2PktsCnt;
+    VOS_UINT32                          ulUlR1_Ts_Ex3PktsCnt;
+
+    VOS_UINT32                          ulUlUOR2PktsCnt;
+    VOS_UINT32                          ulUlUOR2_Ex0PktsCnt;
+    VOS_UINT32                          ulUlUOR2_Ex1PktsCnt;
+    VOS_UINT32                          ulUlUOR2_Ex2PktsCnt;
+    VOS_UINT32                          ulUlUOR2_Ex3PktsCnt;
+
+    VOS_UINT32                          ulUlUOR2_IdPktsCnt;
+    VOS_UINT32                          ulUlUOR2_Id_Ex0PktsCnt;
+    VOS_UINT32                          ulUlUOR2_Id_Ex1PktsCnt;
+    VOS_UINT32                          ulUlUOR2_Id_Ex2PktsCnt;
+    VOS_UINT32                          ulUlUOR2_Id_Ex3PktsCnt;
+
+    VOS_UINT32                          ulUlUOR2_Ts_PktsCnt;
+    VOS_UINT32                          ulUlUOR2_Ts_Ex0PktsCnt;
+    VOS_UINT32                          ulUlUOR2_Ts_Ex1PktsCnt;
+    VOS_UINT32                          ulUlUOR2_Ts_Ex2PktsCnt;
+    VOS_UINT32                          ulUlUOR2_Ts_Ex3PktsCnt;
+
+    VOS_UINT32                          ulUlPrf0IRPktsCnt;
+    VOS_UINT32                          ulUlNormalPktsCnt;
+
+    VOS_UINT32                          ulUlIR2FOCnt       ;            
+    VOS_UINT32                          ulUlIR2SOCnt         ;          
+    VOS_UINT32                          ulUlFO2SOCnt       ;            
+    VOS_UINT32                          ulUlFO2IRCnt         ;          
+    VOS_UINT32                          ulUlSO2IRCnt           ;        
+    VOS_UINT32                          ulUlSO2FOCnt         ;          
+
+}TL_OM_LTE_ROHC_UL_STAT_INFO_STRU;
+
+
+/*****************************************************************************
+ 结构名    : TL_OM_LTE_ROHC_DL_STAT_INFO_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : LTE  ROHC 下行统计信息上报结构体
+*****************************************************************************/
+typedef struct
+{
+    TL_OM_COMM_HEAD_STRU                stCommHead;
+
+    VOS_UINT32                          ulCidNo;
+    VOS_UINT32                          ulDlProfile0Stat;
+    VOS_UINT32                          ulDlProfile1Stat;
+    VOS_UINT32                          ulDlProfile2Stat;
+    VOS_UINT32                          ulDlProfile3Stat;
+    VOS_UINT32                          ulDlProfile4Stat;
+
+    VOS_UINT32                          ulDlRcvPktsCnt;
+    VOS_UINT32                          ulDlRcvCrcOkPktsCnt;
+    VOS_UINT32                          ulDlRcvCrcErrPktTypeCnt;
+    VOS_UINT32                          ulDlRcvPktTypeErrCnt;
+
+    VOS_UINT32                          ulDlNCStatePktsCnt;
+    VOS_UINT32                          ulDlSCStatePktsCnt;
+    VOS_UINT32                          ulDlFCStatePktsCnt;
+
+    VOS_UINT32                          ulDlUModePktsCnt;
+    VOS_UINT32                          ulDlOModePktsCnt;
+    VOS_UINT32                          ulDlRModePktsCnt;
+
+    VOS_UINT32                          ulDlSendFeedbackCnt;
+    VOS_UINT32                          ulDlUMOdeAckCnt;
+    VOS_UINT32                          ulDlUMOdeNackCnt;
+    VOS_UINT32                          ulDlUMOdeStcNackCnt;
+    VOS_UINT32                          ulDlOMOdeAckCnt;
+    VOS_UINT32                          ulDlOMOdeNackCnt;
+
+
+    VOS_UINT32                          ulDlOMOdeStcNackCnt;
+    VOS_UINT32                          ulDlRMOdeAckCnt;
+    VOS_UINT32                          ulDlRMOdeNackCnt;
+    VOS_UINT32                          ulDlRMOdeStcNackCnt;
+    VOS_UINT32                          ulDlFdbk1Cnt;
+
+    VOS_UINT32                          ulDlPkt0Cnt;
+    VOS_UINT32                          ulDlPkt1Cnt;
+    VOS_UINT32                          ulDlPkt2Cnt;
+
+    VOS_UINT32                          ulDlIRPktsCnt;
+    VOS_UINT32                          ulDlIRDynPktsCnt;
+
+
+    VOS_UINT32                          ulDlUO0PktsCnt;
+    VOS_UINT32                          ulDlUO1PktsCnt;
+    VOS_UINT32                          ulDlUO1_IDPktsCnt;
+
+
+    VOS_UINT32                          ulDlUO1_TsPktsCnt;
+    VOS_UINT32                          ulDlR0PktsCnt;
+    VOS_UINT32                          ulDlR0CrcPktsCnt;
+
+    VOS_UINT32                          ulDlUO1_Id_Ex0PktsCnt;
+    VOS_UINT32                          ulDlUO1_Id_Ex1PktsCnt;
+    VOS_UINT32                          ulDlUO1_Id_Ex2PktsCnt;
+    VOS_UINT32                          ulDlUO1_Id_Ex3PktsCnt;
+
+    VOS_UINT32                          ulDlR1PktsCnt;
+    VOS_UINT32                          ulDlR1_Ex0PktsCnt;
+    VOS_UINT32                          ulDlR1_Ex1PktsCnt;
+    VOS_UINT32                          ulDlR1_Ex2PktsCnt;
+    VOS_UINT32                          ulDlR1_Ex3PktsCnt;
+
+    VOS_UINT32                          ulDlR1_IdPktsCnt;
+    VOS_UINT32                          ulDlR1_Id_Ex0PktsCnt;
+    VOS_UINT32                          ulDlR1_Id_Ex1PktsCnt;
+    VOS_UINT32                          ulDlR1_Id_Ex2PktsCnt;
+    VOS_UINT32                          ulDlR1_Id_Ex3PktsCnt;
+
+    VOS_UINT32                          ulDlR1_TsPktsCnt;
+    VOS_UINT32                          ulDlR1_Ts_Ex0PktsCnt;
+    VOS_UINT32                          ulDlR1_Ts_Ex1PktsCnt;
+    VOS_UINT32                          ulDlR1_Ts_Ex2PktsCnt;
+    VOS_UINT32                          ulDlR1_Ts_Ex3PktsCnt;
+
+    VOS_UINT32                          ulDlUOR2PktsCnt;
+    VOS_UINT32                          ulDlUOR2_Ex0PktsCnt;
+    VOS_UINT32                          ulDlUOR2_Ex1PktsCnt;
+    VOS_UINT32                          ulDlUOR2_Ex2PktsCnt;
+    VOS_UINT32                          ulDlUOR2_Ex3PktsCnt;
+
+    VOS_UINT32                          ulDlUOR2_IdPktsCnt;
+    VOS_UINT32                          ulDlUOR2_Id_Ex0PktsCnt;
+    VOS_UINT32                          ulDlUOR2_Id_Ex1PktsCnt;
+    VOS_UINT32                          ulDlUOR2_Id_Ex2PktsCnt;
+    VOS_UINT32                          ulDlUOR2_Id_Ex3PktsCnt;
+
+    VOS_UINT32                          ulDlUOR2_Ts_PktsCnt;
+    VOS_UINT32                          ulDlUOR2_Ts_Ex0PktsCnt;
+    VOS_UINT32                          ulDlUOR2_Ts_Ex1PktsCnt;
+    VOS_UINT32                          ulDlUOR2_Ts_Ex2PktsCnt;
+    VOS_UINT32                          ulDlUOR2_Ts_Ex3PktsCnt;
+
+}TL_OM_LTE_ROHC_DL_STAT_INFO_STRU;
+
+
+
+/*****************************************************************************
+ 结构名    : TL_OM_LTE_ROHC_COMPRESS_CONTEXT_INFO_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : LTE  ROHC 上行上下文信息上报结构体
+*****************************************************************************/
+typedef struct
+{
+    TL_OM_COMM_HEAD_STRU                stCommHead;
+
+    VOS_UINT8                          ucCidNo;
+    VOS_UINT8                          ucCMode;
+    VOS_UINT8                          ucState;
+    VOS_UINT8                          ucRsv;
+
+    VOS_UINT8                          ucCTrans;
+    VOS_UINT8                          ucHdrChainType;
+    VOS_UINT8                          ucProfileVal;
+    VOS_UINT8                          ucPktType;
+
+    VOS_UINT8                          ucIPIDRndFlag;
+    VOS_UINT8                          ucIPIDRnd2Flag;
+    VOS_UINT8                          ucIPIDNboFlag;
+    VOS_UINT8                          ucIPIDNbo2Flag;
+
+    VOS_UINT8                           ucKforSn;
+    VOS_UINT8                           ucKforIPID;
+    VOS_UINT8                           ucKforIPID2;
+    VOS_UINT8                           ucKforTS;
+
+    VOS_UINT8                           ucRmodePktWithoutCRC;
+    VOS_UINT8                           ucXM;                    /* 最低位表M，第四位表X */
+    VOS_UINT8                           ucIrSntPktCount;  /*IR状态下连续发包的个数，初始化为0*/
+    VOS_UINT8                           ucSntDynPktCount;  /*动态信息变化后连续发包的个数，初始化为0*/
+
+    VOS_UINT16                          usIpIdOffset;
+    VOS_UINT16                          usIpIdOffset2;
+    VOS_UINT16                          usUdpSnValue;
+
+    VOS_UINT32                          ulEspSnValue;
+    VOS_UINT32                          ulLastOperTime;
+    VOS_UINT32                          ulTimeStamp;
+    VOS_UINT32                          ulTS_Stride;
+    VOS_UINT32                          ulTS_Scaled;
+    VOS_UINT32                          ulLastAckSn;
+
+    VOS_UINT32                          ufCompressRatio;
+
+
+
+}TL_OM_LTE_ROHC_COMPRESS_CONTEXT_INFO_STRU;
+
+
+/*****************************************************************************
+ 结构名    : TL_OM_LTE_ROHC_DECOMPRESS_CONTEXT_INFO_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : LTE  ROHC 下行上下文信息上报结构体
+*****************************************************************************/
+typedef struct
+{
+    TL_OM_COMM_HEAD_STRU                stCommHead;
+
+    VOS_UINT8                          ucCidNo;
+    VOS_UINT8                          ucDMode;
+    VOS_UINT8                          ucState;
+
+    VOS_UINT8                          ucDf1Flag;
+    VOS_UINT8                          ucDf2Flag;
+    VOS_UINT8                          ucProfileVal;
+    VOS_UINT8                          ucRtpM;
+
+    VOS_UINT8                          ucPktType;
+    VOS_UINT8                           ucFcToScPacketNum;    /* FC->SC最近发送的N1个包，个数代表后面窗口使用的位数，解压成功对应位置为1，失败置为0，先低位，后高位 */
+    VOS_UINT8                           ucScToNcPacketNum;    /* SC->NC最近发送的N2个包 */
+    VOS_UINT8                           ucFcToScErrPacketNum; /* FC->SC错包个数，如果最近N1个包中错包达到此值，则状态向下迁移 */
+
+    VOS_UINT8                           ucScToNcErrPacketNum; /* SC->NC错包个数 */
+    VOS_UINT8                           ucSendUToOPktCnt;     /* 用来发送U2O模式迁移的反馈包的计数器 */
+    VOS_UINT8                           ucRtpPt;
+    VOS_UINT8                           ucRtpV;
+
+    VOS_UINT8                           ucRtpP;
+    VOS_UINT8                           ucRtpX;
+    VOS_UINT8                           ucRtpCC;
+    VOS_UINT8                           ucIPIDRndFlag;
+
+    VOS_UINT8                          ucIPIDRnd2Flag;
+    VOS_UINT8                          ucIPIDNboFlag;
+    VOS_UINT8                          ucIPIDNbo2Flag;
+    VOS_UINT8                          ucRsv[2];
+
+    VOS_UINT8                           ucUdpChksumFlg;
+    VOS_UINT8                           ucDTrans;
+    VOS_UINT16                          usSN;
+
+    VOS_UINT32                          ufCompressRatio;
+
+    VOS_UINT8                           ucCtxtDyn[40];
+
+
+}TL_OM_LTE_ROHC_DECOMPRESS_CONTEXT_INFO_STRU;
+
+
+/*****************************************************************************
+ 结构名    : TL_OM_LTE_ROHC_COMPRESS_PKT_INFO_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : LTE  ROHC 上行压缩报文头部内容上报
+*****************************************************************************/
+typedef struct
+{
+    TL_OM_COMM_HEAD_STRU                stCommHead;
+
+    VOS_UINT8                          ucCidNo;
+    VOS_UINT8                          ucLen;
+    VOS_UINT8                          ucType; /*0-上行压缩后的压缩包;1-下行恢复前的压缩包;2-上行发送的反馈包;3-下行接收的反馈包*/
+    VOS_UINT8                          ucRealLen;
+
+
+    VOS_UINT8                          ucState;
+    VOS_UINT8                          ucMode;
+    VOS_UINT8                          ucProfile;
+    VOS_UINT8                          ucRohcPktType;/*压缩报文包类型*/
+
+    VOS_UINT8                          ucData[64];
+
+}TL_OM_LTE_ROHC_CAPTURE_PKT_INFO_STRU;
 
 
 /*****************************************************************************

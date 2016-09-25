@@ -124,11 +124,12 @@ enum NAS_ERR_LOG_ALM_ID_ENUM
     NAS_ERR_LOG_ALM_MO_DETACH_IND                           = 0x0f,             /* 本地发起的DETACH */
     NAS_ERR_LOG_ALM_RAT_FREQUENTLY_SWITCH                   = 0x10,             /* 4G与2/3G频繁切换 */
 
+
+    NAS_ERR_LOG_ALM_SRVCC_FAIL_INFO                         = 0x11,             /* FFT搜索MCC的结果 */
+
     NAS_ERR_LOG_ALM_ID_BUTT
 };
 typedef VOS_UINT16  NAS_ERR_LOG_ALM_ID_ENUM_U16;
-
-
 enum NAS_ERR_LOG_UNSOLI_REPORT_TYPE_ENUM
 {
     NAS_ERR_LOG_FAULT_REPORT                                = 0x01,             /* 故障上报 */
@@ -468,6 +469,25 @@ typedef struct
     VOS_UINT32                          ulStatisticTime;                        /* 统计时间 */
     VOS_UINT32                          ulSwitchNum;                            /* 切换次数 */
 }NAS_ERR_LOG_RAT_FREQUENTLY_SWITCH_EVENT_STRU;
+enum NAS_ERR_LOG_SRVCC_FAIL_CAUSE_ENUM
+{
+    NAS_ERR_LOG_SRVCC_FAIL_NULL                             = 0,
+    NAS_ERR_LOG_SRVCC_FAIL_NO_CALL_NUM                      = 1,                /* bsrvcc时，IMSA会同步call num为0 */
+    NAS_ERR_LOG_SRVCC_FAIL_RESUME_IND_BACK_TO_LTE           = 2,                /* SRVCC是handover失败，又回到LTE */
+    NAS_ERR_LOG_SRVCC_FAIL_BUTT
+};
+
+typedef VOS_UINT8 NAS_ERR_LOG_SRVCC_FAIL_CAUSE_ENUM_UINT8;
+
+typedef struct
+{
+    OM_ERR_LOG_HEADER_STRU                                  stHeader;
+    NAS_MNTN_POSITION_INFO_STRU                             stPositionInfo;     /* 位置信息 */
+    NAS_ERR_LOG_SRVCC_FAIL_CAUSE_ENUM_UINT8                 enSrvccFailCause;   /* SRVCC失败原因 */
+    VOS_UINT8                                               aucReserve[3];
+}NAS_ERR_LOG_SRVCC_FAIL_STRU;
+
+
 typedef struct
 {
     OM_FTM_HEADER_STRU                      stHeader;

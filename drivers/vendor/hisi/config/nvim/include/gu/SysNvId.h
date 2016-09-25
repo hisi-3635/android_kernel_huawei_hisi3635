@@ -188,6 +188,15 @@ enum SYS_NV_ID_ENUM
 
 /*   2335*/     en_NV_Item_LTE_OOS_2G_PREF_PLMN_SEL_CFG = 2335,
 
+/*  2336 */     en_NV_Item_Ipv6_Address_Test_Mode_Cfg = 2336,                   /* IPV6地址测试模式配置，0x55AA55AA为测试模式，其他值为正常模式 */
+
+/*  2340 */     en_NV_Item_Ccwa_Ctrl_Mode                   = 2340,
+
+/*  2354 */     en_NV_Item_ADS_WAKE_LOCK_CFG = 2354,                            /* ADS WAKELOCK 配置 */
+
+/* Added by w00316404 for Add Get Modem Log, 2015-10-17, Begin */
+/*  2361 */     en_NV_Item_Print_Modem_Log_Type     = 2361,                     /* 控制是否输出modem log的类型 */
+/* Added by w00316404 for Add Get Modem Log, 2015-10-17, End */
 /*   3000*/      en_NV_Item_ErrLog_CsHo_Len = 3000,
 
 /* 3002 */      en_NV_Item_GAS_UTRAN_TDD_DEFAULT_Q_RXLMIN = 3002,

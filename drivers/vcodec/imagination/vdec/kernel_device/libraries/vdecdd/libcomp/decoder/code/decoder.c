@@ -1790,6 +1790,7 @@ static IMG_RESULT decoder_WrapBitStrSegments(
         VDEC_BZERO(psDecPictSeg);
 
         psDecPictSeg->psBitStrSeg = psBitStrSeg;
+        psDecPictSeg->bInternalSeg = IMG_FALSE;
         LST_add(psDecPictSegList,psDecPictSeg);
 
         psBitStrSeg = LST_next(psBitStrSeg);
@@ -1805,6 +1806,12 @@ static IMG_VOID decoder_CleanBitStrSegments(
 
     while(IMG_NULL != (psDecPictSeg = LST_removeHead(psDecPictSegList)))
     {
+        if (psDecPictSeg->bInternalSeg)
+        {
+            IMG_ASSERT(psDecPictSeg->psBitStrSeg);
+            IMG_FREE(psDecPictSeg->psBitStrSeg);
+            psDecPictSeg->psBitStrSeg = IMG_NULL;
+        }
         IMG_FREE(psDecPictSeg);
     }
 }
@@ -4390,6 +4397,12 @@ decoder_StreamDestroy(
             psDecPictSeg = LST_removeHead(&psDecStrUnit->psDecPict->sDecPictSegList);
             while(psDecPictSeg)
             {
+                if (psDecPictSeg->bInternalSeg)
+                {
+                    IMG_ASSERT(psDecPictSeg->psBitStrSeg);
+                    IMG_FREE(psDecPictSeg->psBitStrSeg);
+                    psDecPictSeg->psBitStrSeg = IMG_NULL;
+                }
                 IMG_FREE(psDecPictSeg);
                 psDecPictSeg = IMG_NULL;
 
@@ -5042,23 +5055,27 @@ DECODER_CheckSupport(
                     psStrConfig->ui32UserStrId);
                 psUnsupported->ui32StrOutputConfig |= VDECDD_UNSUPPORTED_OUTPUTCONFIG_ROTATION_WITH_SCALING;
             }
-            if((psOutputConfig->eRotMode != VDEC_ROTATE_0) &&
-                ( (psOutputConfig->sPixelInfo.eChromaFormatIdc != psComSequHdrInfo->sPixelInfo.eChromaFormatIdc) ||
-                (psOutputConfig->sPixelInfo.ui32BitDepthY != psComSequHdrInfo->sPixelInfo.ui32BitDepthY) ||
-                (psOutputConfig->sPixelInfo.ui32BitDepthC != psComSequHdrInfo->sPixelInfo.ui32BitDepthC)))
+
+            if(psComSequHdrInfo)
             {
-                REPORT(REPORT_MODULE_DECODER, REPORT_ERR,
-                    "[USERSID=0x%08X] UNSUPPORTED[HW]: ROTATION AND DOWNSAMPLING",
-                    psStrConfig->ui32UserStrId);
-                psUnsupported->ui32StrOutputConfig |= VDECDD_UNSUPPORTED_OUTPUTCONFIG_DOWNSAMPLING_WITH_ROTATION;
-            }
-            if((psOutputConfig->eRotMode != VDEC_ROTATE_0) &&
-                (psOutputConfig->sPixelInfo.eMemoryPacking != psComSequHdrInfo->sPixelInfo.eMemoryPacking))
-            {
-                REPORT(REPORT_MODULE_DECODER, REPORT_ERR,
-                    "[USERSID=0x%08X] UNSUPPORTED[HW]: ROTATION WITH 10 BIT PACKED FORMAT",
-                    psStrConfig->ui32UserStrId);
-                psUnsupported->ui32StrOutputConfig |= VDECDD_UNSUPPORTED_OUTPUTCONFIG_ROTATION_WITH_10BIT_PACKED;
+                if((psOutputConfig->eRotMode != VDEC_ROTATE_0) &&
+                    ( (psOutputConfig->sPixelInfo.eChromaFormatIdc != psComSequHdrInfo->sPixelInfo.eChromaFormatIdc) ||
+                    (psOutputConfig->sPixelInfo.ui32BitDepthY != psComSequHdrInfo->sPixelInfo.ui32BitDepthY) ||
+                    (psOutputConfig->sPixelInfo.ui32BitDepthC != psComSequHdrInfo->sPixelInfo.ui32BitDepthC)))
+                {
+                    REPORT(REPORT_MODULE_DECODER, REPORT_ERR,
+                        "[USERSID=0x%08X] UNSUPPORTED[HW]: ROTATION AND DOWNSAMPLING",
+                        psStrConfig->ui32UserStrId);
+                    psUnsupported->ui32StrOutputConfig |= VDECDD_UNSUPPORTED_OUTPUTCONFIG_DOWNSAMPLING_WITH_ROTATION;
+                }
+                if((psOutputConfig->eRotMode != VDEC_ROTATE_0) &&
+                    (psOutputConfig->sPixelInfo.eMemoryPacking != psComSequHdrInfo->sPixelInfo.eMemoryPacking))
+                {
+                    REPORT(REPORT_MODULE_DECODER, REPORT_ERR,
+                        "[USERSID=0x%08X] UNSUPPORTED[HW]: ROTATION WITH 10 BIT PACKED FORMAT",
+                        psStrConfig->ui32UserStrId);
+                    psUnsupported->ui32StrOutputConfig |= VDECDD_UNSUPPORTED_OUTPUTCONFIG_ROTATION_WITH_10BIT_PACKED;
+                }
             }
 
             if(psComSequHdrInfo)
@@ -5106,17 +5123,20 @@ DECODER_CheckSupport(
                 psUnsupported->ui32StrOutputConfig |= VDECDD_UNSUPPORTED_OUTPUTCONFIG_PIXFORMAT;
             }
 
-            if (psComSequHdrInfo->sPixelInfo.eChromaFormatIdc != PIXEL_FORMAT_MONO &&
-               (psOutputConfig->sPixelInfo.ui32BitDepthC > psCoreProps->asVidStdProps[psStrConfig->eVidStd].ui32MaxChromaBitDepth ||
-                psOutputConfig->sPixelInfo.ui32BitDepthC < 8 || psOutputConfig->sPixelInfo.ui32BitDepthC == 9))
+            if(psComSequHdrInfo)
             {
-                REPORT(REPORT_MODULE_DECODER, REPORT_ERR,
-                        "[USERSID=0x%08X] UNSUPPORTED[HW]: DISPLAY PICTURE CHROMA BIT DEPTH %d [RANGE: 8->%d for %s]",
-                        psStrConfig->ui32UserStrId,
-                        psOutputConfig->sPixelInfo.ui32BitDepthC,
-                        psCoreProps->asVidStdProps[psStrConfig->eVidStd].ui32MaxChromaBitDepth,
-                        gapszVidStd[psStrConfig->eVidStd]);
-                psUnsupported->ui32StrOutputConfig |= VDECDD_UNSUPPORTED_OUTPUTCONFIG_PIXFORMAT;
+                if (psComSequHdrInfo->sPixelInfo.eChromaFormatIdc != PIXEL_FORMAT_MONO &&
+                (psOutputConfig->sPixelInfo.ui32BitDepthC > psCoreProps->asVidStdProps[psStrConfig->eVidStd].ui32MaxChromaBitDepth ||
+                    psOutputConfig->sPixelInfo.ui32BitDepthC < 8 || psOutputConfig->sPixelInfo.ui32BitDepthC == 9))
+                {
+                    REPORT(REPORT_MODULE_DECODER, REPORT_ERR,
+                            "[USERSID=0x%08X] UNSUPPORTED[HW]: DISPLAY PICTURE CHROMA BIT DEPTH %d [RANGE: 8->%d for %s]",
+                            psStrConfig->ui32UserStrId,
+                            psOutputConfig->sPixelInfo.ui32BitDepthC,
+                            psCoreProps->asVidStdProps[psStrConfig->eVidStd].ui32MaxChromaBitDepth,
+                            gapszVidStd[psStrConfig->eVidStd]);
+                    psUnsupported->ui32StrOutputConfig |= VDECDD_UNSUPPORTED_OUTPUTCONFIG_PIXFORMAT;
+                }
             }
 
             // Validate display configuration against existing stream configuration.

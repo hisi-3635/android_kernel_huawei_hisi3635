@@ -71,6 +71,9 @@ static struct netlink_kernel_cfg        g_stDmsNlkCfg =
 #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0) */
 #endif /* VOS_OS_VER == VOS_WIN32 */
 
+/* Added by w00316404 for Add Get Modem Log, 2015-10-17, Begin */
+VOS_UINT8                               g_ucDmsPrintModemLogType = 0;
+/* Added by w00316404 for Add Get Modem Log, 2015-10-17, End */
 
 /*****************************************************************************
   3 外部函数声明
@@ -111,6 +114,41 @@ VOS_VOID DMS_ReadPortDebugCfgNV(VOS_VOID)
     return;
 }
 
+/* Added by w00316404 for Add Get Modem Log, 2015-10-17, Begin */
+/*****************************************************************************
+ 函 数 名  : DMS_ReadGetModemLogCfgNV
+ 功能描述  : 读取配置是否可以得到modem log的NV项中的值
+ 输入参数  : 无
+ 输出参数  : 无
+ 返 回 值  : VOS_VOID
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史     :
+ 1.日    期   : 2015年10月17日
+   作    者   : w00316404
+   修改内容   : 新生成函数
+*****************************************************************************/
+VOS_VOID DMS_ReadGetModemLogCfgNV(VOS_VOID)
+{
+    TAF_NV_PRINT_MODEM_LOG_TYPE_STRU    stPrintModemLogType;
+
+    VOS_MemSet(&stPrintModemLogType, 0x00, sizeof(stPrintModemLogType));
+
+    /* 读取NV项 */
+    if (NV_OK != NV_Read(en_NV_Item_Print_Modem_Log_Type,
+                         &stPrintModemLogType,
+                         sizeof(TAF_NV_PRINT_MODEM_LOG_TYPE_STRU)))
+    {
+        return;
+    }
+
+    DMS_SET_PRINT_MODEM_LOG_TYPE(stPrintModemLogType.ucPrintModemLogType);
+
+    return;
+}
+/* Added by w00316404 for Add Get Modem Log, 2015-10-17, End */
+
 
 VOS_VOID DMS_Init(VOS_VOID)
 {
@@ -150,6 +188,10 @@ VOS_VOID DMS_Init(VOS_VOID)
     DRV_USB_REGUDI_DISABLECB(DMS_UsbDisableCB);
 
     wake_lock_init(&g_stDmsMainInfo.stwakelock, WAKE_LOCK_SUSPEND, "dms_wakelock");
+
+    /* Added by w00316404 for Add Get Modem Log, 2015-10-17, Begin */
+    DMS_ReadGetModemLogCfgNV();
+    /* Added by w00316404 for Add Get Modem Log, 2015-10-17, End */
 
     return;
 }
@@ -588,6 +630,14 @@ VOS_UINT32 DMS_WriteOmData(
     VOS_UINT32                          ulLastMemSize;
     VOS_UINT32                          ulCnt;
 
+    /* Added by w00316404 for Add Get Modem Log, 2015-10-17, Begin */
+    if (DMS_GET_PRINT_MODEM_LOG_TYPE())
+    {
+        DMS_DBG_NLK_UL_UNSUPPORT_WRITE_LOG_NUM(1);
+        return VOS_ERR;
+    }
+    /* Added by w00316404 for Add Get Modem Log, 2015-10-17, End */
+
     DMS_DBG_NLK_DL_TOTAL_PKT_NUM(1);
 
     /* 检查通道 */
@@ -954,6 +1004,14 @@ VOS_INT DMS_NLK_Send(
 VOS_VOID DMS_NLK_Input(struct sk_buff *pstSkb)
 {
     struct nlmsghdr                    *pstNlkHdr = VOS_NULL_PTR;
+
+    /* Added by w00316404 for Add Get Modem Log, 2015-10-17, Begin */
+    if (DMS_GET_PRINT_MODEM_LOG_TYPE())
+    {
+        DMS_DBG_NLK_UL_UNSUPPORT_INPUT_LOG_NUM(1);
+        return;
+    }
+    /* Added by w00316404 for Add Get Modem Log, 2015-10-17, End */
 
     DMS_DBG_NLK_UL_TOTAL_MSG_NUM(1);
 

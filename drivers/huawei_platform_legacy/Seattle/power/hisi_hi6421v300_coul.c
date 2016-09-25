@@ -9,7 +9,7 @@
 *
 ******************************************************************************************/
 #include "hisi_hi6421v300_coul.h"
-
+#include <huawei_platform/power/huawei_charger.h>
 #define HWLOG_TAG hisi_hi6421v300_coul
 HWLOG_REGIST();
 /*************************************struct type definitipn area*************************/
@@ -20,6 +20,56 @@ struct dsm_dev dsm_pmu_coul = {
 };
 
 struct dsm_client *pmu_coul_dclient = NULL;
+char* p_charger = NULL;/*0x3FFFFC00~0x40000000 is reserved for pmu coulomb, we use these to transfer coul information from fastboot to kernel,we add charger info*/
+
+#define DELTA_SAFE_FCC_PERCENT 5
+#define MAX_RECORDS_CNT 5
+#define MIN_BEGIN_PERCENT_FOR_SAFE 20
+#define BASP_FCC_LERAN_TEMP_MIN (200) /*tenth degree*/
+#define BASP_FCC_LERAN_TEMP_MAX (450) /*tenth degree*/
+typedef enum BASP_LEVEL_TAG {
+    BASP_LEVEL_0,
+    BASP_LEVEL_1,
+    BASP_LEVEL_2,
+    BASP_LEVEL_3,
+    BASP_LEVEL_CNT
+}BASP_LEVEL_TYPE;
+
+enum BASP_POLICY_MEM_TAG {
+    POLICY_MEM_LEVEL,
+    POLICY_MEM_CHG_CYCLES,
+    POLICY_MEM_FCC_RATIO,
+    POLICY_MEM_VOLT_DEC,
+    POLICY_MEM_CUR_RATIO,
+    POLICY_MEM_CNT
+};
+static struct battery_aging_safe_policy {
+    BASP_LEVEL_TYPE level;  /* policy level */
+    unsigned int chg_cycles; /* more than this, actual cycles:chg_cycles/100 */
+    unsigned int fcc_ratio;    /* less than this fcc_ratio/10 */
+    unsigned int volt_dec;    /* voltage decrease mV */
+    unsigned int cur_ratio;   /* current discount ratio:cur_ratio/10 */
+}basp_policy[BASP_LEVEL_CNT] = { /* Note:The level is listed descendingly */
+
+    {BASP_LEVEL_3,  50000,    6,      192,    6},
+    {BASP_LEVEL_2,  40000,    8,      48,      8},
+    {BASP_LEVEL_1,  30000,    9,      16,      9},
+    {BASP_LEVEL_0,  0,          10,      0,      10},
+};
+static int basp_learned_fcc = 0;
+
+typedef enum BASP_FCC_LEARN_EVENT {
+    EVT_START,
+    EVT_PER_CHECK,/*periodic check*/
+    EVT_DONE,
+} LEARN_EVENT_TYPE;
+
+static enum BASP_FCC_LEARN_STATE {
+    LS_UNKNOWN,
+    LS_INIT,
+    LS_GOOD,
+    LS_BAD,
+} basp_fcc_ls = LS_UNKNOWN;
 
 struct hisi_hi6421v300_coul_nv_info{
     int charge_cycles;
@@ -37,6 +87,9 @@ struct hisi_hi6421v300_coul_nv_info{
     short hkadc_batt_temp;
     short hkadc_batt_id_voltage;
     short ocv_temp;
+    short real_fcc_record[MAX_RECORDS_CNT];
+    short latest_record_index;
+    short real_fcc_report_flag;
 };
 
 struct hisi_hi6421_coul_cali_info
@@ -129,6 +182,8 @@ struct hisi_hi6421v300_coul_device
     struct hisi_coul_ops *ops;
     struct hisi_hi6421v300_coul_nv_info nv_info;
     struct notifier_block nb;
+    unsigned int basp_level;
+    unsigned int basp_flag;
 
 #ifdef HISI_HI6421V300_DEBUG
     unsigned int dbg_ocv_cng_0; /*ocv change count by wake up*/
@@ -140,6 +195,7 @@ struct hisi_hi6421v300_coul_device
 };
 
 /*************************************static variable definitipn area*************************/
+static int pre_pc = 0;
 static int hisi_saved_abs_cc_mah = 0;
 static int disable_temperature_debounce = 1;
 static int do_save_offset_ret;
@@ -156,6 +212,9 @@ static struct hisi_hi6421v300_coul_gauge_log gauglog;
 static struct hisi_hi6421v300_coul_gauge_log* glog = &gauglog;
 static struct hisi_hi6421v300_coul_device *g_hisi_hi6421v300_coul_dev = NULL;
 extern struct blocking_notifier_head notifier_list;
+
+static struct hisi_hi6421v300_coul_nv_info my_nv_info;
+static unsigned long nv_info_addr = 0;
 
 /*********************************non-static variable definitipn area*************************/
 int delta_sleep_time = 10*60; // sleep time bigger could update ocv, in s
@@ -305,6 +364,205 @@ static struct kernel_param_ops batt_soc_with_uuc_ops = {
 };
 
 module_param_cb(batt_soc_with_uuc, &batt_soc_with_uuc_ops, &batt_soc_with_uuc, 0444);
+
+BASP_LEVEL_TYPE get_basp_level(struct hisi_hi6421v300_coul_device *di);
+static void basp_fcc_learn_evt_handler(struct hisi_hi6421v300_coul_device *di, LEARN_EVENT_TYPE evt)
+{
+    static enum BASP_FCC_LEARN_STATE prev_state = LS_UNKNOWN;
+    switch (evt)
+    {
+        case EVT_START:
+            basp_fcc_ls = LS_INIT;
+            break;
+        case EVT_PER_CHECK:
+            if (basp_fcc_ls == LS_INIT || basp_fcc_ls == LS_GOOD)
+            {
+                if (di->batt_temp > BASP_FCC_LERAN_TEMP_MIN && di->batt_temp < BASP_FCC_LERAN_TEMP_MAX)
+                    basp_fcc_ls = LS_GOOD;
+                else
+                    basp_fcc_ls = LS_BAD;
+            }
+            break;
+        case EVT_DONE:
+            basp_fcc_ls = LS_UNKNOWN;
+            break;
+    }
+
+    if (basp_fcc_ls != prev_state)
+    {
+        hwlog_info(BASP_TAG"prev_state:%d, new_state:%d, batt_temp:%d\n", prev_state, basp_fcc_ls, di->batt_temp);
+        prev_state = basp_fcc_ls;
+    }
+}
+
+#define FULL_RECENT_FCC     (100)
+#define DELTA_FCC_PRECENT   (5)
+#define MAX_SEGMENT_FCC     (8)
+static int get_learn_fcc(struct hisi_hi6421v300_coul_device *di)
+{
+    int i = 0,sum = 0;
+    int fcc_agv =0 ;
+    char buf[128] = {0};
+
+    fcc_agv = my_nv_info.real_fcc[0];/*unify data of nv*/
+
+    HISI_HI6421V300_COUL_INF(BASP_TAG"get_learn_fcc fcc =%d,cycles=%d,batt_fcc=%d\n",fcc_agv,my_nv_info.charge_cycles,di->batt_data->fcc);
+
+    if(fcc_agv <= 0)
+    {
+        return -1;
+    }
+
+    if(fcc_agv > di->batt_data->fcc)
+    {
+        snprintf(buf,sizeof(buf),"fcc:%d,cycles:%d",fcc_agv,my_nv_info.charge_cycles);
+        return basp_charger_dsm_report(INFO_FCC_DMD_BASE, buf);
+    }
+    for(i = 0;i < MAX_SEGMENT_FCC;i++)
+    {
+        if(fcc_agv <= di->batt_data->fcc*(FULL_RECENT_FCC - DELTA_FCC_PRECENT*i)/FULL_RECENT_FCC
+            && fcc_agv >= di->batt_data->fcc*(FULL_RECENT_FCC - DELTA_FCC_PRECENT*(i+1))/FULL_RECENT_FCC)
+        {
+            snprintf(buf,sizeof(buf),"fcc:%d,cycles:%d",fcc_agv,my_nv_info.charge_cycles);
+            return basp_charger_dsm_report(INFO_FCC_DMD_BASE + i, buf);
+        }
+    }
+
+    if(fcc_agv < di->batt_data->fcc*(FULL_RECENT_FCC - DELTA_FCC_PRECENT*(MAX_SEGMENT_FCC+1))/FULL_RECENT_FCC)
+    {
+        snprintf(buf,sizeof(buf),"fcc:%d,cycles:%d",fcc_agv,my_nv_info.charge_cycles);
+        return basp_charger_dsm_report(INFO_FCC_DMD_BASE + MAX_SEGMENT_FCC, buf);
+    }
+
+    return -1;
+}
+
+
+static int save_nv_info(struct hisi_hi6421v300_coul_device *di);
+static int basp_nv;
+static int basp_nv_set(const char *buffer, const struct kernel_param *kp)
+{
+#define MAX_TMP_BUF_LEN (10)
+    const char *begin = NULL, *end = NULL, *c = NULL;
+    BASP_LEVEL_TYPE indx = BASP_LEVEL_0;
+    char num[MAX_TMP_BUF_LEN] = {0};
+    long val = 0;
+    int need_save = 0;
+    struct hisi_hi6421v300_coul_nv_info *pinfo = NULL;
+
+    struct hisi_hi6421v300_coul_device *di = (struct hisi_hi6421v300_coul_device *)g_hisi_hi6421v300_coul_dev;
+    if (NULL == di)
+    {
+        hwlog_err(BASP_TAG"[%s], input param NULL!\n", __func__);
+        return -EINVAL;
+    }
+    pinfo = &di->nv_info;
+
+    hwlog_info(BASP_TAG"buffer:%s\n", buffer);
+    c = buffer;
+    while (*c != '\n' && *c != '\0')
+    {
+        if (!((('0' <= *c) && (*c <= '9')) || *c == ' '))
+        {
+            hwlog_err(BASP_TAG"[%s], input invalid!\n", __func__);
+            goto FUNC_END;
+        }
+        c++;
+    }
+
+    begin = buffer;
+    if (*begin == '\0')
+    {
+        hwlog_err(BASP_TAG"[%s], input empty!\n", __func__);
+        return 0;
+    }
+    while (*begin != '\0' && *begin != '\n')
+    {
+        while (*begin == ' ')
+            begin++;
+        end = begin;
+        while (*end != ' ' && *end != '\0' && *end != '\n')
+            end++;
+        if (end - begin >= MAX_TMP_BUF_LEN)
+        {
+            hwlog_err(BASP_TAG"[%s], input too big!\n", __func__);
+           goto  FUNC_END;
+        }
+        memcpy(num, begin, (end-begin));
+        if (strict_strtol(num, 10, &val) < 0)
+        {
+                hwlog_err(BASP_TAG"[%s], num:%s, convert fail!\n", __func__, num);
+                break;
+        }
+
+        need_save = 1;
+        pinfo->real_fcc_record[indx++] = val;
+        if (indx == MAX_RECORDS_CNT)
+            indx = 0;
+        memset(num, 0, sizeof(num));
+        begin = end;
+    }
+
+    if (need_save)
+        save_nv_info(di);
+
+FUNC_END:
+    return strlen(buffer);
+
+#undef MAX_TMP_BUF_LEN
+}
+
+static int basp_nv_get(char *buffer, const struct kernel_param *kp) {
+    int len = strlen(buffer);
+    int i = 0;
+
+    struct hisi_hi6421v300_coul_device *di = (struct hisi_hi6421v300_coul_device *)g_hisi_hi6421v300_coul_dev;
+    if (NULL == di) {
+        hwlog_err(BASP_TAG"[%s], input param NULL!\n", __func__);
+        return -EINVAL;
+    }
+
+    for (i = 0; i < MAX_RECORDS_CNT; i++) {
+        sprintf(buffer + len, "learned_fcc[%d]:%d\n", i, di->nv_info.real_fcc_record[i]);
+        len = strlen(buffer);
+    }
+    sprintf(buffer + len, "latest_record_index:%d\n", di->nv_info.latest_record_index);
+    return strlen(buffer);
+}
+
+static struct kernel_param_ops basp_nv_ops = {
+    .set = basp_nv_set,
+    .get = basp_nv_get,
+};
+module_param_cb(basp_nv, &basp_nv_ops, &basp_nv, 0644);
+
+int coul_get_battery_aging_safe_policy(AGING_SAFE_POLICY_TYPE *asp)
+{
+    struct hisi_hi6421v300_coul_device *di = g_hisi_hi6421v300_coul_dev;
+
+    if (!di || !asp)
+    {
+        hwlog_err(BASP_TAG"[%s] input param NULL!\n", __func__);
+        return -1;
+    }
+
+    if (di->basp_level > (BASP_LEVEL_CNT - 1))
+    {
+        hwlog_err(BASP_TAG"[%s] basp_level out of range:%d!\n", __func__, di->basp_level);
+        return -1;
+    }
+    if ((0 == basp_learned_fcc) || (0 > basp_learned_fcc))
+    {
+        hwlog_err(BASP_TAG"[%s] basp_learned_fcc wrong:%d!\n", __func__, basp_learned_fcc);
+        return -1;
+    }
+    asp->volt_dec = basp_policy[BASP_LEVEL_CNT - 1 - di->basp_level].volt_dec;
+    asp->cur_ratio = basp_policy[BASP_LEVEL_CNT - 1 - di->basp_level].cur_ratio;
+    asp->learned_fcc = (unsigned int)basp_learned_fcc;
+
+    return 0;
+}
+
 
 static int calculate_cc_uah(void);
 /**
@@ -980,6 +1238,7 @@ static int calculate_remaining_charge_uah(struct hisi_hi6421v300_coul_device *di
 
     ocv = di->batt_ocv;
     pc = calculate_pc(di, ocv, temp, chargecycles);
+    pre_pc = pc;
 
     return fcc_mah * pc;
 }
@@ -1270,9 +1529,6 @@ static unsigned int recalc_chargecycles(struct hisi_hi6421v300_coul_device *di)
     return retval;
 }
 
-static struct hisi_hi6421v300_coul_nv_info my_nv_info;
-static unsigned long nv_info_addr = 0;
-
 static int __init early_parse_pmu_nv_addr_cmdline(char *p)
 {
     char buf[30] = {0};
@@ -1300,10 +1556,17 @@ static int __init move_pmu_nv_info(void)
     HISI_HI6421V300_COUL_EVT("pmu_nv_addr=0x%p\n", pmu_nv_addr);
 
     memcpy(&my_nv_info, pmu_nv_addr, sizeof(my_nv_info));
+
+    p_charger = (void*)pmu_nv_addr;
     return 0;
 }
 arch_initcall(move_pmu_nv_info);
 
+char* get_charger_info_p()
+{
+   return p_charger;
+}
+EXPORT_SYMBOL(get_charger_info_p);
 static int get_initial_params(struct hisi_hi6421v300_coul_device *di)
 {
     int i;
@@ -1400,6 +1663,10 @@ static int save_nv_info(struct hisi_hi6421v300_coul_device *di)
     pinfo->start_cc = di->cc_start_value;
     pinfo->ocv_temp = di->batt_ocv_temp;
     pinfo->limit_fcc = di->batt_limit_fcc;
+    if(di->basp_flag)
+    {
+        pinfo->real_fcc_report_flag = my_nv_info.real_fcc_report_flag;
+    }
 
     if (di->adjusted_fcc_temp_lut){
         for(i=0; i<di->adjusted_fcc_temp_lut->cols; i++)
@@ -1575,9 +1842,49 @@ int hisi_hi6421v300_battery_temperature_tenth_degree(void)
     return DEFAULT_TEMP*10;
 }
 
+ #define ABNORMAL_BATT_TEMPERATURE_POWEROFF 670
+ #define DELTA_TEMP 150
+ #define LOW_BATT_TEMP_CHECK_THRESHOLD -100
+/**********************************************************
+*  Function:    get_temperature_stably
+*  Discription:    the fun for adc get some err,we can avoid
+*  Parameters:
+*               di info
+*  return value:
+*               battery temperature
+**********************************************************/
+static int get_temperature_stably(struct hisi_hi6421v300_coul_device *di)
+{
+    int retry_times = 5;
+    int cnt = 0;
+    int temperature;
+    int delta = 0;
+
+    if (NULL == di)
+    {
+        HISI_HI6421V300_COUL_ERR("error, di is NULL, return default temp\n");
+        return DEFAULT_TEMP*10;
+    }
+
+    while(cnt++ < retry_times)
+    {
+        temperature = hisi_hi6421v300_battery_temperature_tenth_degree();
+        delta = abs(di->batt_temp - temperature);
+        /* Due to the adc unstability, re-read it when temp is over 67 or -10 degree */
+        if(delta > DELTA_TEMP
+        ||temperature > ABNORMAL_BATT_TEMPERATURE_POWEROFF
+        || temperature <= LOW_BATT_TEMP_CHECK_THRESHOLD)
+        {
+            continue;
+        }
+        HISI_HI6421V300_COUL_INF("stably temp!,old_temp =%d,cnt =%d, temp = %d\n",di->batt_temp,cnt,temperature);
+        return temperature;
+    }
+    return temperature;
+}
 static void update_battery_temperature(struct hisi_hi6421v300_coul_device *di, int status)
 {
-    int temp = hisi_hi6421v300_battery_temperature_tenth_degree();
+    int temp = get_temperature_stably(di);
     if (TEMPERATURE_INIT_STATUS == status)
     {
         HISI_HI6421V300_COUL_INF("init temp = %d\n", temp);
@@ -2458,6 +2765,184 @@ out:
     return soc_new;
 }
 
+static int calculate_real_fcc_uah(struct hisi_hi6421v300_coul_device *di,
+								  int *ret_fcc_uah);
+/* new battery, clear record fcc */
+void clear_record_fcc(struct hisi_hi6421v300_coul_device *di)
+{
+    int ret = 0, index = 0;
+    struct hisi_nve_info_user nve;
+    struct hisi_hi6421v300_coul_nv_info *pinfo = NULL;
+
+    if (NULL == di)
+    {
+        hwlog_err(BASP_TAG"[%s], input param NULL!\n", __func__);
+        return;
+    }
+    pinfo = &di->nv_info;
+
+    memset(&nve, 0, sizeof(nve));
+    strncpy(nve.nv_name, HISI_HI6421V300_COUL_NV_NAME, sizeof(HISI_HI6421V300_COUL_NV_NAME));
+    nve.nv_number = HISI_HI6421V300_COUL_NV_NUM;
+    nve.valid_size = sizeof(*pinfo);
+    nve.nv_operation = NV_WRITE;
+
+    for (index = 0; index < MAX_RECORDS_CNT; index++)
+    {
+        pinfo->real_fcc_record[index] = 0;
+    }
+    pinfo->charge_cycles = 0;
+    pinfo->latest_record_index = 0;
+    memcpy(nve.nv_data, pinfo, sizeof(*pinfo));
+
+    ret = hisi_nve_direct_access(&nve);
+    if (ret)
+    {
+        hwlog_err(BASP_TAG"[%s], clear fcc records fail, ret:%d\n", __func__, ret);
+    }
+    else
+    {
+        hwlog_info(BASP_TAG"fcc records cleared!\n");
+    }
+}
+void basp_record_fcc(struct hisi_hi6421v300_coul_device *di)
+{
+    int index = 0;
+    struct hisi_hi6421v300_coul_nv_info *pinfo = NULL;
+
+    if (NULL == di)
+    {
+        hwlog_err(BASP_TAG"[%s], input param NULL!\n", __func__);
+        return;
+    }
+    pinfo = &di->nv_info;
+
+    pinfo->latest_record_index = (pinfo->latest_record_index + 1) % (MAX_RECORDS_CNT);
+    index = pinfo->latest_record_index;
+    pinfo->real_fcc_record[index] = di->fcc_real_mah;
+
+    charger_dsm_report(ERROR_SAFE_PLOICY_LEARN, &di->fcc_real_mah);
+    memcpy(&my_nv_info, pinfo, sizeof(*pinfo));
+}
+
+void basp_refresh_fcc(struct hisi_hi6421v300_coul_device *di)
+{
+    if (NULL == di)
+    {
+        hwlog_err(BASP_TAG"[%s], input param NULL!\n", __func__);
+        return;
+    }
+
+    if ((basp_fcc_ls == LS_GOOD)
+        && (di->batt_temp > BASP_FCC_LERAN_TEMP_MIN && di->batt_temp < BASP_FCC_LERAN_TEMP_MAX)
+        && di->charging_begin_soc/10 < MIN_BEGIN_PERCENT_FOR_SAFE
+        && di->batt_ocv_valid_to_refresh_fcc
+        && ((di->batt_ocv>3200000 && di->batt_ocv<3670000)
+            || (di->batt_ocv>3690000 && di->batt_ocv <3730000)
+            || (di->batt_ocv>3800000 && di->batt_ocv <3900000)
+            )
+        )
+    {
+        int fcc_uah, new_fcc_uah, delta_fcc_uah, max_delta_fcc_uah;
+        new_fcc_uah = calculate_real_fcc_uah(di, &fcc_uah);
+        max_delta_fcc_uah = interpolate_fcc(di, di->batt_temp)*DELTA_SAFE_FCC_PERCENT*10;/*max delta*/
+        delta_fcc_uah = new_fcc_uah - fcc_uah;
+        if (delta_fcc_uah < 0)
+            delta_fcc_uah = -delta_fcc_uah;
+        if (delta_fcc_uah > max_delta_fcc_uah)
+        {
+            /* new_fcc_uah is outside the scope limit it */
+            if (new_fcc_uah > fcc_uah)
+                new_fcc_uah = (fcc_uah + max_delta_fcc_uah);
+            else
+                new_fcc_uah = (fcc_uah - max_delta_fcc_uah);
+            hwlog_info(BASP_TAG"delta_fcc=%d > %d percent of fcc=%d"
+                               "restring it to %d\n",
+                               delta_fcc_uah, DELTA_SAFE_FCC_PERCENT,
+                               fcc_uah, new_fcc_uah);
+        }
+        di->fcc_real_mah = new_fcc_uah / 1000;
+        hwlog_info(BASP_TAG"refresh_fcc, start soc=%d, new fcc=%d \n",
+            di->charging_begin_soc, di->fcc_real_mah);
+        /* record fcc */
+        basp_record_fcc(di);
+        di->basp_level = (unsigned int)get_basp_level(di);
+    }
+    else
+    {
+        hwlog_err(BASP_TAG"[%s], basp_fcc_ls:%d, batt_temp:%d, charging_begin_soc:%d, ocv_valid:%d, batt_ocv:%d\n", \
+            __func__, basp_fcc_ls, di->batt_temp, di->charging_begin_soc, di->batt_ocv_valid_to_refresh_fcc, di->batt_ocv);
+    }
+    basp_fcc_learn_evt_handler(di, EVT_DONE);
+}
+
+BASP_LEVEL_TYPE get_basp_level(struct hisi_hi6421v300_coul_device *di)
+{
+    int i = 0;
+    int records_cnt = 0, records_sum = 0, records_avg = 0;
+    BASP_LEVEL_TYPE basp_level_ret = BASP_LEVEL_0;
+
+    for (i = 0; i < MAX_RECORDS_CNT; i++)
+    {
+        if (0 == my_nv_info.real_fcc_record[i])
+        {
+            continue;
+        }
+        records_sum += my_nv_info.real_fcc_record[i];
+        records_cnt++;
+        hwlog_info(BASP_TAG"valid fcc records, [%d]:%dmAh\n", i, my_nv_info.real_fcc_record[i]);
+    }
+
+    if (records_cnt)
+    {
+        records_avg = records_sum/records_cnt;
+        if( records_avg < di->batt_data->fcc*basp_policy[0].fcc_ratio/10)
+        {
+            basp_learned_fcc = di->batt_data->fcc*basp_policy[0].fcc_ratio/10;
+        }
+        else
+        {
+            basp_learned_fcc = records_avg;
+        }
+    }
+    else
+    {
+        basp_level_ret = BASP_LEVEL_0;
+        basp_learned_fcc = di->batt_data->fcc;
+        goto FuncEnd;
+    }
+
+    if (records_cnt < MAX_RECORDS_CNT)
+    {
+        for (i = 0; i < BASP_LEVEL_CNT; i++)
+        {
+            if (di->batt_chargecycles > basp_policy[i].chg_cycles &&
+                records_avg < di->batt_data->fcc*basp_policy[i].fcc_ratio/10)
+            {
+                basp_level_ret = basp_policy[i].level;
+                goto FuncEnd;
+            }
+        }
+    }
+    else
+    {
+        for (i = 0; i < BASP_LEVEL_CNT; i++)
+        {
+            if (records_avg < di->batt_data->fcc*basp_policy[i].fcc_ratio/10)
+            {
+                basp_level_ret = basp_policy[i].level;
+                goto FuncEnd;
+            }
+        }
+    }
+
+FuncEnd:
+    hwlog_info(BASP_TAG"basp_level_ret:%d, batt_chargecycles:%d, bat_fcc:%d, records_cnt:%d, records_avg:%dmAh\n", \
+        basp_level_ret, di->batt_chargecycles, di->batt_data->fcc, records_cnt, records_avg);
+    return basp_level_ret;
+}
+
+
 static int limit_soc(struct hisi_hi6421v300_coul_device *di,int input_soc)
 {
     int output_soc = input_soc;
@@ -2566,6 +3051,8 @@ static void calculate_soc_params(struct hisi_hi6421v300_coul_device *di,
     int chargecycles = di->batt_chargecycles/100;
     int delt_rc;
     static int first_in = 1;
+    static int pre_batt_ruc = 0;
+    static int dmd_notify_enable = 1;
 
     *fcc_uah = calculate_fcc_uah(di, batt_temp, chargecycles);
 
@@ -2582,7 +3069,35 @@ static void calculate_soc_params(struct hisi_hi6421v300_coul_device *di,
     *cc_uah = di->cc_end_value - di->cc_start_value;
 
     di->batt_ruc = *remaining_charge_uah - *cc_uah;
+    if (first_in)
+    {
+        HISI_HI6421V300_COUL_INF("first batt_ruc = %d\n", di->batt_ruc);
+    }
+    else
+    {
+        if (abs(pre_batt_ruc - di->batt_ruc) >= (*fcc_uah / 5))
+        {
+            HISI_HI6421V300_COUL_ERR("pre_batt_ruc = %d, cur_batt_ruc = %d\n", pre_batt_ruc, di->batt_ruc);
+            HISI_HI6421V300_COUL_ERR("remaining_charge_uah= %d, cc_uah= %d, cc_start = %d, cc_end = %d\n", *remaining_charge_uah, *cc_uah, di->cc_start_value, di->cc_end_value);
+            HISI_HI6421V300_COUL_ERR("batt_ocv = %d, batt_ocv_temp = %d, pre_pc = %d\n", di->batt_ocv, di->batt_ocv_temp, pre_pc);
+            if (dmd_notify_enable && !dsm_client_ocuppy(pmu_coul_dclient))
+            {
+                dsm_client_record(pmu_coul_dclient, "ruc error, pre_batt_ruc = %d, cur_batt_ruc = %d, remaining_charge_uah= %d, cc_uah= %d, cc_start = %d, cc_end = %d, batt_ocv = %d, batt_ocv_temp = %d, pre_pc = %d!\n", pre_batt_ruc, di->batt_ruc, *remaining_charge_uah, *cc_uah, di->cc_start_value, di->cc_end_value, di->batt_ocv, di->batt_ocv_temp, pre_pc);
+                dsm_client_notify(pmu_coul_dclient, DSM_PMU_COUL_ERROR_NO + DSM_COUL_RUC_ERR_OFFSET);
+                dmd_notify_enable = 0;
+            }
 
+            if(pre_batt_ruc - di->batt_ruc > 0)
+            {
+                di->batt_ruc = pre_batt_ruc - *fcc_uah / 5;
+            }
+            else
+            {
+                di->batt_ruc = pre_batt_ruc + *fcc_uah / 5;
+            }
+        }
+    }
+    pre_batt_ruc = di->batt_ruc;
     di->get_cc_end_time = get_coul_time();
 
     di->batt_soc_real = DIV_ROUND_CLOSEST((*remaining_charge_uah - *cc_uah), *fcc_uah/1000);
@@ -2654,10 +3169,10 @@ static void get_rm(struct hisi_hi6421v300_coul_device *di, int *rm)
 }
 static int calculate_state_of_charge(struct hisi_hi6421v300_coul_device *di)
 {
-    int remaining_usable_charge_uah, fcc_uah, unusable_charge_uah, delta_rc_uah;
-    int remaining_charge_uah, soc;
-    int cc_uah;
-    int rbatt;
+    int remaining_usable_charge_uah = 0, fcc_uah = 0, unusable_charge_uah = 0, delta_rc_uah = 0;
+    int remaining_charge_uah = 0, soc = 0;
+    int cc_uah = 0;
+    int rbatt = 0;
 
     if (!di->batt_exist){
         return 0;
@@ -2671,12 +3186,12 @@ static int calculate_state_of_charge(struct hisi_hi6421v300_coul_device *di)
                                     &delta_rc_uah,
                                     &rbatt);
 
-    HISI_HI6421V300_COUL_DEBUG("FCC=%duAh, UUC=%duAh, RC=%duAh, CC=%duAh, delta_RC=%duAh, Rbatt=%dmOhm\n",
+    HISI_HI6421V300_COUL_INF("FCC=%duAh, UUC=%duAh, RC=%duAh, CC=%duAh, delta_RC=%duAh, Rbatt=%dmOhm\n",
                        fcc_uah, unusable_charge_uah, remaining_charge_uah, cc_uah, delta_rc_uah, rbatt);
 
     di->rbatt = rbatt;
 
-    if (di->batt_limit_fcc && di->batt_limit_fcc < fcc_uah)
+    if (di->batt_limit_fcc && (di->batt_limit_fcc > 0) && (di->batt_limit_fcc < fcc_uah))
     {
         fcc_uah = di->batt_limit_fcc;
         hwlog_info("use limit_FCC! %duAh\n", fcc_uah);
@@ -2703,14 +3218,14 @@ static int calculate_state_of_charge(struct hisi_hi6421v300_coul_device *di)
         if (hisi_hi6421v300_battery_voltage() > 3500)
             return di->batt_soc;
     }
-    HISI_HI6421V300_COUL_DEBUG("SOC before adjust = %d\n", soc);
+    HISI_HI6421V300_COUL_INF("SOC before adjust = %d\n", soc);
     soc= adjust_soc(di, soc, di->batt_temp, di->batt_chargecycles/100, rbatt, fcc_uah, unusable_charge_uah, cc_uah);
 
-    HISI_HI6421V300_COUL_DEBUG("SOC before limit = %d\n", soc);
+    HISI_HI6421V300_COUL_INF("SOC before limit = %d\n", soc);
     glog->soc_before_limit = soc;
 
     soc = limit_soc(di, soc);
-    HISI_HI6421V300_COUL_DEBUG("SOC_NEW = %d\n", soc);
+    HISI_HI6421V300_COUL_INF("SOC_NEW = %d\n", soc);
 
     di->batt_soc = soc;
 
@@ -2758,6 +3273,7 @@ void print_offset(void)
     static int last_cc=0;
     static int last_time=0;
     int ret = -1;
+    static int basp_dsm_flag = 1;
 
     check_coul_close_register();
     clear_coul_offset_reg();
@@ -2766,6 +3282,32 @@ void print_offset(void)
     /* calc soc */
     di->batt_soc = calculate_state_of_charge(di);
 
+    if(di->basp_flag)
+    {
+        if(!my_nv_info.real_fcc_report_flag)
+        {
+            if(!get_learn_fcc(di))
+            {
+                my_nv_info.real_fcc_report_flag = 1;
+                set_need_save_nv_flag(di);
+            }
+        }
+
+        if(basp_dsm_flag)
+        {
+            if(di->basp_level == BASP_LEVEL_1)
+            {
+                basp_dsm_flag = charger_dsm_report(ERROR_SAFE_PLOICY_LEARN1, (int *)&di->basp_level);
+            } else if(di->basp_level == BASP_LEVEL_2)
+            {
+                basp_dsm_flag = charger_dsm_report(ERROR_SAFE_PLOICY_LEARN2, (int *)&di->basp_level);
+            } else if(di->basp_level == BASP_LEVEL_3)
+            {
+                basp_dsm_flag = charger_dsm_report(ERROR_SAFE_PLOICY_LEARN3, (int *)&di->basp_level);
+            }
+        }
+        basp_fcc_learn_evt_handler(di, EVT_PER_CHECK);
+    }
    if (cali_cnt % (CALIBRATE_INTERVAL / di->soc_work_interval) == 0)
    {
            cali_adc();
@@ -2981,6 +3523,10 @@ static void hisi_hi6421v300_charging_begin (struct hisi_hi6421v300_coul_device *
 
     /*record soc of charging begin*/
     di->charging_begin_soc = di->batt_soc_real;
+    if(di->basp_flag)
+    {
+        basp_fcc_learn_evt_handler(di, EVT_START);
+    }
 
     /*record cc value*/
     di->charging_begin_cc = calculate_cc_uah();
@@ -3155,6 +3701,10 @@ static void hisi_hi6421v300_charging_done (struct hisi_hi6421v300_coul_device *d
     if (CHARGING_STATE_CHARGE_START != di->charging_state) {
         HISI_HI6421V300_COUL_ERR("hisi_hi6421v300_charging_done, but pre charge state is %d \n", di->charging_state);
         return;
+    }
+    if(di->basp_flag)
+    {
+        basp_refresh_fcc(di);
     }
 
     refresh_fcc(di);
@@ -3770,6 +4320,20 @@ static int coul_shutdown_prepare(struct notifier_block *nb, unsigned long event,
     }
     return 0;
 }
+static int get_dts_basp_flag(void)
+{
+    struct device_node *charging_core_node = NULL;
+    int basp_flag = 0;
+
+    charging_core_node = of_find_compatible_node(NULL, NULL, "huawei,charging_core");
+    if (charging_core_node) {
+        of_property_read_u32(charging_core_node, "basp_flag",&basp_flag);
+    }else
+    {
+        HISI_HI6421V300_COUL_ERR("get dts basp flag fail = %d\n",basp_flag);
+    }
+    return basp_flag;
+}
 
 static struct platform_driver hisi_hi6421v300_coul_driver;
 static int hisi_hi6421v300_coul_probe(struct platform_device *pdev)
@@ -3859,6 +4423,7 @@ static int hisi_hi6421v300_coul_probe(struct platform_device *pdev)
     g_hisi_hi6421v300_coul_dev = di;
     di->irq = coul_irq;
     platform_set_drvdata(pdev, di);
+    di->basp_flag = get_dts_basp_flag();
 
     /*set di element */
     di->prev_pc_unusable = -EINVAL;
@@ -3882,7 +4447,7 @@ static int hisi_hi6421v300_coul_probe(struct platform_device *pdev)
     di->sr_resume_time = get_coul_time();
     sr_cur_state = SR_DEVICE_WAKEUP;
 
-    update_battery_temperature(di, TEMPERATURE_INIT_STATUS);
+    di->batt_temp = hisi_hi6421v300_battery_temperature_tenth_degree();
     /*check battery is exist*/
     if (!is_hi6421v300_battery_exist()) {
         HISI_HI6421V300_COUL_ERR("%s: no battery, just registe callback\n",__FUNCTION__);
@@ -3921,10 +4486,23 @@ static int hisi_hi6421v300_coul_probe(struct platform_device *pdev)
         di->batt_changed_flag = 1;
         di->batt_limit_fcc = 0;
         di->adjusted_fcc_temp_lut = NULL; /* enable it when test ok */
+        /*clear safe record fcc*/
+        if(di->basp_flag)
+        {
+            di->nv_info.real_fcc_report_flag = 0;
+            di->nv_info.latest_record_index = 0;
+            my_nv_info.latest_record_index = 0;
+            memset(di->nv_info.real_fcc_record, 0, sizeof(di->nv_info.real_fcc_record));
+            memset(my_nv_info.real_fcc_record, 0, sizeof(my_nv_info.real_fcc_record));
+        }
         set_need_save_nv_flag(di);
         HISI_HI6421V300_COUL_INF("battery changed, reset chargecycles!\n");
     } else {
         HISI_HI6421V300_COUL_INF("battery not changed, chargecycles = %d%%\n", di->batt_chargecycles);
+    }
+    if(di->basp_flag)
+    {
+        di->basp_level = (unsigned int)get_basp_level(di);
     }
 
     /*get the first soc value*/
@@ -3986,6 +4564,7 @@ coul_no_battery:
     coul_ops->charger_event_rcv = hisi_hi6421v300_battery_charger_event_rcv;
     coul_ops->battery_cycle_count = hisi_hi6421v300_battery_cycle_count;
     coul_ops->battery_fcc_design = hisi_hi6421v300_battery_fcc_design;
+    coul_ops->aging_safe_policy = coul_get_battery_aging_safe_policy;
 
     di->ops = coul_ops;
     retval = hisi_coul_ops_register(coul_ops,COUL_HISI_HI6421V300);

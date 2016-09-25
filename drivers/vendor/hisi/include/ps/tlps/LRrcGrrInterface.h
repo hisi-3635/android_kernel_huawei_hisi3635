@@ -864,6 +864,11 @@ typedef struct
 
     LRRC_GURRC_REDIR_SAVED_EUTRA_INFO_STRU                  stRedirEutraInfo;
 
+    /* begin：add for chr */
+    VOS_UINT32                                              ulHoBeginTimeStampHigh;
+    VOS_UINT32                                              ulHoBeginTimeStampLow;
+    /* end：add for chr */
+
     VOS_UINT32                                              ulHoDatalen;
 
     /* 编码后PS HANDOVER COMMAND 或者HANDOVER COMMAND 数据 */

@@ -1643,10 +1643,6 @@ extern VOS_BOOL USIMM_CheckSupportAP(VOS_VOID);
 
 extern VOS_UINT32 USIMM_InitCardHandle(USIMM_MsgBlock *pMsg);
 
-extern VOS_VOID USIMM_VsimWriteableFileInit(VOS_VOID);
-
-extern VOS_VOID USIMM_VsimWriteableFileUpdate(VOS_UINT16 usFileId, VOS_UINT8 *pucFileContent);
-
 extern VOS_UINT32 USIMM_DeactiveRealCard(USIMM_MsgBlock *pMsg);
 
 extern VOS_VOID USIMM_CardStatusRegCbFuncProc(VOS_VOID);

@@ -22,6 +22,10 @@
 #define WIFIPRO_PRINT_BUF_SIZE                1500
 #define MCC_CHINA                           460
 #define BETA_USER                           1
+#define WIFIPRO_WLAN_BQE_RTT                    1
+#define WIFIPRO_MOBILE_BQE_RTT                  2
+#define WIFIPRO_WLAN_SAMPLE_RTT                  3
+
 
 enum {
     WIFIPRO_ERR = 0,
@@ -95,18 +99,10 @@ typedef struct wifipro_trigger_socket {
     unsigned long InErrs;
 } wifipro_trigger_sock_t;
 
-typedef struct wifipro_google_sock_backlist {
-    char proc_name[WIFIPRO_MAX_PROC_NAME];
-    unsigned int owner_count;
-    unsigned int dst_addr;
-    unsigned int pid;
-    struct wifipro_google_sock_backlist *next;
-} wifipro_g_sock_bl_t;
-
-
 typedef struct wifipro_rtt_stat {
     unsigned int rtt;
-    unsigned long when;
+    unsigned int packets;
+    unsigned long last_update;
 } wifipro_rtt_stat_t;
 
 typedef struct wifipro_rtt_second_stat {
@@ -143,11 +139,10 @@ char *wifipro_ntoa(int addr);
 int wifipro_handle_retrans(struct sock *sk, struct inet_connection_sock *icsk);
 void wifipro_handle_congestion(struct sock *sk, u8 ca_state);
 bool wifipro_is_google_sock(struct task_struct *task, unsigned int dest_addr);
-void wifipro_google_sock_del(unsigned int dest_addr);
 bool wifipro_is_trigger_sock(unsigned int dest_addr, unsigned int dest_port);
 int wifipro_init_proc(struct net *net);
 void wifipro_update_rtt(unsigned int rtt, struct sock *sk);
-void wifipro_update_tcp_statistics(struct sock *sk, int mib_type, int count);
+void wifipro_update_tcp_statistics(int mib_type, const struct sk_buff *skb, struct sock *from_sk);
 
 static inline bool wifipro_is_not_local_or_lan_sock(unsigned int ip_addr)
 {
@@ -160,5 +155,10 @@ static inline bool wifipro_is_not_local_or_lan_sock(unsigned int ip_addr)
         return false;
     }
 }
+
+
+
+
+void wifi_update_rtt(unsigned int rtt, struct sock *sk);
 
 #endif

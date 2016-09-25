@@ -45,6 +45,10 @@
 #ifdef CONFIG_HW_WIFIPRO
 #include "wifipro_tcp_monitor.h"
 #endif
+#ifdef  CONFIG_HW_WIFI
+#include "wifi_tcp_statistics.h"
+#endif
+
 
 /* People can turn this off for buggy TCP's found in printers etc. */
 int sysctl_tcp_retrans_collapse __read_mostly = 1;
@@ -961,10 +965,8 @@ static int tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it,
 		TCP_ADD_STATS(sock_net(sk), TCP_MIB_OUTSEGS,
 			      tcp_skb_pcount(skb));
 
-#ifdef CONFIG_HW_WIFIPRO
-    if (after(tcb->end_seq, tp->snd_nxt) || tcb->seq == tcb->end_seq){
-        wifipro_update_tcp_statistics(sk, WIFIPRO_TCP_MIB_OUTSEGS, tcp_skb_pcount(skb));
-    }
+#ifdef CONFIG_HW_WIFI
+	wifi_IncrSendSegs(sk, tcp_skb_pcount(skb));
 #endif
 
 	err = icsk->icsk_af_ops->queue_xmit(skb, &inet->cork.fl);
@@ -2647,6 +2649,10 @@ void tcp_send_active_reset(struct sock *sk, gfp_t priority)
 		NET_INC_STATS(sock_net(sk), LINUX_MIB_TCPABORTFAILED);
 
 	TCP_INC_STATS(sock_net(sk), TCP_MIB_OUTRSTS);
+	
+#ifdef CONFIG_HW_WIFI
+	wifi_IncrRstSegs(sk, 1);
+#endif
 }
 
 /* Send a crossed SYN-ACK during socket establishment.
@@ -2779,8 +2785,8 @@ struct sk_buff *tcp_make_synack(struct sock *sk, struct dst_entry *dst,
 	th->doff = (tcp_header_size >> 2);
 	TCP_ADD_STATS(sock_net(sk), TCP_MIB_OUTSEGS, tcp_skb_pcount(skb));
 
-#ifdef CONFIG_HW_WIFIPRO
-    wifipro_update_tcp_statistics(sk, WIFIPRO_TCP_MIB_OUTSEGS, tcp_skb_pcount(skb));
+#ifdef CONFIG_HW_WIFI
+	wifi_IncrSendSegs(sk, tcp_skb_pcount(skb));
 #endif
 
 #ifdef CONFIG_TCP_MD5SIG
@@ -2974,6 +2980,9 @@ int tcp_connect(struct sock *sk)
 	struct tcp_sock *tp = tcp_sk(sk);
 	struct sk_buff *buff;
 	int err;
+#ifdef CONFIG_HW_WIFIPRO
+	int wifipro_dev_max_len = 0;
+#endif
 
 	tcp_connect_init(sk);
 
@@ -3007,6 +3016,15 @@ int tcp_connect(struct sock *sk)
 	/* Timer for repeating the SYN until an answer. */
 	inet_csk_reset_xmit_timer(sk, ICSK_TIME_RETRANS,
 				  inet_csk(sk)->icsk_rto, TCP_RTO_MAX);
+#ifdef CONFIG_HW_WIFIPRO
+	if(buff->dev){
+	    wifipro_dev_max_len = strnlen(buff->dev->name, IFNAMSIZ-1);
+	    strncpy(buff->sk->wifipro_dev_name, buff->dev->name, wifipro_dev_max_len);
+	    buff->sk->wifipro_dev_name[wifipro_dev_max_len] = '\0';
+	    WIFIPRO_DEBUG("wifipro_dev_name is %s", buff->dev->name);
+	}
+#endif
+
 	return 0;
 }
 EXPORT_SYMBOL(tcp_connect);

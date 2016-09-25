@@ -15,7 +15,7 @@
 
 #define VCM_ID_CODE		0x5823
 
-int ad5823_ioctl(struct hisi_vcm_ctrl_t *vcm_ctrl, void *data)
+static int ad5823_ioctl(struct hisi_vcm_ctrl_t *vcm_ctrl, void *data)
 {
 	struct vcm_cfg_data *cdata = (struct vcm_cfg_data*)data;
 	long   rc = 0;
@@ -33,7 +33,7 @@ int ad5823_ioctl(struct hisi_vcm_ctrl_t *vcm_ctrl, void *data)
 	return rc;
 }
 
-int ad5823_i2c_read(struct hisi_vcm_ctrl_t *vcm_ctrl, void *data)
+static int ad5823_i2c_read(struct hisi_vcm_ctrl_t *vcm_ctrl, void *data)
 {
 	struct vcm_cfg_data *cdata = (struct vcm_cfg_data *)data;
 	//struct vcm_i2c_reg reg;
@@ -45,7 +45,7 @@ int ad5823_i2c_read(struct hisi_vcm_ctrl_t *vcm_ctrl, void *data)
 	return rc;
 }
 
-int ad5823_i2c_write(struct hisi_vcm_ctrl_t *vcm_ctrl, void *data)
+static int ad5823_i2c_write(struct hisi_vcm_ctrl_t *vcm_ctrl, void *data)
 {
 	struct vcm_cfg_data *cdata = (struct vcm_cfg_data *)data;
 	int   rc = 0;

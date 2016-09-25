@@ -1,6 +1,6 @@
 VERSION = 3
 PATCHLEVEL = 10
-SUBLEVEL = 74
+SUBLEVEL = 86
 EXTRAVERSION =
 NAME = TOSSUG Baby Fish
 
@@ -326,7 +326,7 @@ include $(srctree)/scripts/Kbuild.include
 
 AS		= $(SOURCEANALYZER) $(CROSS_COMPILE)as
 LD		= $(SOURCEANALYZER) $(CROSS_COMPILE)ld
-CC		= $(SOURCEANALYZER) $(CROSS_COMPILE)gcc
+CC		= $(SOURCEANALYZER) $(CCACHE) $(CROSS_COMPILE)gcc
 CPP		= $(CC) -E
 AR		= $(SOURCEANALYZER) $(CROSS_COMPILE)ar
 NM		= $(CROSS_COMPILE)nm
@@ -764,6 +764,10 @@ LDFLAGS_BUILD_ID = $(patsubst -Wl$(comma)%,%,\
 			      $(call cc-ldoption, -Wl$(comma)--build-id,))
 KBUILD_LDFLAGS_MODULE += $(LDFLAGS_BUILD_ID)
 LDFLAGS_vmlinux += $(LDFLAGS_BUILD_ID)
+
+ifeq ($(ARCH),arm64)
+LDFLAGS_vmlinux += --fix-cortex-a53-843419
+endif
 
 ifeq ($(CONFIG_STRIP_ASM_SYMS),y)
 LDFLAGS_vmlinux	+= $(call ld-option, -X,)

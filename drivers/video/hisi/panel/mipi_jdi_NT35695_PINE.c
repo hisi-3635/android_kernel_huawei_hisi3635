@@ -34,13 +34,16 @@
 #ifdef CONFIG_LCD_DEFECT_CHECK
 #define DEFECT_CHECK_STEPS_CHOICE 2
 #endif
+#define CABC_OFF 0
+#define CABC_UI_MODE 1
+#define CABC_STILL_MODE 2
+#define CABC_MOVING_MODE 3
 
 static struct hisi_fb_panel_data jdi_panel_data;
 extern u32 frame_count;
-static struct hisi_fb_data_type *g_hisifd = NULL;
 static bool debug_enable = false;
 static int hkadc_buf = 0;
-static bool gesture_func = false;
+extern bool gesture_func;
 extern int fastboot_set_needed;
 
 static uint32_t g_vddio_type = 0;
@@ -4555,28 +4558,29 @@ static struct regulator *vcc_lcdanalog;
 
 static struct vcc_desc jdi_lcd_vcc_init_cmds[] = {
 	/* vcc get */
-	{DTYPE_VCC_GET, VCC_LCDIO_NAME, &vcc_lcdio, 0, 0},
-	{DTYPE_VCC_GET, VCC_LCDANALOG_NAME, &vcc_lcdanalog, 0, 0},
+	{DTYPE_VCC_GET, VCC_LCDIO_NAME, &vcc_lcdio, 0, 0, WAIT_TYPE_MS, 0},
+	{DTYPE_VCC_GET, VCC_LCDANALOG_NAME, &vcc_lcdanalog, 0, 0, WAIT_TYPE_MS, 0},
+
 	/* vcc set voltage */
-	{DTYPE_VCC_SET_VOLTAGE, VCC_LCDANALOG_NAME, &vcc_lcdanalog, 3100000, 3100000},
+	{DTYPE_VCC_SET_VOLTAGE, VCC_LCDANALOG_NAME, &vcc_lcdanalog, 3100000, 3100000, WAIT_TYPE_MS, 0},
 };
 
 static struct vcc_desc jdi_lcd_vcc_finit_cmds[] = {
 	/* vcc put */
-	{DTYPE_VCC_PUT, VCC_LCDIO_NAME, &vcc_lcdio, 0, 0},
-	{DTYPE_VCC_PUT, VCC_LCDANALOG_NAME, &vcc_lcdanalog, 0, 0},
+	{DTYPE_VCC_PUT, VCC_LCDIO_NAME, &vcc_lcdio, 0, 0, WAIT_TYPE_MS, 0},
+	{DTYPE_VCC_PUT, VCC_LCDANALOG_NAME, &vcc_lcdanalog, 0, 0, WAIT_TYPE_MS, 0},
 };
 
 static struct vcc_desc jdi_lcd_vcc_enable_cmds[] = {
 	/* vcc enable */
-	{DTYPE_VCC_ENABLE, VCC_LCDANALOG_NAME, &vcc_lcdanalog, 0, 0},
-	{DTYPE_VCC_ENABLE, VCC_LCDIO_NAME, &vcc_lcdio, 0, 0},
+	{DTYPE_VCC_ENABLE, VCC_LCDANALOG_NAME, &vcc_lcdanalog, 0, 0, WAIT_TYPE_MS, 3},
+	{DTYPE_VCC_ENABLE, VCC_LCDIO_NAME, &vcc_lcdio, 0, 0, WAIT_TYPE_MS, 3},
 };
 
 static struct vcc_desc jdi_lcd_vcc_disable_cmds[] = {
 	/* vcc disable */
-	{DTYPE_VCC_DISABLE, VCC_LCDIO_NAME, &vcc_lcdio, 0, 0},
-	{DTYPE_VCC_DISABLE, VCC_LCDANALOG_NAME, &vcc_lcdanalog, 0, 0},
+	{DTYPE_VCC_DISABLE, VCC_LCDIO_NAME, &vcc_lcdio, 0, 0, WAIT_TYPE_MS, 3},
+	{DTYPE_VCC_DISABLE, VCC_LCDANALOG_NAME, &vcc_lcdanalog, 0, 0, WAIT_TYPE_MS, 3},
 };
 
 /*******************************************************************************
@@ -4747,95 +4751,22 @@ static struct gpio_desc jdi_lcd_gpio_lowpower_cmds[] = {
 /******************************************************************************/
 
 static int cabc_mode = 1; /* allow application to set cabc mode to ui mode */
-static char __iomem *mipi_dsi0_base_display_effect = NULL;
 static volatile bool g_display_on = false;
-static unsigned int g_csc_value[9];
-static unsigned int g_is_csc_set;
-static struct semaphore ct_sem;
 
-static int jdi_set_cabc(enum  tft_cabc cabc)
-{
-	int ret = 0;
-	if (!g_hisifd->panel_power_on) {
-		HISI_FB_INFO("power off\n");
-		return ret;
-	}
-	/* Fix me: Implement it */
-	switch (cabc)
-	{
-	case CABC_UI:
-		mipi_dsi_cmds_tx(jdi_cabc_ui_on_cmds, \
-				ARRAY_SIZE(jdi_cabc_ui_on_cmds),\
-				mipi_dsi0_base_display_effect);
-		break;
-	case CABC_VID:
-		mipi_dsi_cmds_tx(jdi_cabc_moving_on_cmds, \
-				ARRAY_SIZE(jdi_cabc_moving_on_cmds),\
-				mipi_dsi0_base_display_effect);
-		break;
-	case CABC_OFF:
-		break;
-	default:
-		ret = -1;
-	}
-	return ret;
-}
-
-static void jdi_store_ct_cscValue(unsigned int csc_value[])
-{
-	down(&ct_sem);
-	g_csc_value [0] = csc_value[0];
-	g_csc_value [1] = csc_value[1];
-	g_csc_value [2] = csc_value[2];
-	g_csc_value [3] = csc_value[3];
-	g_csc_value [4] = csc_value[4];
-	g_csc_value [5] = csc_value[5];
-	g_csc_value [6] = csc_value[6];
-	g_csc_value [7] = csc_value[7];
-	g_csc_value [8] = csc_value[8];
-	g_is_csc_set = 1;
-	up(&ct_sem);
-
-	return;
-}
-
-static int jdi_set_ct_cscValue(struct hisi_fb_data_type *hisifd)
-{
-	char __iomem *dss_base = 0;
-	dss_base = hisifd->dss_base;//0xe8500000
-	down(&ct_sem);
-	HISI_FB_INFO("set color temperature: g_is_csc_set = %d, g_display_on = %d, R = 0x%x, G = 0x%x, B = 0x%x .\n",
-		g_is_csc_set, g_display_on, g_csc_value[0], g_csc_value[4], g_csc_value[8]);
-	if (1 == g_is_csc_set && g_display_on) {
-		set_reg(dss_base + DSS_DPP_LCP_OFFSET + LCP_XCC_COEF_01, g_csc_value[0], 17, 0);
-		set_reg(dss_base + DSS_DPP_LCP_OFFSET + LCP_XCC_COEF_02, g_csc_value[1], 17, 0);
-		set_reg(dss_base + DSS_DPP_LCP_OFFSET + LCP_XCC_COEF_03, g_csc_value[2], 17, 0);
-		set_reg(dss_base + DSS_DPP_LCP_OFFSET + LCP_XCC_COEF_11, g_csc_value[3], 17, 0);
-		set_reg(dss_base + DSS_DPP_LCP_OFFSET + LCP_XCC_COEF_12, g_csc_value[4], 17, 0);
-		set_reg(dss_base + DSS_DPP_LCP_OFFSET + LCP_XCC_COEF_13, g_csc_value[5], 17, 0);
-		set_reg(dss_base + DSS_DPP_LCP_OFFSET + LCP_XCC_COEF_21, g_csc_value[6], 17, 0);
-		set_reg(dss_base + DSS_DPP_LCP_OFFSET + LCP_XCC_COEF_22, g_csc_value[7], 17, 0);
-		set_reg(dss_base + DSS_DPP_LCP_OFFSET + LCP_XCC_COEF_23, g_csc_value[8], 17, 0);
-	}
-	up(&ct_sem);
-
-	return 0;
-}
-
-static ssize_t mipi_jdi_panel_lcd_model_show(struct device *dev,
-	struct device_attribute *attr, char *buf)
+static ssize_t mipi_jdi_panel_lcd_model_show(struct platform_device *pdev,
+		char *buf)
 {
 	return snprintf(buf, PAGE_SIZE, "jdi_NT35695 5.5' CMD TFT 1080 x 1920\n");
 }
 
-static ssize_t mipi_jdi_panel_lcd_hkadc_debug_show(struct device *dev,
-	struct device_attribute *attr, char *buf)
+static ssize_t mipi_jdi_panel_lcd_hkadc_debug_show(struct platform_device *pdev,
+		char *buf)
 {
 	return snprintf(buf, PAGE_SIZE, "%d\n", hkadc_buf*4);
 }
 
-static ssize_t mipi_jdi_panel_lcd_hkadc_debug_store(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t mipi_jdi_panel_lcd_hkadc_debug_store(struct platform_device *pdev,
+		const char *buf, size_t count)
 {
 	int ret = 0;
 	int channel = 0;
@@ -4851,30 +4782,47 @@ static ssize_t mipi_jdi_panel_lcd_hkadc_debug_store(struct device *dev,
 	return count;
 }
 
-static ssize_t mipi_jdi_panel_lcd_cabc_mode_show(struct device *dev,
-	struct device_attribute *attr, char *buf)
+static ssize_t mipi_jdi_panel_lcd_cabc_mode_show(struct platform_device *pdev,
+		char *buf)
 {
 	return snprintf(buf, PAGE_SIZE, "%d\n", cabc_mode);
 }
 
-static ssize_t mipi_jdi_panel_lcd_cabc_mode_store(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t mipi_jdi_panel_lcd_cabc_mode_store(struct platform_device *pdev,
+			const char *buf, size_t count)
 {
 	int ret = 0;
 	unsigned long val = 0;
+	int flag=-1;
+	struct hisi_fb_data_type *hisifd = NULL;
+	char __iomem *mipi_dsi0_base = NULL;
+
+	BUG_ON(pdev == NULL);
+	hisifd = platform_get_drvdata(pdev);
+	BUG_ON(hisifd == NULL);
+	mipi_dsi0_base =hisifd->mipi_dsi0_base;
 
 	ret = strict_strtoul(buf, 0, &val);
 	if (ret)
 		return ret;
 
-	if (val == 1) {
+	flag=(int)val;
+	if (flag==CABC_OFF ){
+		//PINE dont need
+	} else if (flag==CABC_UI_MODE) {
 		/* allow application to set cabc mode to ui mode */
-		cabc_mode =1;
-		jdi_set_cabc(CABC_UI);
-	} else if (val == 2) {
+		cabc_mode = 1;
+		mipi_dsi_cmds_tx(jdi_cabc_ui_on_cmds, \
+				ARRAY_SIZE(jdi_cabc_ui_on_cmds),\
+				mipi_dsi0_base);
+	} else if (flag==CABC_STILL_MODE ) {
+		//PINE dont need
+	} else if (flag==CABC_MOVING_MODE) {
 		/* force cabc mode to video mode */
-		cabc_mode =2;
-		jdi_set_cabc(CABC_VID);
+		cabc_mode = 3;
+		mipi_dsi_cmds_tx(jdi_cabc_moving_on_cmds, \
+				ARRAY_SIZE(jdi_cabc_moving_on_cmds),\
+				mipi_dsi0_base);
 	}
 	return snprintf((char *)buf, count, "%d\n", cabc_mode);
 }
@@ -4928,9 +4876,9 @@ static int mipi_jdi_NT35695B_panel_on(struct platform_device *pdev)
 
 	pinfo = &(hisifd->panel_info);
 	mipi_dsi0_base = hisifd->mipi_dsi0_base;
-	mipi_dsi0_base_display_effect = mipi_dsi0_base;
 
 	if (pinfo->lcd_init_step == LCD_INIT_POWER_ON) {
+		LOG_JANK_D(JLID_KERNEL_LCD_POWER_ON, "%s", "JL_KERNEL_LCD_POWER_ON");
 		if (false == gesture_func) {
 			/* lcd vcc enable */
 			vcc_cmds_tx(pdev, jdi_lcd_vcc_enable_cmds,
@@ -4945,7 +4893,7 @@ static int mipi_jdi_NT35695B_panel_on(struct platform_device *pdev)
 		pinctrl_cmds_tx(pdev, jdi_lcd_pinctrl_normal_cmds,
 			ARRAY_SIZE(jdi_lcd_pinctrl_normal_cmds));
 
-		if (gesture_func = false) {
+		if (gesture_func == false) {
 			/* lcd gpio request */
 			gpio_cmds_tx(jdi_lcd_gpio_request_cmds, \
 				ARRAY_SIZE(jdi_lcd_gpio_request_cmds));
@@ -4981,7 +4929,6 @@ static int mipi_jdi_NT35695B_panel_on(struct platform_device *pdev)
 		mipi_dsi_cmds_tx(jdi_cabc_ui_on_cmds, \
 			ARRAY_SIZE(jdi_cabc_ui_on_cmds), mipi_dsi0_base);
 		g_display_on = true;
-		jdi_set_ct_cscValue(hisifd);
 
 #if defined (CONFIG_HUAWEI_DSM)
 		panel_check_status_and_report_by_dsm(lcd_status_reg, \
@@ -5010,7 +4957,7 @@ static int mipi_jdi_NT35695B_panel_off(struct platform_device *pdev)
 	BUG_ON(hisifd == NULL);
 
 	HISI_FB_INFO("fb%d, +!\n", hisifd->index);
-	//pr_jank(JL_KERNEL_LCD_POWER_OFF, "%s", "JL_KERNEL_LCD_POWER_OFF");
+	LOG_JANK_D(JLID_KERNEL_LCD_POWER_OFF, "%s", "JL_KERNEL_LCD_POWER_OFF");
 
 	/* backlight off */
 	hisi_lcd_backlight_off(pdev);
@@ -5020,7 +4967,7 @@ static int mipi_jdi_NT35695B_panel_off(struct platform_device *pdev)
 	mipi_dsi_cmds_tx(jdi_display_off_cmds, \
 		ARRAY_SIZE(jdi_display_off_cmds), hisifd->mipi_dsi0_base);
 
-	if (gesture_func = false) {
+	if (gesture_func == false) {
 		/* lcd gpio lowpower */
 		gpio_cmds_tx(jdi_lcd_gpio_lowpower_cmds, \
 			ARRAY_SIZE(jdi_lcd_gpio_lowpower_cmds));
@@ -5038,7 +4985,7 @@ static int mipi_jdi_NT35695B_panel_off(struct platform_device *pdev)
 			ARRAY_SIZE(jdi_lcd_vcc_disable_cmds));
 
 	} else {
-		//HISI_FB_INFO("display_off (gesture_func:%d)\n", gesture_func);
+		HISI_FB_INFO("display_off (gesture_func:%d)\n", gesture_func);
 		/*backlights disable*/
 		gpio_cmds_tx(jdi_lcd_gpio_sleep_lp_cmds, \
 			ARRAY_SIZE(jdi_lcd_gpio_sleep_lp_cmds));
@@ -5053,7 +5000,7 @@ static int mipi_jdi_NT35695B_panel_off(struct platform_device *pdev)
 	}
 
 	if (hisifd->hisi_fb_shutdown) {
-		//ts_thread_stop_notify();
+		ts_thread_stop_notify();
 	}
 
 	HISI_FB_INFO("fb%d, -!\n", hisifd->index);
@@ -5127,6 +5074,7 @@ static int mipi_jdi_panel_set_backlight(struct platform_device *pdev)
 	if (unlikely(debug_enable)) {
 		HISI_FB_INFO("Set backlight to %d\n", hisifd->bl_level);
 		//pr_jank(JL_KERNEL_LCD_RESUME, "%s, %d", "JL_KERNEL_LCD_RESUME", hisifd->bl_level);
+		LOG_JANK_D(JLID_KERNEL_LCD_BACKLIGHT_ON, "JL_KERNEL_LCD_BACKLIGHT_ON,%u", hisifd->bl_level);
 		debug_enable = false;
 	}
 
@@ -5188,7 +5136,7 @@ static int mipi_jdi_panel_set_display_region(struct platform_device *pdev,
 	return 0;
 }
 
-static int mipi_jdi_panel_lcd_check_reg_show(struct platform_device *pdev)
+static int mipi_jdi_panel_lcd_check_reg_show(struct platform_device *pdev, char *buf)
 {
 	struct hisi_fb_data_type *hisifd = NULL;
 	u32 read_value = 0xFF;
@@ -5256,7 +5204,7 @@ check_fail:
 	return ret;
 }
 
-static int mipi_jdi_panel_lcd_mipi_detect_show(struct platform_device *pdev)
+static int mipi_jdi_panel_lcd_mipi_detect_show(struct platform_device *pdev, char *buf)
 {
 	struct hisi_fb_data_type *hisifd = NULL;
 	u32 err_bit = 0;
@@ -5291,7 +5239,7 @@ read_reg_failed:
 	return ret;
 }
 
-static int mipi_jdi_panel_lcd_gram_check_show(struct platform_device *pdev, unsigned char *buf)
+static int mipi_jdi_panel_lcd_gram_check_show(struct platform_device *pdev, char *buf)
 {
 	struct hisi_fb_data_type *hisifd = NULL;
 	u32 read_value;
@@ -5461,6 +5409,52 @@ static int mipi_jdi_panel_defect_check(struct platform_device *pdev, char *buf)
 }
 #endif
 
+
+static int g_support_mode = 0;
+static ssize_t mipi_jdi_panel_lcd_support_mode_show(struct platform_device *pdev,
+     char *buf)	
+{
+       struct hisi_fb_data_type *hisifd = NULL;
+       ssize_t ret = 0;
+
+
+       BUG_ON(pdev == NULL);
+       hisifd = platform_get_drvdata(pdev);
+       BUG_ON(hisifd == NULL);
+
+       HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
+
+       ret = snprintf(buf, PAGE_SIZE, "%d\n", g_support_mode);
+
+       HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
+
+       return ret;
+}
+
+static ssize_t mipi_jdi_panel_lcd_support_mode_store(struct platform_device *pdev,
+       const char *buf, size_t count)
+{
+       int ret = 0;
+       unsigned long val = 0;
+       int flag = -1;
+       struct hisi_fb_data_type *hisifd = NULL;
+       BUG_ON(pdev == NULL);
+       hisifd = platform_get_drvdata(pdev);
+       BUG_ON(hisifd == NULL);
+
+       ret = strict_strtoul(buf, 0, &val);
+       if (ret)	
+               return ret;
+
+       HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
+
+       flag = (int)val;
+
+       g_support_mode = flag;
+       HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
+      return snprintf((char *)buf, count, "%d\n", g_support_mode);
+}
+
 static struct hisi_panel_info jdi_panel_info = {0};
 static struct hisi_fb_panel_data jdi_panel_data = {
 	.panel_info = &jdi_panel_info,
@@ -5478,10 +5472,12 @@ static struct hisi_fb_panel_data jdi_panel_data = {
 	.lcd_hkadc_debug_store = mipi_jdi_panel_lcd_hkadc_debug_store,
 	.lcd_gram_check_show = mipi_jdi_panel_lcd_gram_check_show,
 #ifdef CONFIG_LCD_DEFECT_CHECK
-	.lcd_defect_check = mipi_jdi_panel_defect_check,
+	.lcd_bist_check = mipi_jdi_panel_defect_check,
 #endif
 
 	.set_display_region = mipi_jdi_panel_set_display_region,
+	.lcd_support_mode_show = mipi_jdi_panel_lcd_support_mode_show,
+	.lcd_support_mode_store = mipi_jdi_panel_lcd_support_mode_store,
 };
 
 static int mipi_jdi_NT35695B_probe(struct platform_device *pdev)
@@ -5558,6 +5554,8 @@ static int mipi_jdi_NT35695B_probe(struct platform_device *pdev)
 	}
 
 	pinfo->color_temperature_support = 1;
+	pinfo->comform_mode_support = 1;
+	g_support_mode = 1;
 	pinfo->smart_bl.strength_limit = 160;
 	//pinfo->smart_bl.variance = 145;
 	//pinfo->smart_bl.slope_max = 54;
@@ -5620,19 +5618,6 @@ static int mipi_jdi_NT35695B_probe(struct platform_device *pdev)
 		HISI_FB_ERR("platform_device_add_data failed!\n");
 		goto err_device_put;
 	}
-
-        /* for cabc */
-        sema_init(&ct_sem, 1);
-        g_csc_value[0] = 0;
-        g_csc_value[1] = 0;
-        g_csc_value[2] = 0;
-        g_csc_value[3] = 0;
-        g_csc_value[4] = 0;
-        g_csc_value[5] = 0;
-        g_csc_value[6] = 0;
-        g_csc_value[7] = 0;
-        g_csc_value[8] = 0;
-        g_is_csc_set = 0;
 
 	hisi_fb_add_device(pdev);
 

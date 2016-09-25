@@ -148,7 +148,12 @@
 /*lint +e750*/
 /*line +emacro(750,*)*/
 
-#define DEBUG_FILE_MODE     (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH)
+#define CLK_DEBUG_FILE_MODE     (S_IRUSR)
+#define PMU_DEBUG_FILE_MODE     (S_IRUSR)
+#define IO_DEBUG_FILE_MODE     (S_IRUSR)
+#define CFG_DEBUG_FILE_MODE     (S_IRUSR | S_IWUSR)
+#define DEBUGSR_DEBUG_FILE_MODE     (S_IRUSR)
+
 #define NO_SEQFILE 0
 #define LOWPM_MSG(seq_file, fmt, args ...) \
 		{		\
@@ -803,59 +808,6 @@ void set_wakelock(int iflag)
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
 
-#define MX_BUF_LEN		1024
-char g_ctemp[MX_BUF_LEN] = {0};
-
-/*****************************************************************
- * function:    dbg_common_open
- * description:
- *  adapt to the interface.
- ******************************************************************/
-static int dbg_common_open(struct inode *inode, struct file *filp)
-{
-	filp->private_data = inode->i_private;
-	return 0;
-}
-
-/*****************************************************************
- * function:    dbg_cfg_read
- * description:
- *  show the debug cfg for user.
- ******************************************************************/
-static ssize_t dbg_cfg_read(struct file *filp, char __user *buffer,
-		size_t count, loff_t *ppos)
-{
-	if (*ppos >= MX_BUF_LEN)
-		return 0;
-
-	if (*ppos + count > MX_BUF_LEN)
-		count = MX_BUF_LEN - *ppos;
-
-	memset(g_ctemp, 0, MX_BUF_LEN);
-
-	sprintf(g_ctemp,
-			"0x1<<0 enable suspend console\n"
-			"0x1<<1 ENABLE IO STATUS SHOW\n"
-			"0x1<<2 ENABLE PMU STATUS SHOW\n"
-			"0x1<<3 ENABLE IO SET\n"
-			"0x1<<4 ENABLE PMU SET\n"
-			"0x1<<5 ENABLE SINGLE IO SET\n"
-			"0x1<<6 ENABLE 1s RTC wakeup (no support now)\n"
-			"0x1<<7 ENABLE 500ms TIMER wakeup (no support now)\n"
-			"0x1<<8 ENABLE a wakelock\n"
-			"0x1<<9 ENABLE SUSPEND AUDIO\n"
-			"0x1<<10 ENABLE CLK STATUS SHOW\n"
-			"0x1<<11 ENABLE IPC DATA SHOW\n"
-			"0x1<<31 ENABLE DEBUG INFO\n"
-			"g_usavedcfg=%x\n", g_usavedcfg);
-
-	if (copy_to_user(buffer, g_ctemp + *ppos, count))
-		return -EFAULT;
-
-	*ppos += count;
-	return count;
-}
-
 /*****************************************************************
  * function:    dbg_cfg_write
  * description:
@@ -865,21 +817,22 @@ static ssize_t dbg_cfg_write(struct file *filp, const char __user *buffer,
 		size_t count, loff_t *ppos)
 {
 	int index = 0;
+	char buf[20];
 
-	memset(g_ctemp, 0, MX_BUF_LEN);
+	memset(buf, 0, sizeof(buf));
 
-	if (copy_from_user(g_ctemp, buffer, count)) {
-		pr_info("error!\n");
+	if (copy_from_user(buf, buffer, min_t(size_t, sizeof(buf) - 1, count))) {
+		pr_info("[%s]error!\n", __func__);
 		return -EFAULT;
 	}
 
-	if (('0' == g_ctemp[0]) && ('x' == g_ctemp[1])) {
-		if (sscanf(g_ctemp + 2, "%x", &index))
+	if (('0' == buf[0]) && ('x' == buf[1])) {
+		if (sscanf(buf + 2, "%x", &index))
 			g_usavedcfg = index;
 		else
 			pr_info("sscanf error!\n");
 	} else {
-		if (sscanf(g_ctemp, "%d", &index))
+		if (sscanf(buf, "%d", &index))
 			g_usavedcfg = index;
 		else
 			pr_info("sscanf error\n");
@@ -903,133 +856,53 @@ static ssize_t dbg_cfg_write(struct file *filp, const char __user *buffer,
 	return count;
 }
 
+/****************************************
+ * function: cfg_show
+ * description:
+ *  show cfg usage.
+ ******************************************/
+void cfg_show(struct seq_file *s)
+{
+	LOWPM_MSG(s,"0x1<<0 enable suspend console\n"
+			"0x1<<1 ENABLE IO STATUS SHOW\n"
+			"0x1<<2 ENABLE PMU STATUS SHOW\n"
+			"0x1<<8 ENABLE a wakelock\n"
+			"0x1<<10 ENABLE CLK STATUS SHOW\n"
+			"0x1<<31 ENABLE DEBUG INFO\n"
+			"g_usavedcfg=%x\n", g_usavedcfg);
+
+	return;
+}
+
+/*****************************************************************
+ * function:    dbg_cfg_show
+ * description:
+ *  show the debug cfg for user.
+ ******************************************************************/
+static int dbg_cfg_show(struct seq_file *s, void *unused)
+{
+	cfg_show(s);
+
+	return 0;
+}
+
+/*****************************************************************
+ * function:    dbg_cfg_open
+ * description:
+ * adapt to the interface.
+ ******************************************************************/
+static int dbg_cfg_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, dbg_cfg_show, &inode->i_private);
+}
+
 const struct file_operations dbg_cfg_fops = {
 	.owner	= THIS_MODULE,
-	.open	= dbg_common_open,
-	.read	= dbg_cfg_read,
-	.write	= dbg_cfg_write,
-};
-
-/*****************************************************************
- * function:    dbg_timer_read
- * description:
- *  show the debug cfg for user.
- ******************************************************************/
-static ssize_t dbg_timer_read(struct file *filp, char __user *buffer,
-		size_t count, loff_t *ppos)
-{
-	if (*ppos >= MX_BUF_LEN)
-		return 0;
-
-	if (*ppos + count > MX_BUF_LEN)
-		count = MX_BUF_LEN - *ppos;
-
-	memset(g_ctemp, 0, MX_BUF_LEN);
-
-	sprintf(g_ctemp, "ENABLE %dms TIMER wakeup\n", g_utimer_inms);
-
-	if (copy_to_user(buffer, g_ctemp + *ppos, count))
-		return -EFAULT;
-
-	*ppos += count;
-	return count;
-}
-
-/*****************************************************************
- * function:    dbg_timer_write
- * description:
- *  recieve the configuer of the user.
- ******************************************************************/
-static ssize_t dbg_timer_write(struct file *filp, const char __user *buffer,
-		size_t count, loff_t *ppos)
-{
-	int index = 0;
-
-	memset(g_ctemp, 0, MX_BUF_LEN);
-
-	if (copy_from_user(g_ctemp, buffer, count)) {
-		pr_info("error!\n");
-		return -EFAULT;
-	}
-
-	if (sscanf(g_ctemp, "%d", &index))
-		g_utimer_inms = index;
-	else
-		pr_info("ERRR~\n");
-
-	pr_info("%s %d, g_utimer_inms=%x\n", __func__, __LINE__, g_utimer_inms);
-
-	*ppos += count;
-
-	return count;
-}
-
-const struct file_operations dbg_timer_fops = {
-	.owner	= THIS_MODULE,
-	.open	= dbg_common_open,
-	.read	= dbg_timer_read,
-	.write	= dbg_timer_write,
-};
-
-/*****************************************************************
- * function:    dbg_timer_read
- * description:
- *  show the debug cfg for user.
- ******************************************************************/
-static ssize_t dbg_rtc_read(struct file *filp, char __user *buffer,
-		size_t count, loff_t *ppos)
-{
-	if (*ppos >= MX_BUF_LEN)
-		return 0;
-
-	if (*ppos + count > MX_BUF_LEN)
-		count = MX_BUF_LEN - *ppos;
-
-	memset(g_ctemp, 0, MX_BUF_LEN);
-
-	sprintf(g_ctemp, "ENABLE %dms rtc wakeup\n", g_urtc_ins);
-
-	if (copy_to_user(buffer, g_ctemp + *ppos, count))
-		return -EFAULT;
-
-	*ppos += count;
-	return count;
-}
-
-/*****************************************************************
- * function:    dbg_timer_write
- * description:
- *  recieve the configuer of the user.
- ******************************************************************/
-static ssize_t dbg_rtc_write(struct file *filp, const char __user *buffer,
-		size_t count, loff_t *ppos)
-{
-	int index = 0;
-
-	memset(g_ctemp, 0, MX_BUF_LEN);
-
-	if (copy_from_user(g_ctemp, buffer, count)) {
-		pr_info("error!\n");
-		return -EFAULT;
-	}
-
-	if (sscanf(g_ctemp, "%d", &index))
-		g_urtc_ins = index;
-	else
-		pr_info("ERRR~\n");
-
-	pr_info("%s %d, g_urtc_ins=%x\n", __func__, __LINE__, g_urtc_ins);
-
-	*ppos += count;
-
-	return count;
-}
-
-const struct file_operations dbg_rtc_fops = {
-	.owner	= THIS_MODULE,
-	.open	= dbg_common_open,
-	.read	= dbg_rtc_read,
-	.write	= dbg_rtc_write,
+	.open	= dbg_cfg_open,
+	.read	= seq_read,
+	.write  = dbg_cfg_write,
+	.llseek	= seq_lseek,
+	.release = single_release,
 };
 
 /*****************************************************************
@@ -1145,36 +1018,28 @@ void dbg_io_status_show(void)
 	}
 }
 
-/*****************************************************************
- * function:    dbg_iomux_read
- * description:
- *  print out he io status on the COM.
- ******************************************************************/
-static ssize_t dbg_iomux_read(struct file *filp, char __user *buffer,
-		size_t count, loff_t *ppos)
+static int dbg_io_show(struct seq_file *s, void *unused)
 {
-	char temp[32] = {0};
-	if (!(g_usavedcfg & DEBG_SUSPEND_IO_SHOW))
-		return 0;
-
-	if (*ppos >= 32)
-		return 0;
-
-	if (*ppos + count > 32)
-		count = 32 - *ppos;
-
-	if (copy_to_user(buffer, temp + *ppos, count))
-		return -EFAULT;
-
-	*ppos += count;
 	dbg_io_status_show();
-	return count;
+
+	return 0;
 }
 
-const struct file_operations dbg_iomux_fops = {
-	.owner	= THIS_MODULE,
-	.open	= dbg_common_open,
-	.read	= dbg_iomux_read,
+/*****************************************************************
+ * function:    dbg_io_open
+ * description:
+ *  adapt to the interface.
+ ******************************************************************/
+static int dbg_io_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, dbg_io_show, &inode->i_private);
+}
+
+static const struct file_operations dbg_iomux_fops = {
+	.open	= dbg_io_open,
+	.read	= seq_read,
+	.llseek     = seq_lseek,
+	.release    = single_release,
 };
 
 /*****************************************************************
@@ -1863,12 +1728,6 @@ static int lowpm_test_probe(struct platform_device *pdev)
 
 	g_suspended = 0;
 
-	/*default timer0 wakeup time 500ms*/
-	g_utimer_inms = 200;
-
-	/*default rtc wakeup time in 1s*/
-	g_urtc_ins = 1;
-
 	map_sysregs();
 
 	wake_lock_init(&lowpm_wake_lock, WAKE_LOCK_SUSPEND, "lowpm_test");
@@ -1883,19 +1742,15 @@ static int lowpm_test_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	(void) debugfs_create_file("clk", DEBUG_FILE_MODE, pdentry, NULL, &debug_clk_fops);
+	(void) debugfs_create_file("clk", CLK_DEBUG_FILE_MODE, pdentry, NULL, &debug_clk_fops);
 
-	(void) debugfs_create_file("pmu", DEBUG_FILE_MODE, pdentry, NULL, &debug_pmu_fops);
+	(void) debugfs_create_file("pmu", PMU_DEBUG_FILE_MODE, pdentry, NULL, &debug_pmu_fops);
 
-	(void) debugfs_create_file("io", DEBUG_FILE_MODE, pdentry, NULL, &dbg_iomux_fops);
+	(void) debugfs_create_file("io", IO_DEBUG_FILE_MODE, pdentry, NULL, &dbg_iomux_fops);
 
-	(void) debugfs_create_file("cfg", DEBUG_FILE_MODE, pdentry, NULL, &dbg_cfg_fops);
+	(void) debugfs_create_file("cfg", CFG_DEBUG_FILE_MODE, pdentry, NULL, &dbg_cfg_fops);
 
-	(void) debugfs_create_file("timer", DEBUG_FILE_MODE, pdentry, NULL, &dbg_timer_fops);
-
-	(void) debugfs_create_file("rtc", DEBUG_FILE_MODE, pdentry, NULL, &dbg_rtc_fops);
-
-	(void) debugfs_create_file("debug_sr", DEBUG_FILE_MODE, pdentry, NULL, &dbg_pm_status_fops);
+	(void) debugfs_create_file("debug_sr", DEBUGSR_DEBUG_FILE_MODE, pdentry, NULL, &dbg_pm_status_fops);
 
 	pr_info("[%s] %d leave.\n", __func__, __LINE__);
 

@@ -1,0 +1,14 @@
+
+/**
+ * Huawei Ltd.
+ * PhosphorV660
+ */
+
+
+/include/ "CARRERA_TUGL_VN2_32G_config.dtsi"
+
+/ {
+	hisi,boardid = <1 4 6 6>;
+	hisi,boardname = "CARRERA_TUGL_VN2_32G_2";
+};
+

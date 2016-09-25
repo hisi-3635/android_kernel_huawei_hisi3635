@@ -1,0 +1,22 @@
+
+/**
+ * Huawei Ltd.
+ * PhosphorV660
+ */
+
+/dts-v1/;
+
+/include/ "fastboot.dtsi"
+/include/ "CARRERA_TUGL_VN2_32G_config.dtsi"
+/include/ "CARRERA_TUGL_VN2_32G_2_pin.dtsi"
+/include/ "CARRERA_TUGL_VN2_32G_2_hi6402_pin.dtsi"
+/include/ "CARRERA_TUGL_VN2_32G_2_modem_pin.dtsi"
+///include/ "CARRERA_TUGL_VN2_32G_2_charger.dtsi"
+///include/ "CARRERA_TUGL_VN2_32G_2_pmic.dtsi"
+///include/ "CARRERA_TUGL_VN2_32G_2_gpio_logic.dtsi"
+
+/ {
+	hisi,boardid = <1 4 6 6>;
+	hisi,boardname = "CARRERA_TUGL_VN2_32G_2";
+};
+

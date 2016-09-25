@@ -90,6 +90,18 @@ typedef struct read_info
     char data[MAX_PKT_LENGTH];
 }read_info_t;
 
+typedef struct sensor_operation
+{
+    int (*enable)(bool enable);
+    int (*setdelay)(int ms);
+} sensor_operation_t;
+
+typedef struct ap_sensor_ops_record
+{
+    sensor_operation_t ops;
+    bool work_on_ap;
+} t_ap_sensor_ops_record;
+
 //called by sensorhub or tp modules.
 extern int inputhub_route_open(unsigned short port);
 extern void inputhub_route_close(unsigned short port);
@@ -115,6 +127,11 @@ extern int inputhub_sensor_setdelay(int tag, int delay_ms);
 extern int inputhub_sensor_enable_nolock(int tag, bool enable);
 extern int inputhub_sensor_setdelay_nolock(int tag, int delay_ms);
 extern int inputhub_mcu_write_cmd_nolock(const void *buf, unsigned long length);
+extern int register_ap_sensor_operations(int tag, sensor_operation_t *ops);
+extern int unregister_ap_sensor_operations(int tag);
+extern bool ap_sensor_enable(int tag, bool enable);
+extern bool ap_sensor_setdelay(int tag, int ms);
+extern int report_sensor_event(int tag, int value[], int length);
 #ifdef CONFIG_INPUTHUB
 extern int ap_hall_report(int value);
 #else /* CONFIG_INPUTHUB = 0 */

@@ -535,7 +535,8 @@ typedef struct
     VOS_UINT32                          ulPKCS15                : 1;
     VOS_UINT32                          ulP2ActiveAID           : 1;    
     VOS_UINT32                          ulOpenChannelCSIM       : 1;
-    VOS_UINT32                          ulRsv                   :17;
+	VOS_UINT32                          ulIgnoreDFCheck         : 1;
+    VOS_UINT32                          ulRsv                   :16;
 }USIMM_FEATURE_CFG_BIT_STRU;
 
 
@@ -1606,7 +1607,8 @@ typedef struct
     VOS_UINT32                          ulPKCS15                : 1;
     VOS_UINT32                          ulP2ActiveAID           : 1;    
     VOS_UINT32                          ulOpenChannelCSIM       : 1;
-    VOS_UINT32                          ulRsv                   :17;
+	VOS_UINT32                          ulIgnoreDFCheck         : 1;
+    VOS_UINT32                          ulRsv                   :16;
 }USIMM_FEATURE_CFG_BIT_STRU;
 
 

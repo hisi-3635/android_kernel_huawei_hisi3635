@@ -22,9 +22,7 @@ source "drivers/hisi/keymaster/Kconfig"
 source "drivers/hisi/mntn/Kconfig"
 source "drivers/hisi/ipc_hi6xxx/Kconfig"
 source "drivers/hisi/hifi_mailbox/Kconfig"
-source "drivers/hisi/modem_hi6xxx/Kconfig"
 source "drivers/hisi/modem_hi3xxx/Kconfig"
-source "drivers/hisi/modem_hi3630/Kconfig"
 source "drivers/hisi/mailbox/Kconfig"
 source "drivers/hisi/mutex_service/Kconfig"
 source "drivers/hisi/noc/Kconfig"
@@ -44,6 +42,7 @@ source "drivers/hisi/watchpoint/Kconfig"
 source "drivers/hisi/misc/Kconfig"
 source "drivers/hisi/hmpthresholds/Kconfig"
 source "drivers/hisi/memory_dump/Kconfig"
+source "drivers/hisi/perfhub/Kconfig"
 endif #HISILICON_PLATFORM
 
 if HISI_BALONG_MODEM_HI3XXX

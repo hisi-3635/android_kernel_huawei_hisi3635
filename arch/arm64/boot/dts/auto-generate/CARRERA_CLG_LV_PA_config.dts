@@ -1,0 +1,24 @@
+
+/**
+ * Huawei Ltd.
+ * PhosphorV660
+ */
+
+/dts-v1/;
+
+/include/ "fastboot.dtsi"
+/include/ "CARRERA_CLG_VN2_config.dtsi"
+/include/ "CARRERA_CLG_LV_PA_pin.dtsi"
+/include/ "CARRERA_CLG_LV_PA_hi6402_pin.dtsi"
+/include/ "CARRERA_CLG_LV_PA_modem_pin.dtsi"
+///include/ "CARRERA_CLG_LV_PA_charger.dtsi"
+///include/ "CARRERA_CLG_LV_PA_pmic.dtsi"
+///include/ "CARRERA_CLG_LV_PA_gpio_logic.dtsi"
+
+/ {
+	hisi,boardid = <1 4 9 8 >;
+	hisi,boardname = "CARRERA_CLG_LV_PA";
+	hisi,config_profile = "high";
+	hisi,modem_id = <0x3EBE9400>;
+};
+

@@ -215,13 +215,13 @@ static char* direction_to_string(u32 direction)
 
 void sim_pmu_hpd_read(void)
 {
-    unsigned long pmu_irq3       = 0;
-    unsigned long pmu_irq_mask3  = 0;
-    unsigned long pmu_sim_ctrl1  = 0;
-    unsigned long pmu_sim_ctrl2  = 0;
-    unsigned long pmu_ldo11_ctrl = 0;
-    unsigned long pmu_ldo12_ctrl = 0;
-    unsigned long pmu_status1    = 0;
+    u32 pmu_irq3       = 0;
+    u32 pmu_irq_mask3  = 0;
+    u32 pmu_sim_ctrl1  = 0;
+    u32 pmu_sim_ctrl2  = 0;
+    u32 pmu_ldo11_ctrl = 0;
+    u32 pmu_ldo12_ctrl = 0;
+    u32 pmu_status1    = 0;
 
     pmu_irq3 = READ_PMU_SIM(HI6421V300_PMU_IRQ3);
     pmu_irq_mask3 = READ_PMU_SIM(HI6421V300_PMU_IRQ_MASK3);
@@ -509,7 +509,7 @@ static void hisi_sim_det_msg_to_ccore(struct hisi_sim_hotplug_info *info, u8 sim
 	u32 channel_id = 0;
 	int det_gpio_state = 0;
 	int len = 0;
-	
+
 	if (runmode_is_factory())
 	{
 		pr_err("%s: runmode is factory, don't support hotplug function, just return.\n", __func__);

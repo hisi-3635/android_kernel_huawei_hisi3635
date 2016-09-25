@@ -17,7 +17,6 @@ obj-y += efuse/
 obj-$(CONFIG_HI6XXX_IPC_MULTICORE)	+= ipc_hi6xxx/
 obj-$(CONFIG_HIFI_MAILBOX)					+= hifi_mailbox/
 ifneq ($(strip $(HISI_PILOT_LIBS)), true)
-obj-$(CONFIG_HISILICON_PLATFORM)	+= modem_hi6xxx/
 endif
 
 obj-$(CONFIG_HISILICON_PLATFORM)	+= mailbox/
@@ -61,3 +60,4 @@ obj-$(CONFIG_HISI_BALONG_MODEM_HI3630)        += modem_hi3630/
 endif
 
 
+obj-$(CONFIG_HISI_PERFHUB) += perfhub/

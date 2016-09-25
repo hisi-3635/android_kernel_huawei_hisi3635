@@ -46,7 +46,7 @@
 #include "cam_log.h"
 #include <linux/amba/pl022.h>
 #include <linux/pinctrl/consumer.h>
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #include "sensor_commom.h"
 #include "extisp_reg.h"
 
@@ -78,7 +78,7 @@
 #define ISPCMD_HDRSIZE			(ISPCMD_LENFLDBYTES+ISPCMD_OPCODEBYTES)
 #define ISPCMD_HDRSIZEWDUMMY	(ISPCMD_LENFLDBYTES+ISPCMD_OPCODEBYTES+ISPCMD_DUMMYBYTES)
 
-#define MINI_ISP_DEBUG_DUMP_LOG
+//#define MINI_ISP_DEBUG_DUMP_LOG
 
 struct dsm_client_ops ops={
 	.poll_state = NULL,
@@ -98,9 +98,11 @@ struct misp_plat_data {
 	int spi_cs_gpio;
 	int irq_gpio;
 	int reset_gpio;
+#if 0
 	int dvdd_gpio;
 	int vcc_gpio;
 	struct regulator_bulk_data iovdd;
+#endif
 	/* spi master config */
 	struct pl022_config_chip spidev0_chip_info;
 	/* pin control config */
@@ -304,6 +306,7 @@ static void misp_set_firmware_path(char * path,int type)
             __func__, mini_isp_boot_code,mini_isp_basic_code);
 }
 
+#if 0
 static int _misp_get_chipid(void)
 {
 	struct misp_data *drv_data = get_misp_data();
@@ -379,6 +382,7 @@ out:
 	return type;
 
 }
+#endif
 
 int misp_get_chipid(void)
 {
@@ -630,6 +634,10 @@ int misp_get_module_info(uint8_t index,uint16_t *sensor_id, uint8_t *module_id)
     u16 opCode = 0;
     int ret = 0;
 
+	if ((sensor_id == NULL) || (module_id == NULL)) {
+		cam_err("%s NULL pointer", __func__);
+		return -EINVAL;
+	}
     //use low spi speed when reading module id
     misp_set_spi_speed(MINI_ISP_SPI_SPEED_BOOT);
     misp_load_fw(NULL);
@@ -838,6 +846,7 @@ out:
 }
 EXPORT_SYMBOL(misp_stop);
 
+#if 0
  int misp_set_power(int on)
 {
 	struct misp_data *drv_data = get_misp_data();
@@ -920,7 +929,7 @@ EXPORT_SYMBOL(misp_stop);
 	return ret;
 }
 EXPORT_SYMBOL(misp_set_power);
-
+#endif
 int misp_flush_log(void)
 {
 	struct misp_data *drv_data = get_misp_data();
@@ -992,13 +1001,13 @@ int misp_flush_reg(void)
 		return -ENODEV;
 	}
 
-        if(drv_data->extisp_type == EXTISP_AL6045){
-    	    addr_table = misp_default_reg_table;
-	    size = ARRAY_SIZE(misp_default_reg_table);
-        }else{
-    	    addr_table = misp_al6010_reg_table;
-	    size = ARRAY_SIZE(misp_al6010_reg_table);
-        }
+	if(drv_data->extisp_type == EXTISP_AL6045){
+		addr_table = misp_default_reg_table;
+		size = ARRAY_SIZE(misp_default_reg_table);
+	}else{
+		addr_table = misp_al6010_reg_table;
+		size = ARRAY_SIZE(misp_al6010_reg_table);
+	}
 
 	/* don't dump twice */
 	if (drv_data->flush_reg_flag == MINI_ISP_FLUSH_REG_ALREADY)
@@ -1013,7 +1022,7 @@ int misp_flush_reg(void)
 }
 EXPORT_SYMBOL(misp_flush_reg);
 
-int misp_load_fw(u8 *out_fw_disp)
+int _misp_load_fw(u8 *out_fw_disp)
 {
 	struct misp_data *drv_data = get_misp_data();
 	struct misp_plat_data *plat_data = NULL;
@@ -1028,7 +1037,8 @@ int misp_load_fw(u8 *out_fw_disp)
 	plat_data = &drv_data->plat_data;
 
 	if(mini_isp_boot_code[0] == 0 || mini_isp_basic_code[0] == 0){
-		return ret;
+		cam_err("%s invalid firmware path", __func__);
+		return -ENODEV;
 	}
 
 	ret = mutex_lock_interruptible(&drv_data->busy_lock);
@@ -1067,17 +1077,13 @@ int misp_load_fw(u8 *out_fw_disp)
 	if (ret)
 		goto out;
 
-	wait_event_interruptible_timeout(drv_data->wait_queue,\
+	wait_event_timeout(drv_data->wait_queue,\
 					(drv_data->state == MINI_ISP_STATE_READY),\
 					MINI_ISP_WAIT_TIMEOUT);
 	if (drv_data->state != MINI_ISP_STATE_READY) {
 		cam_err("%s wait ready signal timeout", __func__);
-//#if 0
 		ret = -EAGAIN;
-		if(!dsm_client_ocuppy(drv_data->client_extisp)){
-			dsm_client_record(drv_data->client_extisp, "%s wait ready signal timeout\n", __func__);
-			dsm_client_notify(drv_data->client_extisp, DSM_EXTISP_LOAD_FW_ERROR_NO);
-		}
+//#if 0
 //#endif
 	} else {
 		cam_info("%s sucess to load fw.", __func__);
@@ -1090,6 +1096,30 @@ out:
 	mutex_unlock(&drv_data->busy_lock);
 	return ret;
 }
+
+int misp_load_fw(u8 *out_fw_disp)
+{
+    struct misp_data *drv_data = get_misp_data();
+    int retry = 0;
+    int ret = 0;
+
+    for(retry = 0; retry < 2; retry++)
+    {
+        ret = _misp_load_fw(out_fw_disp);
+        if (0 == ret)
+            break;
+    }
+    if(ret)
+    {
+        if(!dsm_client_ocuppy(drv_data->client_extisp))
+        {
+			dsm_client_record(drv_data->client_extisp, "%s wait ready signal timeout\n", __func__);
+			dsm_client_notify(drv_data->client_extisp, DSM_EXTISP_LOAD_FW_ERROR_NO);
+		}
+    }
+    return ret;
+}
+
 EXPORT_SYMBOL(misp_load_fw);
 
 /*
@@ -1273,7 +1303,7 @@ static irqreturn_t misp_irq_thread(int irq, void *handle)
 	/* handle ready done */
 	if (irq_code & MINI_ISP_IRQ_READY_DONE) {
 		drv_data->state = MINI_ISP_STATE_READY;
-		wake_up_interruptible(&drv_data->wait_queue);
+		wake_up(&drv_data->wait_queue);
 	}
 
 	/* handle sync signal */
@@ -1292,6 +1322,7 @@ static irqreturn_t misp_irq_thread(int irq, void *handle)
 	if (irq_code & MINI_ISP_IRQ_CMD_ERR){
 		cam_err("mini isp critical error, cmd not respond");
 		altek6045_notify_error(MINI_ISP_IRQ_CMD_ERR);
+        queue_work(drv_data->work_queue, &drv_data->dump_err_work);
 	}
 
 	/* handle other error */
@@ -1306,6 +1337,7 @@ static irqreturn_t misp_irq_thread(int irq, void *handle)
 			queue_work(drv_data->work_queue, &drv_data->dump_log_work);
 	}
 
+#if 0
 	if (irq_code == MINI_ISP_IRQ_CHIPID_AL6045) {
 		drv_data->extisp_type = EXTISP_AL6045;
 		wake_up_interruptible(&drv_data->chipid_queue);
@@ -1315,7 +1347,7 @@ static irqreturn_t misp_irq_thread(int irq, void *handle)
 		drv_data->extisp_type = EXTISP_AL6010;
 		wake_up_interruptible(&drv_data->chipid_queue);
 	}
-
+#endif
 	/* handle other error */
 	if (irq_code & MINI_ISP_IRQ_OIS_INITDONE){
 		altek6045_notify_ois_done(MINI_ISP_IRQ_OIS_INITDONE);
@@ -2410,13 +2442,13 @@ static ssize_t misp_config_store(struct device *dev,
 		return 0;
 	}
 
-         if(pdata->extisp_type == EXTISP_AL6045){
-    	    default_reg_table = misp_default_reg_table;
-	    default_reg_table_count = ARRAY_SIZE(misp_default_reg_table);
-        }else{
-    	    default_reg_table = misp_al6010_reg_table;
-	    default_reg_table_count = ARRAY_SIZE(misp_al6010_reg_table);
-        }
+	if(pdata->extisp_type == EXTISP_AL6045){
+		default_reg_table = misp_default_reg_table;
+		default_reg_table_count = ARRAY_SIZE(misp_default_reg_table);
+	}else{
+		default_reg_table = misp_al6010_reg_table;
+		default_reg_table_count = ARRAY_SIZE(misp_al6010_reg_table);
+	}
 
 	if (count == 0)
 		return 0;
@@ -2509,7 +2541,7 @@ int extisp_get_dt_data(struct device *dev, struct misp_plat_data *plat_data)
 {
 	struct device_node *np;
 
-	if (!dev || !dev->of_node) {
+	if (!dev || !dev->of_node || !plat_data) {
 		cam_err("%s dev or dev node is NULL", __func__);
 		return -EINVAL;
 	}
@@ -2518,18 +2550,11 @@ int extisp_get_dt_data(struct device *dev, struct misp_plat_data *plat_data)
 	of_property_read_u32(np, "mini_isp,cs_gpio", &plat_data->spi_cs_gpio);
 	of_property_read_u32(np, "mini_isp,reset_gpio", &plat_data->reset_gpio);
 	of_property_read_u32(np, "mini_isp,irq_gpio", &plat_data->irq_gpio);
-	of_property_read_u32(np, "mini_isp,dvdd_gpio", &plat_data->dvdd_gpio);
-	of_property_read_u32(np, "mini_isp,vcc_gpio", &plat_data->vcc_gpio);
 
-	cam_info("spi_cs_gpio=%d,reset_gpio=%d,irq_gpio=%d,dvdd_gpio=%d,vcc_gpio=%d",
-		plat_data->spi_cs_gpio,plat_data->reset_gpio,plat_data->irq_gpio,
-		plat_data->dvdd_gpio,plat_data->vcc_gpio);
+	cam_info("spi_cs_gpio=%d,reset_gpio=%d,irq_gpio=%d",
+		plat_data->spi_cs_gpio,plat_data->reset_gpio,
+		plat_data->irq_gpio);
 
-	plat_data->iovdd.supply = "iopw";
-
-	if( devm_regulator_bulk_get(dev, 1, &plat_data->iovdd))	{
-		cam_err("%s devm_regulator_bulk_get iopw failed ", __func__);
-	}
 
 	plat_data->spidev0_chip_info.hierarchy = 0;
 	of_property_read_u32(np, "pl022,interface", &plat_data->spidev0_chip_info.iface);
@@ -2677,10 +2702,15 @@ static int mini_isp_probe(struct spi_device *spi)
 	/* setp 6: set driver_data to device */
 	spi_set_drvdata(spi, drv_data);
 
-      if(drv_data->client_extisp == NULL){
-            drv_data->client_extisp = dsm_register_client(&dev_extisp);
-      }
-       drv_data->extisp_type = EXTISP_NULL;
+	if (drv_data->client_extisp == NULL) {
+		drv_data->client_extisp = dsm_register_client(&dev_extisp);
+	}
+
+	/* setp 7: set default firmware path */
+	drv_data->extisp_type = EXTISP_AL6045;
+	strncpy(misp_firmware_path,"/system/miniisp/",sizeof(misp_firmware_path));
+	misp_set_firmware_path(misp_firmware_path, EXTISP_AL6045);
+
 	misp_drv_data = drv_data;
 
 	cam_info("mini isp probe success");

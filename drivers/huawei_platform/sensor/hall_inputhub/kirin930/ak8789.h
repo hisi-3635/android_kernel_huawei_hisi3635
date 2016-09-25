@@ -28,7 +28,7 @@
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
 #include <linux/irq.h>
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #include "hall_sensor.h"
 
 #ifdef CONFIG_HUAWEI_HALL_INPUTHUB

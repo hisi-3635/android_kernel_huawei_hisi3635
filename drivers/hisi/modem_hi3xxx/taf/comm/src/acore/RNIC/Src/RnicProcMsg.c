@@ -377,7 +377,7 @@ VOS_UINT32 RNIC_RcvAtIpv4PdpActInd(
     }
 
     /* 注册下行发送函数，ADS调用注册的函数发送下行数据 */
-    ADS_DL_RegDlDataCallback(ucRabid, (RCV_DL_DATA_FUNC)RNIC_RcvAdsDlData);
+    ADS_DL_RegDlDataCallback(ucRabid, RNIC_RcvAdsDlData, ucRmNetId);
 
     return VOS_OK;
 }
@@ -436,7 +436,7 @@ VOS_UINT32 RNIC_RcvAtIpv6PdpActInd(
     RNIC_StartTimer(enTimerId, TI_RNIC_DSFLOW_STATS_LEN);
 
     /* 注册下行发送函数，ADS调用注册的函数发送下行数据 */
-    ADS_DL_RegDlDataCallback(ucRabid, (RCV_DL_DATA_FUNC)RNIC_RcvAdsDlData);
+    ADS_DL_RegDlDataCallback(ucRabid, RNIC_RcvAdsDlData, ucRmNetId);
 
     return VOS_OK;
 
@@ -498,7 +498,7 @@ VOS_UINT32 RNIC_RcvAtIpv4v6PdpActInd(
     RNIC_StopTimer(TI_RNIC_DEMAND_DIAL_PROTECT);
 
     /* 注册下行发送函数，ADS调用注册的函数发送下行数据 */
-    ADS_DL_RegDlDataCallback(ucRabid, (RCV_DL_DATA_FUNC)RNIC_RcvAdsDlData);
+    ADS_DL_RegDlDataCallback(ucRabid, RNIC_RcvAdsDlData, ucRmNetId);
 
     return VOS_OK;
 
@@ -1162,7 +1162,7 @@ VOS_UINT32 RNIC_RcvImsaPdnActInd(
     }
 
     /* 注册下行发送函数，ADS调用注册的函数发送下行数据 */
-    ADS_DL_RegDlDataCallback(ucRabid, (RCV_DL_DATA_FUNC)RNIC_RcvAdsDlData);
+    ADS_DL_RegDlDataCallback(ucRabid, RNIC_RcvAdsDlData, ucRmNetId);
 
     return VOS_OK;
 }
@@ -1288,7 +1288,7 @@ VOS_VOID RNIC_ProcInsideModemIpv4ActInd(
     }
 
     /* 注册下行发送函数，ADS调用注册的函数发送下行数据 */
-    ADS_DL_RegDlDataCallback(ucRabid, (RCV_DL_DATA_FUNC)RNIC_RcvAdsDlData);
+    ADS_DL_RegDlDataCallback(ucRabid, RNIC_RcvAdsDlData, ucRmNetId);
 
     return;
 }
@@ -1344,7 +1344,7 @@ VOS_VOID RNIC_ProcInsideModemIpv6ActInd(
     RNIC_StartTimer(enTimerId, TI_RNIC_DSFLOW_STATS_LEN);
 
     /* 注册下行发送函数，ADS调用注册的函数发送下行数据 */
-    ADS_DL_RegDlDataCallback(ucRabid, (RCV_DL_DATA_FUNC)RNIC_RcvAdsDlData);
+    ADS_DL_RegDlDataCallback(ucRabid, RNIC_RcvAdsDlData, ucRmNetId);
 
     return;
 }

@@ -1,0 +1,5 @@
+kernel/sound/soc/snd-soc-core.ko
+kernel/sound/soc/codecs/snd-soc-hi6402.ko
+kernel/sound/soc/codecs/snd-soc-hi6402es.ko
+kernel/sound/soc/hisilicon/snd-soc-hi3630.ko
+kernel/sound/soc/hisilicon/snd-soc-hi3630-hi6402.ko

@@ -15,7 +15,7 @@
 
 #define VCM_ID_CODE		0x9714
 
-int dw9714_get_otp_af(struct hisi_vcm_ctrl_t *vcm_ctrl, void *data)
+static int dw9714_get_otp_af(struct hisi_vcm_ctrl_t *vcm_ctrl, void *data)
 {
 	struct vcm_cfg_data *cdata = (struct vcm_cfg_data *)data;
 	struct hisi_sd_req_sd vcm_req_sd = {0};
@@ -51,7 +51,7 @@ int dw9714_get_otp_af(struct hisi_vcm_ctrl_t *vcm_ctrl, void *data)
 	return rc;
 }
 
-int dw9714_ioctl(struct hisi_vcm_ctrl_t *vcm_ctrl, void *data)
+static int dw9714_ioctl(struct hisi_vcm_ctrl_t *vcm_ctrl, void *data)
 {
 	struct vcm_cfg_data *cdata = (struct vcm_cfg_data*)data;
 	long   rc = 0;
@@ -73,7 +73,7 @@ int dw9714_ioctl(struct hisi_vcm_ctrl_t *vcm_ctrl, void *data)
 	return rc;
 }
 
-int dw9714_i2c_read(struct hisi_vcm_ctrl_t *vcm_ctrl, void *data)
+static int dw9714_i2c_read(struct hisi_vcm_ctrl_t *vcm_ctrl, void *data)
 {
 	struct vcm_cfg_data *cdata = (struct vcm_cfg_data *)data;
 	//struct vcm_i2c_reg reg;
@@ -85,7 +85,7 @@ int dw9714_i2c_read(struct hisi_vcm_ctrl_t *vcm_ctrl, void *data)
 	return rc;
 }
 
-int dw9714_i2c_write(struct hisi_vcm_ctrl_t *vcm_ctrl, void *data)
+static int dw9714_i2c_write(struct hisi_vcm_ctrl_t *vcm_ctrl, void *data)
 {
 	struct vcm_cfg_data *cdata = (struct vcm_cfg_data *)data;
 	int   rc = 0;

@@ -115,6 +115,8 @@ VOS_UINT32 AT_RcvImsaCcwaiSetCnf(VOS_VOID * pMsg);
 VOS_UINT32 AT_RcvImsaVtPdpActInd(VOS_VOID * pMsg);
 VOS_UINT32 AT_RcvImsaVtPdpDeactInd(VOS_VOID * pMsg);
 
+VOS_UINT32 AT_RcvImsaMtStateInd(VOS_VOID * pMsg);
+
 #endif /* end of FEATURE_IMS */
 
 #if (VOS_OS_VER == VOS_WIN32)

@@ -1,0 +1,6 @@
+kernel/drivers/huawei_platform/audio/anc_hs/anc_hs.ko
+kernel/drivers/huawei_platform/audio/dts_eagle/dts_eagle_drv.ko
+kernel/drivers/huawei_platform/audio/earpiece_pa/earpiece_pa.ko
+kernel/drivers/huawei_platform/audio/max98925/max98925.ko
+kernel/drivers/huawei_platform/audio/speakerID/speakerID.ko
+kernel/drivers/huawei_platform/audio/tfa9895/tfa9895.ko

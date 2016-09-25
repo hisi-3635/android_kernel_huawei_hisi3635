@@ -75,6 +75,62 @@ enum {
 #define REBOOT_MOUNTFAIL_STR	"mountfail"
 #endif
 
+/*----------------------------------------------------------------------
+|-----------------------------------------------------------------------|
+| Channel A (128M)      | 0x28000000 ~ 0x295FFFFF |  22M | unused       |
+|                       | 0x29600000 ~ 0x2D5FFFFF |  64M | GRALLOC      |
+|                       | 0x2D600000 ~ 0x2DBFFFFF |   6M | HIFI         |
+|                       | 0x2DC00000 ~ 0x2DDFFFFF |   2M | AUDIO        |
+|                       | 0x2DE00000 ~ 0x2E000000 |   2M | IOM3         |
+|                       | 0x2E000000 ~ 0x2FFFFFFF |  32M | SEC OS       |
+|-----------------------------------------------------------------------|
+| Channel B (128M)      | 0x30000000 ~ 0x30CFFFFF |  13M | ?????        |
+|                       | 0x30D00000 ~ 0x361FFFFF |  85M | MODEM        |
+|                       | 0x36200000 ~ 0x36600000 |   4M | MODEM SHARE  |
+|                       | 0x36600000 ~ 0x37700000 |  17M | MODEM SOCP   |
+|                       | 0x37700000 ~ 0x37FFFFFF |   9M | HIFI         |
+|-----------------------------------------------------------------------|
+| Dual Channel (42M)    | 0x38000000 ~ 0x39FFFFFF |  32M | CPU DRAW     |
+|                       | 0x3A000000 ~ 0x3A9FFFFF |  10M | MISC         |
+|-----------------------------------------------------------------------|
+| Dual Channel (10M)    | 0x3F600000 ~ 0x3F7FFFFF |   2M | IOMMU PTLB   |
+|                       | 0x3F800000 ~ 0x3FFF7FFF |  ~8M | RDR DEBUG    |
+|                       | 0x3FFF8000 ~ 0x3FFFFFFF |  32K | DDR TRAINING |
+------------------------------------------------------------------------*/
+#define HISI_RESERVE_MEM_1_START 0x28000000
+#define HISI_RESERVE_MEM_1_SIZE (0x3AA00000 - HISI_RESERVE_MEM_1_START)
+
+#define HISI_RESERVE_MEM_2_START 0x3F600000
+#define HISI_RESERVE_MEM_2_SIZE (0x40000000 - HISI_RESERVE_MEM_2_START)
+
+unsigned long hisi_reserved_cpu_draw_phymem = 0x38000000;
+unsigned long hisi_reserved_cpu_draw_phymem_size = (0x3A000000 - 0x38000000);
+
+unsigned long hisi_reserved_graphic_phymem = 0x29600000;
+unsigned long hisi_reserved_graphic_phymem_size = (0x2D600000 - 0x29600000);
+
+unsigned long hisi_reserved_misc_phymem = 0x3A000000;
+unsigned long hisi_reserved_misc_phymem_size = (0x3AA00000 - 0x3A000000);
+
+unsigned long hisi_reserved_smmu_phymem = 0x3F600000;
+unsigned long hisi_reserved_debug_phymem = 0x3F800000;
+
+unsigned long hisi_total_reserved_memory_size = HISI_RESERVE_MEM_1_SIZE;
+unsigned long hisi_unused_reserved_memory_size = 0x29600000 - HISI_RESERVE_MEM_1_START
+		+ (0x30D00000 - 0x30000000);
+/* used = total - unused - cpu_draw - gralloc */
+unsigned long hisi_used_reserved_memory_size = HISI_RESERVE_MEM_1_SIZE
+		- (0x29600000 - HISI_RESERVE_MEM_1_START) - (0x30D00000 - 0x30000000)
+		- (0x3A000000 - 0x38000000) - (0x2D600000 - 0x29600000);
+
+
+EXPORT_SYMBOL(hisi_reserved_graphic_phymem);
+EXPORT_SYMBOL(hisi_reserved_graphic_phymem_size);
+EXPORT_SYMBOL(hisi_reserved_smmu_phymem);
+EXPORT_SYMBOL(hisi_reserved_debug_phymem);
+EXPORT_SYMBOL(hisi_total_reserved_memory_size);
+EXPORT_SYMBOL(hisi_used_reserved_memory_size);
+EXPORT_SYMBOL(hisi_unused_reserved_memory_size);
 /* be careful: the strings of reset type  should be the same as defined in fastboot*/
 #define RESETMODE_FLAG_ABNORMAL (1)
 #define RESETMODE_FLAG_NORMAL	(0)

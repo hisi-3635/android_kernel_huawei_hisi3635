@@ -433,6 +433,8 @@ int tc_client_call(TC_NS_ClientContext *client_context, TC_NS_DEV_File *dev_file
 	smc_cmd->context_id = client_context->session_id;
 	smc_cmd->err_origin = 0;
 	smc_cmd->started = client_context->started;
+	smc_cmd->uid = current_uid();//TC_NS_get_uid();
+	TCVERBOSE("current uid is %d\n", smc_cmd->uid);
 	TCVERBOSE("operation start is :%d\n",smc_cmd->started);
 	if(operation) {
 		smc_cmd->operation_phys = virt_to_phys(operation);

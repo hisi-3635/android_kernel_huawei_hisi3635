@@ -1,0 +1,6 @@
+kernel/drivers/media/huawei/camera/sensor/flash/hw_flash_i2c.ko
+kernel/drivers/media/huawei/camera/sensor/flash/hw_flash.ko
+kernel/drivers/media/huawei/camera/sensor/flash/tps61310.ko
+kernel/drivers/media/huawei/camera/sensor/flash/lm3642.ko
+kernel/drivers/media/huawei/camera/sensor/flash/pmu_led.ko
+kernel/drivers/media/huawei/camera/sensor/flash/lm3646_front.ko

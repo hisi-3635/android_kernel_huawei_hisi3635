@@ -1,0 +1,2 @@
+kernel/drivers/regulator/hi3xxx_hi6421v300_regulator.ko
+kernel/drivers/regulator/hi3xxx_krin930_regulator.ko

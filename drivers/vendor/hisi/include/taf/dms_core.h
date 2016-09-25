@@ -133,6 +133,8 @@
 /* netlink 上行事件统计 */
 #define DMS_DBG_NLK_UL_TOTAL_MSG_NUM(n)         (g_stDmsMntnNlkStats.ulUlTotalMsgNum += (n))
 #define DMS_DBG_NLK_UL_ERR_MSG_NUM(n)           (g_stDmsMntnNlkStats.ulUlErrMsgNum += (n))
+#define DMS_DBG_NLK_UL_UNSUPPORT_INPUT_LOG_NUM(n) (g_stDmsMntnNlkStats.ulUlUnSupportInputLogNum+= (n))
+#define DMS_DBG_NLK_UL_UNSUPPORT_WRITE_LOG_NUM(n) (g_stDmsMntnNlkStats.ulUlUnSupportWriteLogNum+= (n))
 #define DMS_DBG_NLK_UL_UNKNOWN_MSG_NUM(n)       (g_stDmsMntnNlkStats.ulUlUnknownMsgNum += (n))
 #define DMS_DBG_NLK_UL_SEND_MSG_NUM(type,n)     (g_stDmsMntnNlkStats.aulUlSendMsgNum[type] += (n))
 #define DMS_DBG_NLK_UL_FREE_MSG_NUM(type,n)     (g_stDmsMntnNlkStats.aulUlFreeMsgNum[type] += (n))
@@ -149,6 +151,11 @@
 #define DMS_DBG_NLK_DL_PUT_MSG_FAIL_NUM(n)      (g_stDmsMntnNlkStats.ulDlPutMsgFailNum += (n))
 #define DMS_DBG_NLK_DL_UNICAST_MSG_FAIL_NUM(n)  (g_stDmsMntnNlkStats.ulDlUnicastMsgFailNum += (n))
 #define DMS_DBG_NLK_DL_UNICAST_MSG_SUCC_NUM(n)  (g_stDmsMntnNlkStats.ulDlUnicastMsgSuccNum += (n))
+
+/* Added by w00316404 for Add Get Modem Log, 2015-10-17, Begin */
+#define DMS_SET_PRINT_MODEM_LOG_TYPE(n)         (g_ucDmsPrintModemLogType = (n))
+#define DMS_GET_PRINT_MODEM_LOG_TYPE()          (g_ucDmsPrintModemLogType)
+/* Added by w00316404 for Add Get Modem Log, 2015-10-17, End */
 
 /*****************************************************************************
   3 枚举定义
@@ -360,6 +367,8 @@ typedef struct
 
     VOS_UINT32                          ulUlTotalMsgNum;
     VOS_UINT32                          ulUlErrMsgNum;
+    VOS_UINT32                          ulUlUnSupportInputLogNum;
+    VOS_UINT32                          ulUlUnSupportWriteLogNum;
     VOS_UINT32                          ulUlUnknownMsgNum;
     VOS_UINT32                          aulUlSendMsgNum[DMS_NLK_MSG_TYPE_BUTT];
     VOS_UINT32                          aulUlFreeMsgNum[DMS_NLK_MSG_TYPE_BUTT];
@@ -397,6 +406,8 @@ extern DMS_MAIN_INFO                    g_stDmsMainInfo;
 extern pComRecv                         pfnAcmReadData;
 extern DMS_NLK_ENTITY_STRU              g_stDmsNlkEntity;
 extern DMS_MNTN_NLK_STATS_STRU          g_stDmsMntnNlkStats;
+extern VOS_UINT8                       g_ucDmsPrintModemLogType;
+
 
 /*****************************************************************************
   7 函数声明

@@ -1,18 +1,18 @@
 //*****************************************************************************
 //*****************************************************************************
 //  FILENAME: Driver.h
-//  TrueTouch Host Emulator Version Information: 3.2.9, b3407
-//  TrueTouch Firmware Version Information: 1.0.776515
+//  TrueTouch Host Emulator Version Information: 3.3, b586
+//  TrueTouch Firmware Version Information: 1.0.804720
 //
 //  DESCRIPTION: This file contains configuration values.
 //-----------------------------------------------------------------------------
-//  Copyright (c) Cypress Semiconductor 2014. All Rights Reserved.
+//  Copyright (c) Cypress Semiconductor 2009 - 2015. All Rights Reserved.
 //*****************************************************************************
 //*****************************************************************************
 //-----------------------------------------------------------------------------
 /* Touchscreen Version Information */
 static u8 ttconfig_fw_ver_alice_ofilm[] = {
-	0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0C, 0x47, 0x70, 0x0B, 0x00, 0x11, 0x9B, 0x00, 0x0E
+	0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0C, 0x47, 0x70, 0x0B, 0x00, 0x11, 0x9B, 0x00, 0x13
 };
 #if 0
 /* Touchscreen Parameters Endianess (Endianess: 0:Little; 1:Big)*/
@@ -391,7 +391,7 @@ static const uint8_t cyttsp5_param_regs_alice_ofilm[] = {
 	0x00,  /* GRIP_EXC_EDGE_ORIGIN */
 	0x00,  /* GRIP_ENABLE */
 	0x04,  /* FINGER_ID_MAX_VEL_ACC_GLOVE_SCALE */
-	0x01,  /* LIFTOFF_DEBOUNCE */
+	0x00,  /* LIFTOFF_DEBOUNCE */
 	0x00,  /* LIFTOFF_DEBOUNCE_PROXIMITY */
 	0x00,  /* LIFTOFF_DEBOUNCE_STYLUS */
 	0x00,  /* LIFTOFF_DEBOUNCE_HOVER */
@@ -693,7 +693,7 @@ static const uint8_t cyttsp5_param_regs_alice_ofilm[] = {
 	0x50, 0x00,  /* SMART_COVER_OFF_THRSH_MUTUAL */
 	0x00,  /* EXT_SYNC */
 	0x01,  /* PWR_CFG */
-	0x0E, 0x00,  /* CONFIG_VER */
+	0x13, 0x00,  /* CONFIG_VER */
 	0x00,  /* SEND_REPORT_AFTER_ACTIVE_INTERVAL_CFG */
 	0x00,  /* PIP_REPORTING_DISABLE */
 	0x00, 0x00,  /* INTERRUPT_PIN_OVERRIDE */
@@ -708,7 +708,7 @@ static const uint8_t cyttsp5_param_regs_alice_ofilm[] = {
 	0x00,  /* SYNC_REPORT_ENABLE */
 	0x00,  /* SYNC_REPORT_BYPASS_TRIGGER_LEVEL */
 	0x00, 0x00,  /* Reserved1238 */
-	0x35, 0x17,  /* CONFIG_CRC */
+	0xE7, 0xC7,  /* CONFIG_CRC */
 };
 
 /* Touchscreen Parameters Field Sizes (Writable: 0:Readonly; 1:Writable) */

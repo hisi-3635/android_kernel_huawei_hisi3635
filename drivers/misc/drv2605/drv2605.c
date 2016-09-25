@@ -131,6 +131,10 @@ struct drv2605_data {
 	struct work_struct work;
 	struct work_struct work_play_eff;
 	unsigned char sequence[8];
+	struct class* class;
+	struct device* device;
+	dev_t version;
+	struct cdev cdev;
 };
 
 struct drv2605_pdata {
@@ -148,6 +152,9 @@ static char read_val;
 static int vibrator_is_playing = NO;
 extern int vibrator_shake;
 static char reg_value = 0;
+
+static struct drv2605_data *data = NULL;
+static ssize_t haptics_write(struct file* filp, const char* buff, size_t len, loff_t* off);
 
 static const unsigned char ERM_autocal_sequence[] = {
     MODE_REG,                       AUTO_CALIBRATION,
@@ -213,6 +220,19 @@ static const unsigned char LRA_init_sequence[] = {
     AUTOCAL_MEM_INTERFACE_REG,      0x30,
 };
 #endif
+
+/******************
+* touch haptic lib
+*******************/
+#define HAPTICS_NUM 8
+
+struct {
+    int haptics_type;
+    char haptics_value[HAPTICS_NUM];
+} haptics_table[] = {
+    { 1, {0x01,0,0,0,0,0,0,0}},
+    { 2, {0x18,0x06,0x18,0x06,0x18,0,0,0}},
+};
 
 static void drv2605_write_reg_val(struct i2c_client *client, const unsigned char *data,
 		unsigned int size)
@@ -434,6 +454,8 @@ static int vibrator_get_time(struct timed_output_dev *dev)
 static void vibrator_off(struct drv2605_data *data)
 {
 	if (vibrator_is_playing) {
+		drv2605_set_rtp_val(data->client, 0);
+		msleep(25);
 		vibrator_is_playing = NO;
 		drv2605_change_mode(data->client, MODE_STANDBY);
 		vibrator_shake = 0;
@@ -466,12 +488,14 @@ static void vibrator_enable(struct timed_output_dev *dev, int value)
 			}
 		}
 		/* Only change the mode if not already in RTP mode; RTP input already set at init */
-		if ((drv2605_read_reg(data->client, MODE_REG) & DRV260X_MODE_MASK)
-			!= MODE_REAL_TIME_PLAYBACK) {
+		ret = drv2605_read_reg(data->client, MODE_REG);
+		if ((ret & DRV260X_MODE_MASK) != MODE_REAL_TIME_PLAYBACK) {
 			vibrator_shake = 1;
 			drv2605_set_rtp_val(data->client, REAL_TIME_PLAYBACK_STRENGTH);
 			drv2605_change_mode(data->client, MODE_REAL_TIME_PLAYBACK);
 			vibrator_is_playing = YES;
+		} else {
+			dev_err(&(data->client->dev), "vibrator_shake fail:%d.\n", ret);
 		}
 
 		if (value > 0) {
@@ -511,9 +535,10 @@ static void play_effect(struct work_struct *work)
 	struct drv2605_data *data;
 
 	data = container_of(work, struct drv2605_data, work_play_eff);
-
+	vibrator_shake = 1;
 	drv2605_change_mode(data->client, MODE_DEVICE_READY);
-	udelay(1000);
+	msleep(1);
+	vibrator_is_playing = YES;
 	drv2605_set_waveform_sequence(data->client, data->sequence, sizeof(data->sequence));
 	drv2605_set_go_bit(data->client, GO);
 
@@ -521,7 +546,13 @@ static void play_effect(struct work_struct *work)
 		schedule_timeout_interruptible(msecs_to_jiffies(GO_BIT_POLL_INTERVAL));
 	}
 
+	if(data->should_stop == YES){
+		drv2605_set_go_bit(data, STOP);
+	}
+
 	drv2605_change_mode(data->client, MODE_STANDBY);
+	vibrator_is_playing = NO;
+	vibrator_shake = 0;
 }
 
 #if GUARANTEE_AUTOTUNE_BRAKE_TIME
@@ -583,6 +614,9 @@ int ImmVibeSPI_ForceOut_AmpEnable(VibeUInt8 nActuatorIndex)
 {
 	int ret = 0;
 	vibrator_shake = 1;
+
+	vibrator_is_playing = YES;
+	cancel_work_sync(&data->work_play_eff);
 
 	if (!g_bAmpEnabled)
 	{
@@ -889,14 +923,54 @@ static ssize_t vibrator_get_reg_show(struct device *dev, struct device_attribute
 	return snprintf(buf, PAGE_SIZE, "%d\n", val);
 }
 
+static ssize_t haptic_test_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	char a[2] = {0};
+	char haptic_value[100] = {0};
+	uint64_t value = 0;
+	char type = 0;
+	int i = 0, j = 0;
+	int  m , n ;
+	int time = 0, table_num = 0;
+	char rtp_value = 0;
+
+	/*get haptic value */
+	for(i = 0, j = 0;i < 100;){
+		memcpy(&a[0], &buf[i], 2);
+		i = i + 2;
+		dev_info(&client_temp->dev, "-----> haptic_test1 is %d %d\n", a[0],a[1]);
+
+		if((a[0] == 57) && (a[1] == 57)){
+			haptic_value[j] = 0;
+			break;
+		}else{
+			m = ((a[0] > 57)?(a[0]-97+10):(a[0]-48))*16;
+			n =  ((a[1] > 57)?(a[1]-97+10):(a[1]-48));
+			haptic_value[j] = m + n;
+		}
+		dev_info(&client_temp->dev, "-----> haptic_test2 is 0x%x, m = %d, n=%d\n", haptic_value[j],m,n);
+		j++;
+	}
+
+	/*vibrator work*/
+	hrtimer_cancel(&data->timer);
+	cancel_work_sync(&data->work);
+	vibrator_off(data);
+	memcpy(&data->sequence, &haptic_value,8);
+	schedule_work(&data->work_play_eff);
+	return count;
+}
+
 static DEVICE_ATTR(vibrator_dbc_test, S_IRUSR|S_IWUSR, NULL, vibrator_dbc_test_store);
 static DEVICE_ATTR(vibrator_calib, S_IRUSR|S_IWUSR, vibrator_calib_show, vibrator_calib_store);
 static DEVICE_ATTR(vibrator_get_reg, S_IRUSR|S_IWUSR, vibrator_get_reg_show, vibrator_get_reg_store);
+static DEVICE_ATTR(haptic_test, S_IRUSR|S_IWUSR, NULL, haptic_test_store);
 
 static struct attribute *vb_attributes[] = {
 	&dev_attr_vibrator_dbc_test.attr,
 	&dev_attr_vibrator_calib.attr,
 	&dev_attr_vibrator_get_reg.attr,
+	&dev_attr_haptic_test.attr,
 	NULL
 };
 
@@ -904,14 +978,120 @@ static const struct attribute_group vb_attr_group = {
 	.attrs = vb_attributes,
 };
 
+static int haptics_open(struct inode * i_node, struct file * filp)
+{
+	if(data == NULL){
+		return -ENODEV;
+	}
+	dev_info(&client_temp->dev, "haptics_open");
+	filp->private_data = data;
+	return 0;
+}
+
+static ssize_t haptics_write(struct file* filp, const char* buff, size_t len, loff_t* off)
+{
+	struct drv2605_data *data = (struct drv2605_data *)filp->private_data;
+	int i = 0, type_flag = 0, table_num = 0;;
+	uint64_t type = 0;
+
+	mutex_lock(&data->lock);
+	if(strict_strtoull(buff, 10, &type)){
+		dev_info(&(data->client->dev), "[haptics_write] read value error\n");
+		goto out;
+	}
+
+	for(i=0;i<ARRAY_SIZE(haptics_table);i++){
+		if(type == haptics_table[i].haptics_type){
+			table_num = i;
+			type_flag = 1;
+			dev_info(&(data->client->dev), "[haptics write] type:%d,table_num:%d.\n", type,table_num);
+			break;
+		}
+	}
+	if(!type_flag){
+		dev_info(&(data->client->dev), "[haptics write] undefined type:%d.\n", type);
+		goto out;
+	}else{
+		data->should_stop = YES;
+		hrtimer_cancel(&data->timer);
+		cancel_work_sync(&data->work);
+		vibrator_off(data);
+		memcpy(&data->sequence, &haptics_table[table_num].haptics_value,HAPTICS_NUM);
+		dev_info(&(data->client->dev), "[haptics write] sequence1-4: 0x%x,0x%x,0x%x,0x%x.\n", data->sequence[0],
+						data->sequence[1],data->sequence[2],data->sequence[3]);
+		dev_info(&(data->client->dev), "[haptics write] sequence5-8: 0x%x,0x%x,0x%x,0x%x.\n", data->sequence[4],
+						data->sequence[5],data->sequence[6],data->sequence[7]);
+		data->should_stop = NO;
+		schedule_work(&data->work_play_eff);
+	}
+out:
+	mutex_unlock(&data->lock);
+	return len;
+}
+
+static struct file_operations fops =
+{
+	.open = haptics_open,
+	.write = haptics_write,
+};
+
+static int haptics_probe(struct drv2605_data *data)
+{
+	int ret = -ENOMEM;
+
+	data->version = MKDEV(0,0);
+	ret = alloc_chrdev_region(&data->version, 0, 1, CDEVIE_NAME);
+	if (ret < 0)
+	{
+		dev_info(&(data->client->dev), "drv2605: error getting major number %d\n", ret);
+		return ret;
+	}
+
+	data->class = class_create(THIS_MODULE, CDEVIE_NAME);
+	if (!data->class)
+	{
+		dev_info(&(data->client->dev), "drv2605: error creating class\n");
+		goto unregister_cdev_region;
+	}
+
+	data->device = device_create(data->class, NULL, data->version, NULL, CDEVIE_NAME);
+	if (!data->device)
+	{
+		dev_info(&(data->client->dev), "drv2605: error creating device 2605\n");
+		goto destory_class;
+	}
+
+	cdev_init(&data->cdev, &fops);
+	data->cdev.owner = THIS_MODULE;
+	data->cdev.ops = &fops;
+	ret = cdev_add(&data->cdev, data->version, 1);
+	if (ret)
+	{
+		dev_info(&(data->client->dev), "drv2605: fail to add cdev\n");
+		goto destory_device;
+	}
+
+	INIT_WORK(&data->work_play_eff, play_effect);
+
+	return 0;
+
+destory_device:
+	device_destroy(data->class, data->version);
+destory_class:
+	class_destroy(data->class);
+unregister_cdev_region:
+	unregister_chrdev_region(data->version, 1);
+
+	return ret;
+}
+
 static int drv2605_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	char status = 0;
 	int rc = 0,ret = 0;
 	unsigned char lra_mode = 0, lra_select[2]={0};
 	vib_init_calibdata = 0;
-	struct drv2605_data *data;
-
+	//struct drv2605_data *data;
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		dev_err(&client->dev, "i2c is not supported\n");
@@ -967,7 +1147,7 @@ static int drv2605_probe(struct i2c_client *client, const struct i2c_device_id *
 	hrtimer_init(&data->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	data->timer.function = vibrator_timer_func;
 	INIT_WORK(&data->work, vibrator_work);
-	INIT_WORK(&data->work_play_eff, play_effect);
+	//INIT_WORK(&data->work_play_eff, play_effect);
 
 	data->dev.name = pdata->name;
 	data->dev.get_time = vibrator_get_time;
@@ -1015,6 +1195,8 @@ static int drv2605_probe(struct i2c_client *client, const struct i2c_device_id *
 	drv2605_select_library(data->client, g_effect_bank);
 
 	drv2605_change_mode(data->client, MODE_STANDBY);
+
+	haptics_probe(data);
 
 #if GUARANTEE_AUTOTUNE_BRAKE_TIME
     g_workqueue = create_workqueue("tspdrv_workqueue");

@@ -150,6 +150,7 @@ extern VOS_VOID AT_ReadReportRegActFlgNV( VOS_VOID );
 extern VOS_VOID AT_ReadCregAndCgregCiFourByteRptNV( VOS_VOID );
 #if (FEATURE_ON == FEATURE_IPV6)
 extern VOS_VOID AT_ReadIpv6CapabilityNV( VOS_VOID );
+extern VOS_VOID AT_ReadIpv6AddrTestModeCfgNV(VOS_VOID);
 #endif
 extern VOS_VOID AT_ReadDialConnectDisplayRateNV(VOS_VOID);
 

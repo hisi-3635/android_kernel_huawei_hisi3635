@@ -1,0 +1,8 @@
+kernel/drivers/huawei_platform/inputhub/kirin930/inputhub_bridge.ko
+kernel/drivers/huawei_platform/inputhub/kirin930/inputhub_route.ko
+kernel/drivers/huawei_platform/inputhub/kirin930/sensor_info.ko
+kernel/drivers/huawei_platform/inputhub/kirin930/sensorhub_debugfs.ko
+kernel/drivers/huawei_platform/inputhub/kirin930/sensor_debug.ko
+kernel/drivers/huawei_platform/inputhub/kirin930/sensorhub_channel.ko
+kernel/drivers/huawei_platform/inputhub/kirin930/motionhub_channel.ko
+kernel/drivers/huawei_platform/inputhub/kirin930/sensor_sys_info.ko

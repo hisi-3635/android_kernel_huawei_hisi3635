@@ -321,6 +321,8 @@ enum IMSA_ERR_LOG_CALL_FAIL_REASON_ENUM
     IMSA_ERR_LOG_CALL_FAIL_REASON_NOT_ALLOW_NEW_CALL                                 = 4,     /**< 不允许发起新的呼叫 */
     IMSA_ERR_LOG_CALL_FAIL_REASON_SERVICE_NOT_AVAILABLE                              = 5,     /**< 对应的服务不可用 */
     IMSA_ERR_LOG_CALL_FAIL_REASON_RES_READY_FAIL                                     = 6,     /**< 资源预留失败 */
+    IMSA_ERR_LOG_CALL_FAIL_REASON_TCALL_TIMEOUT                                      = 7,     /**< TCALL超时 */
+    IMSA_ERR_LOG_CALL_FAIL_REASON_TQOS_TIMEOUT                                       = 8,     /**< TQOS超时 */
 
     /* IMS上报的错误*/
     IMSA_ERR_LOG_CALL_FAIL_REASON_IMS_MULTIPLE_CHOICES                               = 300,

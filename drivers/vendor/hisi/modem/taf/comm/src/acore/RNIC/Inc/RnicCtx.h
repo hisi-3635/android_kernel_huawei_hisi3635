@@ -120,10 +120,6 @@ extern "C" {
 /* 获取指定Modem的RABID信息 */
 #define RNIC_GET_SPEC_MODEM_RABID_INFO(index)       (&g_stRnicCtx.astRabIdInfo[index])
 
-/* 获取RABID对应的网卡ID */
-#define RNIC_GET_RM_NET_ID_BY_MODEM_ID(ModemId, RabId) \
-        (RNIC_GET_SPEC_MODEM_RABID_INFO(ModemId)->aucRmNetId[RabId - RNIC_RAB_ID_OFFSET])
-
 /* 获取网卡私有数据地址 */
 #define RNIC_GET_SPEC_PRIV_INFO_ADDR(index)          (g_stRnicCtx.astSpecCtx[index].pstNetDevInfo)
 

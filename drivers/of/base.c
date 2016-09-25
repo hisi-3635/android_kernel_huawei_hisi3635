@@ -144,6 +144,37 @@ int __of_add_property_sysfs(struct device_node *np, struct property *pp)
 	return rc;
 }
 
+
+static int check_node_status(struct device_node *np)
+{
+	struct property *pp;
+	const char *p;
+	const char *status_str = "status";
+	const char *disable_str = "disable";
+	const int ret_disable = 1;
+	const int ret_ok = 0;
+
+	if (np == NULL)
+		return ret_disable;
+
+	for (pp = np->properties; pp != NULL; pp = pp->next) {
+		p = pp->name;
+
+		if (strchr(p, '/'))
+			continue;
+		if ((strlen(p) == strlen(status_str)) && (strncmp(p, status_str, strlen(status_str)) == 0)){
+			if (strncmp((char *)(pp->value), disable_str, strlen(disable_str)) == 0) {
+				return ret_disable;
+
+			}else{
+				break;
+			}
+		}
+	}
+
+	return ret_ok;
+}
+
 int __of_attach_node_sysfs(struct device_node *np)
 {
 	const char *name;
@@ -158,11 +189,16 @@ int __of_attach_node_sysfs(struct device_node *np)
 		/* Nodes without parents are new top level trees */
 		rc = kobject_add(&np->kobj, NULL, safe_name(&of_kset->kobj, "base"));
 	} else {
-		name = safe_name(&np->parent->kobj, kbasename(np->full_name));
-		if (!name || !name[0])
-			return -EINVAL;
+		if (0 == np->parent->kobj.state_in_sysfs || check_node_status(np)) {
+			np->kobj.state_in_sysfs = 0;
+			return 0;
+		}else{
+			name = safe_name(&np->parent->kobj, kbasename(np->full_name));
+			if (!name || !name[0])
+				return -EINVAL;
 
-		rc = kobject_add(&np->kobj, &np->parent->kobj, "%s", name);
+			rc = kobject_add(&np->kobj, &np->parent->kobj, "%s", name);
+		}
 	}
 	if (rc)
 		return rc;

@@ -40,6 +40,9 @@ extern "C" {
 #define RNIC_GET_IP_VERSION(ucFirstData)\
     (((ucFirstData) >> 4) & (RNIC_IP_HEAD_VERSION_OFFSET_MASK))
 
+#define RNIC_GET_RMNETID_FROM_EXPARAM(ulExParam)\
+            ((VOS_UINT8)((ulExParam) & 0x000000FF))
+
 #define RNIC_IP_HEAD_DEST_ADDR_OFFSET   (4 * 4)                                 /* IP头部目的IP地址偏移量 */
 
 #define RNIC_IPV4_BROADCAST_ADDR        (0xFFFFFFFF)                            /* IPV4广播包地址 */
@@ -223,9 +226,10 @@ VOS_UINT32 RNIC_RcvSdioDlData(
 #endif
 
 VOS_UINT32  RNIC_RcvAdsDlData(
-    VOS_UINT8                           ucRabid,
+    VOS_UINT8                           ucExRabid,
     IMM_ZC_STRU                        *pstImmZc,
-    ADS_PKT_TYPE_ENUM_UINT8             enPktType
+    ADS_PKT_TYPE_ENUM_UINT8             enPktType,
+    VOS_UINT32                          ucExParam
 );
 
 VOS_INT RNIC_SetMacAddress(

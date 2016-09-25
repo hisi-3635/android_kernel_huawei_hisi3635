@@ -615,7 +615,6 @@ static int hw_lm3646_front_register_attribute(struct hw_flash_ctrl_t *flash_ctrl
         cam_err("%s failed to creat lightness attribute.", __func__);
         goto err_create_lightness_file;
     }
-
     rc = device_create_file(dev, &hw_lm3646_front_flash_mask);
     if (rc < 0) {
         cam_err("%s failed to creat flash_mask attribute.", __func__);

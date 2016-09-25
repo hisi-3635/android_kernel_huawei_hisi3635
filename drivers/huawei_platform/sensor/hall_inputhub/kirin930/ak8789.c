@@ -79,7 +79,7 @@ static int ak8789_get_data(struct hall_device *h_dev)
 		}
 	}
 
-//	hwlog_info("[%s][p_data:%d][id:%d]\n", __FUNCTION__, p_data, h_dev->hall_id);
+	//hwlog_info("[%s][p_data:%d][id:%d]\n", __FUNCTION__, p_data, h_dev->hall_id);
 
 	return p_data;
 }
@@ -212,7 +212,7 @@ int hall_first_report(bool enable)
 
 	list_for_each_entry(temp_dev, &data->head, list) {
 		temp_data = ak8789_get_data(temp_dev);
-		pdata |= temp_data << (temp_dev->hall_id ? (1<<temp_dev->hall_id):0);
+		pdata |= temp_data << (temp_dev->hall_id << 1);
 	}
 
 	hwlog_info("[%s]pdata:%d\n", __FUNCTION__, pdata);
@@ -220,9 +220,8 @@ int hall_first_report(bool enable)
 }
 EXPORT_SYMBOL_GPL(hall_first_report);
 
-int ak8789_register_report_data(bool enable)
+int ak8789_register_report_data(int ms)
 {
-	packet_data temp_data = 0,  pdata = 0;
 	struct hall_device *temp_dev;
 	struct ak8789_data *data = data_ak8789;
 
@@ -231,16 +230,11 @@ int ak8789_register_report_data(bool enable)
 		return 0;
 	}
 
-	if (!enable)
-		return 0;
+    temp_dev = list_first_entry(&data->head , struct hall_device, list);
+    queue_delayed_work(data->hall_wq, &temp_dev->h_delayed_work, HZ/20);
 
-	list_for_each_entry(temp_dev, &data->head, list) {
-		temp_data = ak8789_get_data(temp_dev);
-		pdata |= temp_data << (temp_dev->hall_id ? (1<<temp_dev->hall_id):0);
-	}
-
-	hwlog_info("[%s]pdata:%d\n", __FUNCTION__, pdata);
-	return ak8789_report_data(data,  pdata);
+	hwlog_info("[%s] ms:%d\n", __FUNCTION__, ms);
+	return 1;
 }
 EXPORT_SYMBOL_GPL(ak8789_register_report_data);
 #else
@@ -250,7 +244,7 @@ int hall_first_report(bool enable)
 }
 EXPORT_SYMBOL_GPL(hall_first_report);
 
-int ak8789_register_report_data(bool enable)
+int ak8789_register_report_data(int ms)
 {
 	return 1;
 }
@@ -274,12 +268,12 @@ static void ak8789_report_delayed_work(struct work_struct *work)
 
 	if (!data) {
 		hwlog_err("ak8789 data null\n");
-		return -ENOMEM;
+		return;
 	}
 
 	list_for_each_entry(temp_dev, &data->head, list) {
 		temp_data = ak8789_get_data(temp_dev);
-		pdata |= temp_data << (temp_dev->hall_id ? (1<<temp_dev->hall_id):0);
+		pdata |= temp_data << (temp_dev->hall_id << 1);
 	}
 
 	hwlog_info("report value:%d\n", pdata);
@@ -432,8 +426,11 @@ static irqreturn_t ak8789_event_handler(int irq, void *hall_dev)
 	h_dev->h_info.last_time[index].tv_sec = now.tv_sec;
 	h_dev->h_info.last_time[index].tv_usec = now.tv_usec;
 #endif
+#ifdef CONFIG_HALL_DELAY_TYPE
+	queue_delayed_work(data->hall_wq, &h_dev->h_delayed_work, 3*HZ/20);
+#else
 	queue_delayed_work(data->hall_wq, &h_dev->h_delayed_work, HZ/20);
-
+#endif
 	return IRQ_HANDLED;
 }
 

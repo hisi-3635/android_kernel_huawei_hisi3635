@@ -349,7 +349,10 @@ VOS_UINT32 USIMM_STATUSProc(VOS_VOID)
     {
         USIMM_ERROR_LOG("USIMM_StatusHandle:The Status Command is not Same,The Card Should be Changed");
 
-        return USIMM_SW_OTHER_ERROR;
+        if(g_stUsimmFeatureCfg.unCfg.stFeatureCfg.ulIgnoreDFCheck == VOS_FALSE)
+        {
+            return USIMM_SW_OTHER_ERROR;
+        }
     }
 
     return VOS_OK;

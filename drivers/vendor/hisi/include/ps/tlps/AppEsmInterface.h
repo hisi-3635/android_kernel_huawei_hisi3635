@@ -1859,7 +1859,11 @@ extern VOS_UINT32 APP_GetPdpManageInfo
 (
     APP_ESM_PDP_MANAGE_INFO_STRU  *pstPdpManageInfo
 );
-
+extern VOS_UINT32 APP_GetCidImsSuppFlag
+(
+    VOS_UINT8                           ucCid,
+    VOS_UINT8                          *pucImsSuppFlag
+);
 
 
 /*****************************************************************************

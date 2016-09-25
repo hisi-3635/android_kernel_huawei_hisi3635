@@ -9,6 +9,7 @@ const struct cntry_locales_custom hw_translate_custom_table[] = {
     /* Table should be filled out based
     on custom platform regulatory requirement */
     {"",   "XZ", 11},  /* Universal if Country code is unknown or empty */
+    {"GL", "XZ", 11},  // add by huawei
     {"IR", "CN", 0},  // add by huawei
     {"CU", "CN", 0},  // add by huawei
     {"KP", "CN", 0},   // add by huawei
@@ -19,7 +20,7 @@ const struct cntry_locales_custom hw_translate_custom_table[] = {
     {"AE", "AE", 1},
     {"AR", "AR", 1},
     {"AT", "AT", 1},
-    {"AU", "AU", 2},
+    {"AU", "AU", 0},
     {"BE", "BE", 1},
     {"BG", "BG", 1},
     {"BN", "BN", 1},

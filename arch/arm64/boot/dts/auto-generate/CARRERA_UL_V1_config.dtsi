@@ -5,14 +5,7 @@
  */
 
 
-/include/ "fastboot.dtsi"
 /include/ "CARRERA_TUGL_V1_config.dtsi"
-/include/ "CARRERA_UL_V1_pin.dtsi"
-/include/ "CARRERA_UL_V1_hi6402_pin.dtsi"
-/include/ "CARRERA_UL_V1_modem_pin.dtsi"
-///include/ "CARRERA_UL_V1_charger.dtsi"
-///include/ "CARRERA_UL_V1_pmic.dtsi"
-///include/ "CARRERA_UL_V1_gpio_logic.dtsi"
 
 / {
 	hisi,boardid = <1 4 7 0 >;

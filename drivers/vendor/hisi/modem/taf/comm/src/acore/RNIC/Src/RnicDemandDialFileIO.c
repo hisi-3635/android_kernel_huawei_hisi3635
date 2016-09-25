@@ -155,8 +155,6 @@ ssize_t RNIC_WriteOnDemandFile(
     /* 获取按需拨号的模式以及时长的地址 */
     pstDialMode                         = RNIC_GetDialModeAddr();
 
-    vos_printf("RNIC_WriteOnDemandFile:buf%x len %d \n", *buf, len);
-
     if (len >= RNIC_ONDEMAND_FILE_LEN)
     {
         RNIC_ERROR_LOG1(ACPU_PID_RNIC, "RNIC_WriteOnDemandFile:len is!", len);

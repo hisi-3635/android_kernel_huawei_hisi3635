@@ -1255,6 +1255,10 @@ PS_BOOL_ENUM_UINT8 At_CheckOrigCnfCallType(
 );
 
 
+VOS_UINT32 AT_RcvTafPsEvtSetImsPdpCfgCnf(
+    VOS_UINT8                           ucIndex,
+    VOS_VOID                           *pEvtInfo
+);
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

@@ -93,6 +93,10 @@ typedef enum
     CMD_ACCEL_OFFSET_RESP,
     CMD_ACCEL_SELFTEST_REQ,
     CMD_ACCEL_SELFTEST_RESP,
+    CMD_ACCEL_FINGERSENSE_ENABLE_REQ,
+    CMD_ACCEL_FINGERSENSE_ENABLE_RESP,
+    CMD_ACCEL_FINGERSENSE_REQ_DATA_REQ,
+    CMD_ACCEL_FINGERSENSE_DATA_REPORT,
 
     //gyroscopy command
     CMD_GYRO_DATA_REQ = CMD_PRIVATE,
@@ -531,6 +535,12 @@ typedef struct
 	 uint32_t log_time;
      char    log[];
 }pkt_log_report_req_t;
+
+typedef struct
+{
+     pkt_header_t hd;
+     s16 zaxis_data[];
+}pkt_fingersense_data_report_req_t;
 
 typedef struct
 {

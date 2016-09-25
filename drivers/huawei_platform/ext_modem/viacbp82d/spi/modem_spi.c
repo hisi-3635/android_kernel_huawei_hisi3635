@@ -39,7 +39,7 @@
 #include "../viatel.h"
 #include <linux/kthread.h>
 #include <linux/wakelock.h>
-#include<huawei_platform/dsm/dsm_pub.h>
+#include<dsm/dsm_pub.h>
 #include <huawei_platform/log/log_switch.h>
 
 static unsigned int spi_tx_cnt = 0;
@@ -79,6 +79,8 @@ static int print_next_packet_once_after_resume = 0;
 //#define FIFO_SIZE    (VIA_SPI_FIFO_SIZE - VIA_SPI_PACKET_HEADER_SIZE)
 #define FIFO_SIZE    8*PAGE_SIZE   //PAGE_SIZE is 4096
 #define WAIT_DATA_ACK_TIMEOUT_ONCE_IN_MS (1000)
+
+#define MASK_TELNUMBE_LENGTH   (16)   //for  mask the last 4 number of telephone number
 
 static char *via_spi_start_buf;
 static char *via_spi_follow_buf;
@@ -245,8 +247,8 @@ static void spi_tx_rx_printk(const void *buf, unsigned char type)
                     spi_write_timeout_cnt, spi_read_timeout_cnt, respond_cflag80_timeout_cnt);
     }
 
-    if(count > 20)
-        count = 20;
+    if(count > MASK_TELNUMBE_LENGTH)
+        count = MASK_TELNUMBE_LENGTH;
     for(i = 0; i < count + 4; i++)
     {
         if ((0 == get_logctl_flag()) \
@@ -503,7 +505,7 @@ int respond_cflag80_packet_to_via_request_to_send(void)
         queue_work(port->respond_cflag80_q, &port->respond_cflag80_work);
         return 0;
     } else {
-        hwlog_err("%s %d VIA modem is POWER OFF, ERROR exit, port->index is %d.\n", __func__,__LINE__, port->index);
+        hwlog_err("%s %d VIA modem is POWER OFF, ERROR exit.\n", __func__,__LINE__);
         return -1;
     }
 }
@@ -968,8 +970,8 @@ static void spi_buffer_in_print(struct spi_modem_port *port, struct spi_buf_in_p
     memset(spi_print_buff, 0, sizeof(spi_print_buff));
     count = packet->size;
 
-    if( count > 20){
-        count = 20;
+    if( count > MASK_TELNUMBE_LENGTH){
+        count = MASK_TELNUMBE_LENGTH;
     }
     for(i = 0; i < count; i++)
     {
@@ -2310,6 +2312,32 @@ down_out:
 }
 EXPORT_SYMBOL(SDIO_UL_SendPacket);
 
+
+static unsigned long overrun_timeout=0;
+static unsigned long overrun_counts=0;
+static void print_overrun( unsigned char index)
+{
+ 
+    if( index == 1 ) //ets log
+    {
+        if( overrun_counts ==0 ) overrun_timeout = jiffies + HZ;
+
+        if(time_after(jiffies, overrun_timeout))
+        {
+             hwlog_err("%s %d: ttySPI%d data buffer overrun!(suppress %u)\n", __func__,__LINE__, index,overrun_counts+1);
+             overrun_counts=0;
+        }
+        else
+        {
+             overrun_counts++;
+             //hwlog_err("%s %d: ttySPI%d data buffer overrun!(suppress %ul),%ul,%ul\n", __func__,__LINE__, index,overrun_counts,jiffies,overrun_timeout);
+        }
+    }
+    else
+        hwlog_err("%s %d: ttySPI%d data buffer overrun!\n", __func__,__LINE__, index);
+ 
+}
+
 /*
  * This SPI interrupt handler.
  */
@@ -2568,7 +2596,7 @@ static void spi_read_port_work(struct work_struct *work)
                 if(port->spi_buf_in_size > SPI_BUF_IN_MAX_SIZE){
                     port->spi_buf_in_size -= (modem->data_length - payload_offset);
                     mutex_unlock(&port->spi_buf_in_mutex);
-                    hwlog_err("%s %d: ttySPI%d data buffer overrun!\n", __func__,__LINE__, index);
+                    print_overrun( index );
                 }
                 else{
                     packet = kzalloc(sizeof(struct spi_buf_in_packet), GFP_KERNEL);

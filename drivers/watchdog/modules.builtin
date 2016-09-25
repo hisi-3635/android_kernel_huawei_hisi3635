@@ -1,0 +1,2 @@
+kernel/drivers/watchdog/sp805_wdt.ko
+kernel/drivers/watchdog/hisi_extern_wdt.ko

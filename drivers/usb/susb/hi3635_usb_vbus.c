@@ -8,18 +8,14 @@
 
 irqreturn_t charger_connect_interrupt(int irq, void *p)
 {
-#ifndef CONFIG_ARCH_HI3630 /*just for compile*/
 	LOG_JANK_D(JLID_USBCHARGING_START,"JL_USBCHARGING_START");
-#endif
 	hisi_usb_otg_event(CHARGER_CONNECT_EVENT);
 	return IRQ_HANDLED;
 }
 
 irqreturn_t charger_disconnect_interrupt(int irq, void *p)
 {
-#ifndef CONFIG_ARCH_HI3630 /*just for compile*/
 	LOG_JANK_D(JLID_USBCHARGING_END,"JL_USBCHARGING_END");
-#endif
 	hisi_usb_otg_event(CHARGER_DISCONNECT_EVENT);
 	return IRQ_HANDLED;
 }

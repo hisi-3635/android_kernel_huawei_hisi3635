@@ -78,6 +78,10 @@
 #ifdef CONFIG_HW_WIFIPRO
 #include "wifipro_tcp_monitor.h"
 #endif
+#ifdef  CONFIG_HW_WIFI
+#include "wifi_tcp_statistics.h"
+#endif
+
 
 int sysctl_tcp_timestamps __read_mostly = 1;
 int sysctl_tcp_window_scaling __read_mostly = 1;
@@ -667,6 +671,16 @@ static void tcp_rtt_estimator(struct sock *sk, const __u32 mrtt)
 	 * does not matter how to _calculate_ it. Seems, it was trap
 	 * that VJ failed to avoid. 8)
 	 */
+#ifdef CONFIG_HW_WIFI
+	wifi_update_rtt(mrtt, sk);
+#endif
+
+#ifdef CONFIG_HW_WIFIPRO
+	if((is_wifipro_on || wifi_is_on()) && mrtt != 0){
+		wifipro_update_rtt(mrtt<<3, sk);
+	}
+#endif
+
 	if (m == 0)
 		m = 1;
 	if (tp->srtt != 0) {
@@ -3130,12 +3144,6 @@ static int tcp_clean_rtx_queue(struct sock *sk, int prior_fackets,
 		tcp_ack_update_rtt(sk, flag, seq_rtt);
 		tcp_rearm_rto(sk);
 
-#ifdef CONFIG_HW_WIFIPRO
-		if(is_wifipro_on && tp->srtt != 0 && !(flag & FLAG_RETRANS_DATA_ACKED)){
-		    wifipro_update_rtt(tp->srtt, sk);
-		}
-#endif
-
 		if (tcp_is_reno(tp)) {
 			tcp_remove_reno_sacks(sk, pkts_acked);
 		} else {
@@ -3943,7 +3951,17 @@ static void tcp_send_dupack(struct sock *sk, const struct sk_buff *skb)
 			tcp_dsack_set(sk, TCP_SKB_CB(skb)->seq, end_seq);
 		}
 	}
-
+#ifdef CONFIG_HW_WIFI
+	if( tp->dack_rcv_nxt == tp->rcv_nxt ) {
+		tp->dack_seq_num++;
+		if( tp->dack_seq_num == 3 ) {
+			wifi_IncrRcvDupAcksSegs(sk, 1);
+		}
+	} else {
+		tp->dack_rcv_nxt  = tp->rcv_nxt;
+		tp->dack_seq_num = 0;
+	}
+#endif
 	tcp_send_ack(sk);
 }
 

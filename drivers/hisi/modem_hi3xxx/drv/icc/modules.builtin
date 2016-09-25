@@ -1,0 +1,2 @@
+kernel/drivers/hisi/modem_hi3xxx/drv/icc/icc_balong.ko
+kernel/drivers/hisi/modem_hi3xxx/drv/icc/icc_balong_debug.ko

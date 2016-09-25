@@ -21,6 +21,15 @@ enum HISI_COULOMETER_TYPE {
     COUL_UNKNOW,
 };
 
+#define BASP_TAG "[BASP] " /* Battery Aging Safe Policy LOG TAG */
+#define VTERM_MAX_DEFAULT_MV (4400)
+#define MAX_BATT_CHARGE_CUR_RATIO (7) /* 0.7C */
+
+typedef struct AGING_SAFE_POLICY_TAG {
+   unsigned int volt_dec;  /* voltage decrease mV */
+   unsigned int cur_ratio; /* current discount ratio:cur_ratio/10 */
+   unsigned int learned_fcc; /* used as charging current 1C after fcc learned */
+}AGING_SAFE_POLICY_TYPE;
 struct hisi_coul_ops {
     int (*is_coul_ready)(void);
     int (*is_battery_exist)(void);
@@ -46,6 +55,7 @@ struct hisi_coul_ops {
     int (*battery_vbat_max)(void);
     int (*charger_event_rcv)(unsigned long);
     int (*battery_cycle_count)(void);
+    int (*aging_safe_policy)(AGING_SAFE_POLICY_TYPE *asp);
 };
 
 extern enum HISI_COULOMETER_TYPE hisi_coulometer_type(void);

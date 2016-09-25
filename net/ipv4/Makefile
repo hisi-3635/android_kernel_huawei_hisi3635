@@ -58,3 +58,5 @@ obj-$(CONFIG_XFRM) += xfrm4_policy.o xfrm4_state.o xfrm4_input.o \
 		      xfrm4_output.o
 obj-$(CONFIG_HW_WIFIPRO) += wifipro_tcp_monitor.o
 #chenwang add end
+
+obj-$(CONFIG_HW_WIFI) += wifi_tcp_statistics.o

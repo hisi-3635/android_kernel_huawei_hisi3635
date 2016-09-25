@@ -916,6 +916,31 @@ out:
 }
 EXPORT_SYMBOL(ion_unmap_iommu);
 
+#if defined(CONFIG_ARCH_HI3630)
+size_t ion_get_used_memory(struct ion_heap *heap)
+{
+	struct ion_device *dev = heap->dev;
+	struct rb_node *n;
+	size_t total_size = 0;
+
+	mutex_lock(&dev->buffer_lock);
+	for (n = rb_first(&dev->buffers); n; n = rb_next(n)) {
+		struct ion_buffer *buffer = rb_entry(n, struct ion_buffer,
+						     node);
+		if (buffer->heap->id != heap->id)
+			continue;
+		if (buffer->cpudraw_sg_table)
+			total_size += buffer->cpu_buffer_size;
+		else
+			total_size += buffer->size;
+	}
+	mutex_unlock(&dev->buffer_lock);
+
+	return total_size;
+}
+EXPORT_SYMBOL(ion_get_used_memory);
+#endif
+
 static int ion_debug_client_show(struct seq_file *s, void *unused)
 {
 	struct ion_client *client = s->private;
@@ -1302,11 +1327,9 @@ static int ion_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
 static void ion_dma_buf_release(struct dma_buf *dmabuf)
 {
 	struct ion_buffer *buffer = dmabuf->priv;
-#ifdef CONFIG_ION_HI6XXX
 	if(buffer->iommu_map){
 		kref_put(&buffer->iommu_map->ref, do_iommu_unmap);
 	}
-#endif
 	ion_buffer_put(buffer);
 }
 
@@ -1386,11 +1409,9 @@ struct dma_buf *ion_share_dma_buf(struct ion_client *client,
 	}
 	buffer = handle->buffer;
 	ion_buffer_get(buffer);
-#ifdef CONFIG_ION_HI6XXX
 	if(buffer->iommu_map){
 		kref_get(&buffer->iommu_map->ref);
 	}
-#endif
 	mutex_unlock(&client->lock);
 
 	dmabuf = dma_buf_export(buffer, &dma_buf_ops, buffer->size, O_RDWR);
@@ -1533,7 +1554,7 @@ int ion_sync_for_device(struct ion_client *client, int fd)
 
 	}
 
-#endif
+#else
 
 	if(buffer->size >= HISI_ION_FLUSH_ALL_CPUS_CACHES) {
 
@@ -1547,6 +1568,7 @@ int ion_sync_for_device(struct ion_client *client, int fd)
 			dma_sync_sg_for_device(NULL, buffer->sg_table->sgl,
 					buffer->sg_table->nents, DMA_BIDIRECTIONAL);
 	}
+#endif
 
 	dma_buf_put(dmabuf);
 	return 0;
@@ -1569,6 +1591,7 @@ int ion_sync_for_cpu(struct ion_client *client, int fd)
 {
 	struct dma_buf *dmabuf;
 	struct ion_buffer *buffer;
+	size_t size;
 
 	dmabuf = dma_buf_get(fd);
 	if (IS_ERR_OR_NULL(dmabuf)) {
@@ -1585,9 +1608,17 @@ int ion_sync_for_cpu(struct ion_client *client, int fd)
 	}
 	buffer = dmabuf->priv;
 
+#if defined(CONFIG_ARCH_HI3630)
+	size = buffer->cpudraw_sg_table ? buffer->cpu_buffer_size : buffer->size;
+	/* if buffer size is larger than 1 M, flush cache all */
+	if (size >= FLUSH_ALL_CPU_CACHE_BUF_SIZE) {
+		hi3630_fc_allcpu_allcache();
+	}
+#else
 	if(buffer->size >= HISI_ION_FLUSH_ALL_CPUS_CACHES) {
 		ion_flush_all_cpus_caches();
 	}
+#endif
 	else {
 		if (buffer->cpudraw_sg_table) {
 			dma_sync_sg_for_cpu(NULL, buffer->cpudraw_sg_table->sgl,

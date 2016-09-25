@@ -1216,7 +1216,36 @@ VOS_VOID AT_ReadIpv6BackProcExtCauseNV(VOS_VOID)
 
     return;
 }
+VOS_VOID AT_ReadIpv6AddrTestModeCfgNV(VOS_VOID)
+{
+    TAF_NVIM_IPV6_ADDR_TEST_MODE_CFG_STRU                   stIpv6AddrTestModeCfg;
+    AT_COMM_PS_CTX_STRU                                    *pstCommPsCtx = VOS_NULL_PTR;
+    VOS_UINT32                                              ulRslt;
+
+    PS_MEM_SET(&stIpv6AddrTestModeCfg, 0x00, sizeof(TAF_NVIM_IPV6_ADDR_TEST_MODE_CFG_STRU));
+
+    pstCommPsCtx = AT_GetCommPsCtxAddr();
+
+    ulRslt = NV_ReadEx(MODEM_ID_0,
+                       en_NV_Item_Ipv6_Address_Test_Mode_Cfg,
+                       &stIpv6AddrTestModeCfg,
+                       sizeof(stIpv6AddrTestModeCfg));
+
+    if ((NV_OK == ulRslt))
+    {
+        pstCommPsCtx->ulIpv6AddrTestModeCfg = stIpv6AddrTestModeCfg.ulIpv6AddrTestModeCfg;
+    }
+    else
+    {
+        pstCommPsCtx->ulIpv6AddrTestModeCfg = 0;
+    }
+
+    return;
+}
+
 #endif
+
+
 VOS_VOID AT_ReadSharePdpInfoNV(VOS_VOID)
 {
     TAF_NVIM_SHARE_PDP_INFO_STRU        stSharePdpInfo;
@@ -1290,6 +1319,8 @@ VOS_VOID  AT_ReadPsNV(VOS_VOID)
 
     /* 读取IPv6回退处理扩展原因值 */
     AT_ReadIpv6BackProcExtCauseNV();
+
+    AT_ReadIpv6AddrTestModeCfgNV();
 #endif
 
     /* 读取拨号系统托盘显示速率定制NV */

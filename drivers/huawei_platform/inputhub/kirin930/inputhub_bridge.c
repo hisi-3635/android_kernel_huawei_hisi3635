@@ -18,7 +18,7 @@
 #include <linux/wakelock.h>
 #include <linux/delay.h>
 #include <linux/hisi/hisi_mailbox.h>
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #include "inputhub_route.h"
 #include <linux/hisi/hisi_rproc.h>
 

@@ -32,6 +32,7 @@ int hisi_ov_compose_handler(struct hisi_fb_data_type *hisifd,
 
 	ret = hisi_dss_check_layer_par(hisifd, layer);
 	if (ret != 0) {
+		memcpy(pov_req, &(hisifd->ov_req_prev), sizeof(dss_overlay_t));
 		HISI_FB_ERR("hisi_dss_check_layer_par failed! ret = %d\n", ret);
 		goto err_return;
 	}
@@ -185,11 +186,22 @@ int hisi_overlay_pan_display(struct hisi_fb_data_type *hisifd)
 	int hal_format = 0;
 	uint8_t ovl_type = 0;
 
-	BUG_ON(hisifd == NULL);
+	if (NULL == hisifd) {
+		HISI_FB_ERR("NULL Pointer.\n");
+		return 0;
+	}
+
 	fbi = hisifd->fbi;
-	BUG_ON(fbi == NULL);
+	if (NULL == fbi) {
+		HISI_FB_ERR("NULL Pointer.\n");
+		return 0;
+	}
+
 	pov_req = &(hisifd->ov_req);
-	BUG_ON(pov_req == NULL);
+	if (NULL == pov_req) {
+		HISI_FB_ERR("NULL Pointer.\n");
+		return 0;
+	}
 
 	if (!hisifd->panel_power_on) {
 		HISI_FB_DEBUG("fb%d, panel is power off!", hisifd->index);
@@ -384,6 +396,12 @@ int hisi_ov_online_play(struct hisi_fb_data_type *hisifd, void __user *argp)
 			goto err_return;
 		}
 
+		ret = hisi_dss_check_userdata(hisifd, pov_req);
+		if (ret != 0) {
+			HISI_FB_ERR("hisi_dss_check_userdata failed!\n");
+			goto err_return;
+		}
+
 	#ifdef CONFIG_BUF_SYNC_USED
 		for (i = 0; i < pov_req->layer_nums; i++) {
 			if (pov_req->layer_infos[i].acquire_fence >= 0){
@@ -449,6 +467,13 @@ int hisi_ov_online_play(struct hisi_fb_data_type *hisifd, void __user *argp)
 		ret = copy_from_user(pov_req, argp, sizeof(dss_overlay_t));
 		if (ret) {
 			HISI_FB_ERR("copy_from_user failed!\n");
+			goto err_return;
+		}
+
+		ret = hisi_dss_check_userdata(hisifd, pov_req);
+		if (ret != 0) {
+			memcpy(pov_req, &(hisifd->ov_req_prev), sizeof(dss_overlay_t));
+			HISI_FB_ERR("hisi_dss_check_userdata failed!\n");
 			goto err_return;
 		}
 	}

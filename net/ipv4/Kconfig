@@ -647,3 +647,6 @@ config HW_WIFIPRO
 config HW_WIFIPRO_PROC
 	bool "Huawei wifipro proc support"
 	default n
+config HW_WIFI
+	bool "Huawei wifi tcp monitor support"
+	default n

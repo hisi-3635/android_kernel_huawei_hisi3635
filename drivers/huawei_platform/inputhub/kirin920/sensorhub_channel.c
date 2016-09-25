@@ -112,6 +112,8 @@ static long shb_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
         break;
     case SHB_IOCTL_APP_DISABLE_SENSOR:
         break;
+    case SHB_IOCTL_APP_DELAY_SENSOR:
+        break;
     /*begin huangwen 20120706*/
     case SHB_IOCTL_APP_GET_SENSOR_MCU_MODE:
         sensorMcuMode = getSensorMcuMode();
@@ -121,30 +123,6 @@ static long shb_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
         return 0;
         break;
     /*end huangwen 20120706*/
-    case SHB_IOCTL_APP_DELAY_ACCEL:
-    case SHB_IOCTL_APP_DELAY_LIGHT:
-    case SHB_IOCTL_APP_DELAY_PROXI:
-    case SHB_IOCTL_APP_DELAY_GYRO:
-    case SHB_IOCTL_APP_DELAY_GRAVITY:
-    case SHB_IOCTL_APP_DELAY_MAGNETIC:
-    case SHB_IOCTL_APP_DELAY_ROTATESCREEN:
-    case SHB_IOCTL_APP_DELAY_LINEARACCELERATE:
-    case SHB_IOCTL_APP_DELAY_ORIENTATION:
-    case SHB_IOCTL_APP_DELAY_ROTATEVECTOR:
-    case SHB_IOCTL_APP_DELAY_PRESSURE:
-    case SHB_IOCTL_APP_DELAY_TEMPERATURE:
-    case SHB_IOCTL_APP_DELAY_RELATIVE_HUMIDITY:
-    case SHB_IOCTL_APP_DELAY_AMBIENT_TEMPERATURE:
-    case SHB_IOCTL_APP_DELAY_MCU_LABC:
-    case SHB_IOCTL_APP_DELAY_HALL:
-    case SHB_IOCTL_APP_DELAY_MAGNETIC_FIELD_UNCALIBRATED:
-    case SHB_IOCTL_APP_DELAY_GAME_ROTATION_VECTOR:
-    case SHB_IOCTL_APP_DELAY_GYROSCOPE_UNCALIBRATED:
-    case SHB_IOCTL_APP_DELAY_SIGNIFICANT_MOTION:
-    case SHB_IOCTL_APP_DELAY_STEP_DETECTOR:
-    case SHB_IOCTL_APP_DELAY_STEP_COUNTER:
-    case SHB_IOCTL_APP_DELAY_GEOMAGNETIC_ROTATION_VECTOR:
-        break;
     default:
         hwlog_err("shb_ioctl unknown cmd : %d\n", cmd);
         return -ENOTTY;

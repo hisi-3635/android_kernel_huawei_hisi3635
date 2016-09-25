@@ -248,6 +248,13 @@ extern "C" {
 #define AT_PS_CALL_INVALID_CID          (0xFF)
 #define AT_PS_CALL_INVALID_CALLID       (0xFF)
 
+/* IPV6地址后8个字节全零，则认为是无效的 */
+#define AT_PS_IS_IPV6_ADDR_IID_VALID(aucIpv6Addr)\
+            !((aucIpv6Addr[8] == 0x00) && (aucIpv6Addr[9] == 0x00)\
+             && (aucIpv6Addr[10] == 0x00) && (aucIpv6Addr[11] == 0x00)\
+             && (aucIpv6Addr[12] == 0x00) && (aucIpv6Addr[13] == 0x00)\
+             && (aucIpv6Addr[14] == 0x00) && (aucIpv6Addr[15] == 0x00))
+
 
 #if (FEATURE_ON == FEATURE_IPV6)
 /* IPv6 接口ID, 长度为64bit */

@@ -68,7 +68,7 @@ extern unsigned int get_datamount_flag(void);
 extern unsigned int get_boot_into_recovery_flag(void);
 #endif
 #ifdef CONFIG_HUAWEI_FS_DSM
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 struct dsm_dev dsm_fs = {
 	.name = "dsm_fs",
 	.device_name = NULL,

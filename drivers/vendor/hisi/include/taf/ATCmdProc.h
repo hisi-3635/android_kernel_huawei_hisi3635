@@ -1254,13 +1254,21 @@ typedef enum
     AT_CMD_APDSFLOWRPTCFG,
 
     AT_CMD_DSFLOWNVWRCFG,
-    
+
     /* Added by zwx247453 for VOLTE SWITCH, 2015-02-02, Begin */
     AT_CMD_IMSSWITCH,
     AT_CMD_CEVDP,
     /* Added by zwx247453 for VOLTE SWITCH, 2015-02-02, End */
 
     AT_CMD_NVWRSECCTRL,
+
+    AT_CMD_IMSPDPCFG,
+
+    AT_CMD_LOGENALBE,
+
+    /* Added by z00301431 for ACT_PDP_STUB, 2015-11-4, begin */
+    AT_CMD_ACTPDPSTUB,
+    /* Added by z00301431 for ACT_PDP_STUB, 2015-11-4, end */
 
     AT_CMD_COMM_BUTT,
 
@@ -2039,6 +2047,8 @@ typedef enum
     AT_CMD_DSFLOWNVWRCFG_QRY,
 
     AT_CMD_NVWRSECCTRL_SET,
+
+    AT_CMD_IMSPDPCFG_SET,
 
     AT_CMD_INVALID,
 

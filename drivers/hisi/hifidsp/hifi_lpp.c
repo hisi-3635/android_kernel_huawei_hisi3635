@@ -76,6 +76,7 @@ extern "C" {
 #define SEND_MSG_TO_HIFI DRV_MAILBOX_SENDMAIL
 #endif
 
+#define RETRY_COUNT (5)
 static DEFINE_SEMAPHORE(s_misc_sem);
 
 LIST_HEAD(recv_sync_work_queue_head);
@@ -396,7 +397,12 @@ static void hifi_misc_mesg_process(struct common_hifi_cmd* cmd)
 		{
 			struct dp_clk_request *dp_clk_cmd = NULL;
 			dp_clk_cmd = (struct dp_clk_request *)kmalloc(sizeof(struct dp_clk_request), GFP_ATOMIC);
-			BUG_ON(NULL == dp_clk_cmd);
+			if (!dp_clk_cmd) {
+				loge("malloc fail\n");
+				break;
+			}
+			memset(dp_clk_cmd, 0, sizeof(struct dp_clk_request));
+
 			logi("multi mic cmd: 0x%x.\n", cmd->msg_id);
 			memcpy(&(dp_clk_cmd->dp_clk_msg),cmd,sizeof(struct common_hifi_cmd));
 
@@ -541,8 +547,8 @@ static int hifi_dsp_get_input_param(unsigned int usr_para_size, void *usr_para_a
 	para_size_in = usr_para_size + SIZE_CMD_ID;
 
 	/* 限制分配空间 */
-	if (para_size_in > SIZE_LIMIT_PARAM) {
-		loge("para_size_in exceed LIMIT(%u/%u).\n", para_size_in, SIZE_LIMIT_PARAM);
+	if ((para_size_in > SIZE_LIMIT_PARAM) || (para_size_in <= SIZE_CMD_ID)) {
+		loge("para_size_in(%u) exceed LIMIT(%u/%u).\n", para_size_in, SIZE_CMD_ID, SIZE_LIMIT_PARAM);
 		goto ERR;
 	}
 
@@ -597,10 +603,10 @@ static void hifi_dsp_get_input_param_free(void **krn_para_addr)
 
 
 static int hifi_dsp_get_output_param(unsigned int krn_para_size, void *krn_para_addr,
-									 unsigned int *usr_para_size, void *usr_para_addr)
+									 unsigned int *usr_para_size, void __user *usr_para_addr)
 {
 	int ret			= OK;
-	void *para_to = NULL;
+	void __user *para_to = NULL;
 	unsigned int para_n = 0;
 
 	IN_FUNCTION;
@@ -643,7 +649,7 @@ static int hifi_dsp_get_output_param(unsigned int krn_para_size, void *krn_para_
 	}
 
 	*usr_para_size = para_n;
-	hifi_misc_msg_info(*(unsigned short*)para_to);
+	hifi_misc_msg_info(*(unsigned short*)krn_para_addr);
 
 END:
 	OUT_FUNCTION;
@@ -662,7 +668,7 @@ static int hifi_dsp_async_cmd(unsigned long arg)
 
 	IN_FUNCTION;
 
-	if (copy_from_user(&param,(void*) arg, sizeof(struct misc_io_async_param))) {
+	if (copy_from_user(&param, (void*)arg, sizeof(struct misc_io_async_param))) {
 		loge("copy_from_user fail.\n");
 		ret = ERROR;
 		goto END;
@@ -700,8 +706,8 @@ static int hifi_dsp_sync_cmd(unsigned long arg)
 	void *para_krn_in = NULL;
 	unsigned int para_krn_size_in = 0;
 	HIFI_CHN_CMD *cmd_para = NULL;
-	void* para_addr_in	= NULL;
-	void* para_addr_out = NULL;
+	void __user *para_addr_in = NULL;
+	void __user *para_addr_out = NULL;
 	struct recv_request *recv = NULL;
 
 	IN_FUNCTION;
@@ -832,10 +838,9 @@ static int hifi_dsp_wakeup_read_thread(unsigned long arg)
 		loge("recv kmalloc failed.\n");
 		return -ENOMEM;
 	}
+	memset(recv, 0, sizeof(struct recv_request));
 
 	wake_lock_timeout(&s_misc_data.hifi_misc_wakelock, HZ);
-
-	memset(recv, 0, sizeof(struct recv_request));
 
 	/* 分配总的空间 */
 	recv->rev_msg.mail_buff = (unsigned char *)kmalloc(SIZE_LIMIT_PARAM, GFP_ATOMIC);
@@ -901,9 +906,16 @@ static int hifi_dsp_write_param(unsigned long arg)
 			hifi_param_vir_addr, (*(int *)hifi_param_vir_addr));
 
 	logd("user addr = 0x%p, size = %d \n", para_addr_in, para.para_size_in);
+
+	if (SIZE_PARAM_PRIV < para.para_size_in) {
+		loge("the ioremap size :%d is smaller than user size:%d\n", SIZE_PARAM_PRIV, para.para_size_in);
+		ret = ERROR;
+		goto error2;
+	}
+
 	ret = copy_from_user(hifi_param_vir_addr, (void __user *)para_addr_in, para.para_size_in);
 
-	if ( ret != 0) {
+	if (ret != 0) {
 		loge("copy data to hifi error! ret = %d.\n", ret);
 	}
 
@@ -912,7 +924,17 @@ error2:
 		iounmap(hifi_param_vir_addr);
 	}
 
-	put_user(ret, (int __user *)para_addr_out);
+	if (para.para_size_out != sizeof(ret)) {
+		loge("the para_size_out(%u) is not equal to sizeof(ret)(%u) \n", para.para_size_out, sizeof(ret));
+		ret = ERROR;
+		goto error1;
+	}
+
+	ret = copy_to_user((void __user *)para_addr_out, &ret, sizeof(ret));
+	if (ret) {
+		loge("copy data to user fail! ret = %d.\n", ret);
+		ret = ERROR;
+	}
 
 error1:
 	OUT_FUNCTION;
@@ -1010,7 +1032,7 @@ static long hifi_misc_ioctl(struct file *fd,
 #ifdef PLATFORM_HI3XXX
 		case HIFI_MISC_IOCTL_DISPLAY_MSG:
 			logi("ioctl: HIFI_MISC_IOCTL_DISPLAY_MSG.\n");
-			ret = hifi_get_dmesg(arg);
+			ret = hifi_get_dmesg((void __user *)arg);
 			break;
 #endif
 		case HIFI_MISC_IOCTL_WAKEUP_THREAD:
@@ -1034,6 +1056,11 @@ static int hifi_misc_mmap(struct file *file, struct vm_area_struct *vma)
 	unsigned long phys_page_addr = 0;
 	unsigned long size = 0;
 	IN_FUNCTION;
+
+	if (NULL == (void *)vma) {
+		logd("input error: vma is NULL\n");
+		return ERROR;
+	}
 
 	phys_page_addr = (u64)s_misc_data.hifi_priv_base_phy >> PAGE_SHIFT;
 	size = ((unsigned long)vma->vm_end - (unsigned long)vma->vm_start);
@@ -1066,11 +1093,17 @@ static int hifi_misc_mmap(struct file *file, struct vm_area_struct *vma)
 static ssize_t hifi_misc_proc_read(struct file *file, char __user *buf,
 								   size_t count, loff_t *ppos)
 {
+	static int retry_cnt = 0;
 	int len = 0, ret = OK;
 	struct recv_request *recv = NULL;
 	struct misc_recmsg_param *recmsg = NULL;
 
 	IN_FUNCTION;
+
+	if (NULL == buf) {
+		loge("input error: buf is NULL\n");
+		return -EINVAL;
+	}
 
 	if (!hifi_is_loaded()) {
 		loge("hifi isn't loaded.\n");
@@ -1099,19 +1132,28 @@ static ssize_t hifi_misc_proc_read(struct file *file, char __user *buf,
 		recv = list_entry(recv_proc_work_queue_head.next, struct recv_request, recv_node);
 		if (recv) {
 			len = recv->rev_msg.mail_buff_len;
+			recmsg = (struct misc_recmsg_param*)recv->rev_msg.mail_buff;
 
-			if (unlikely(len >= PAGE_MAX_SIZE)) {
-				loge("buff size is invalid: %d(>= 4K or <=8).\n", len);
+			if (unlikely((len >= PAGE_MAX_SIZE) || (len <= SIZE_CMD_ID) || (!recmsg))) {
+				loge("buff size is invalid: %d(>= 4K or <=8) or msg is null.\n", len);
 				ret = (int)ERROR;
 			} else {
-				recmsg = (struct misc_recmsg_param*)recv->rev_msg.mail_buff;
-				len = recv->rev_msg.mail_buff_len - SIZE_CMD_ID;
-				ret = len;
-				/*将数据写到page中*/
-				if (copy_to_user(buf, recv->rev_msg.mail_buff, len)) {
-					loge("copy to user fail.\n");
-					ret = 0;
+				len -= SIZE_CMD_ID;
+				ret = (int)copy_to_user(buf, recv->rev_msg.mail_buff, len);
+				if (ret > 0) {
+					loge("copy to user fail, ret : %d, retry cnt: %d., buf addr: 0x%lx\n", ret, retry_cnt, (u64)buf);
+
+					if (retry_cnt < RETRY_COUNT) {
+						wake_up(&s_misc_data.proc_waitq);
+						s_misc_data.wait_flag++;
+						retry_cnt ++;
+						ret = len - ret;
+						goto exit;
+					}
 				}
+
+				retry_cnt = 0;
+				ret = len - ret;
 				logi("msgid: 0x%x, len: %d, %d, play status(0 - done normal, 1 - done complete, 2 -- done abnormal, 3 -- reset): %d.\n", recmsg->msgID, len, recv->rev_msg.mail_buff_len,recmsg->playStatus);
 			}
 
@@ -1126,6 +1168,7 @@ static ssize_t hifi_misc_proc_read(struct file *file, char __user *buf,
 		loge("queue is null.\n");
 	}
 
+exit:
 	spin_unlock_bh(&s_misc_data.recv_proc_lock);
 
 	OUT_FUNCTION;
@@ -1361,7 +1404,7 @@ static int hifi_misc_sync_cmd(void *para_in, unsigned int para_in_size, void *pa
     }
 
     para_krn_size_in = para_in_size + SIZE_CMD_ID;
-    if (para_krn_size_in > SIZE_LIMIT_PARAM) {
+    if ((para_krn_size_in > SIZE_LIMIT_PARAM) || (para_krn_size_in <= SIZE_CMD_ID)) {
         loge("para_krn_size_in exceed LIMIT(%u/%u).\n", para_krn_size_in, SIZE_LIMIT_PARAM);
         ret = ERROR;
         goto END;
@@ -1452,8 +1495,6 @@ EXIT:
     OUT_FUNCTION;
     return ret;
 }
-
-
 static int hifi_misc_probe (struct platform_device *pdev)
 {
 	int ret = OK;

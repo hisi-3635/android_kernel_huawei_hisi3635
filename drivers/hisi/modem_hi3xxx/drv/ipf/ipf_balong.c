@@ -60,6 +60,7 @@ extern "C" {
 #include <linux/mman.h>
 #include <bsp_pm_om.h>
 #include <linux/syscore_ops.h>
+#include <linux/skbuff.h>
 
 //#include <asm/system.h>
 //#include <asm/irq.h>
@@ -77,9 +78,11 @@ extern "C" {
 
 #if (defined(BSP_CONFIG_HI3630))
 #include <bsp_ipc.h>
+#include "osl_cache.h"
 #endif
 #include <bsp_ipf.h>
 
+#define MAX_PM_OM_SAVE_SIZE 	40
 IPF_UL_S g_stIpfUl = {0};
 IPF_DL_S g_stIpfDl = {0};
 /* 调试信息结构体 */
@@ -4262,19 +4265,26 @@ static inline void ipf_pm_print_packet(void *buf, size_t len)
 				return;
 			}
 		}
-	 
-		if (len > 64) {
-			len = 64;
+
+		virt = (void *)(((struct sk_buff*)virt)->data);
+		if (!virt_addr_valid(virt)){
+			return;
 		}
 		
+		if (len > MAX_PM_OM_SAVE_SIZE) {
+			len = MAX_PM_OM_SAVE_SIZE;
+		}
+
+		dma_unmap_single(&(balong_device_ipf.dev), (dma_addr_t)virt_to_phys(virt), len, DMA_FROM_DEVICE);
+
 		bsp_pm_log(PM_OM_AIPF, len, virt);
-		
-		printk("[C SR]IPF save pm-on ok\n");
+
+		print_hex_dump(KERN_INFO, "", DUMP_PREFIX_ADDRESS, 16, 1, virt, len, 0);
+
 		g_stIPFDebugInfo->ipf_wakeup_acore_intr_count = 0;
 	}
 	return;
 }
-
 
 /*****************************************************************************
 * 函 数 名     : BSP_IPF_GetDlRd

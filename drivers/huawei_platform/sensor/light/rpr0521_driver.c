@@ -176,6 +176,42 @@ static const struct GAIN_TABLE {
     {128,  64},   /* 14 */
     {128, 128}    /* 15 */
 };
+static struct sensors_classdev rohm_als_cdev = {
+       .path_name="als_sensor",
+	.name = "Light sensor",
+	.vendor = "ROHM_RPR521",
+	.version = 1,
+	.handle = SENSORS_LIGHT_HANDLE,
+	.type = SENSOR_TYPE_LIGHT,
+	.max_range = "10000",
+	.resolution = "0.0125",
+	.sensor_power = "0.75",
+	.min_delay = 0,
+	.delay_msec = 200,
+	.fifo_reserved_event_count = 0,
+	.fifo_max_event_count = 0,
+	.enabled = 0,
+	.sensors_enable = NULL,
+	.sensors_poll_delay = NULL,
+};
+static struct sensors_classdev rohm_ps_cdev = {
+       .path_name="ps_sensor",
+	.name = "Proximity sensor",
+	.vendor = "ROHM_RPR521",
+	.version = 1,
+	.handle = SENSORS_PROXIMITY_HANDLE,
+	.type = SENSOR_TYPE_PROXIMITY,
+	.max_range = "5",
+	.resolution = "5",
+	.sensor_power = "0.75",
+	.min_delay = 0,
+	.delay_msec = 200,
+	.fifo_reserved_event_count = 0,
+	.fifo_max_event_count = 0,
+	.enabled = 0,
+	.sensors_enable = NULL,
+	.sensors_poll_delay = NULL,
+};
 static int rpr521_init_client(struct i2c_client *client);
 
 
@@ -2059,6 +2095,227 @@ static void rpr521_power_screen_handler(struct work_struct *work)
 	}
 	schedule_delayed_work(&data->power_work, msecs_to_jiffies(500));
 }
+static int rohm_als_poll_delay_set(struct sensors_classdev *sensors_cdev,unsigned int delay_msec)
+{
+    struct ALS_PS_DATA *als_ps = container_of(sensors_cdev,struct ALS_PS_DATA, als_cdev);
+    unsigned int val = delay_msec;
+    unsigned long flags;
+     if(als_ps==NULL)
+    {
+        als_ps_INFO("[ALS_PS]%s: SET DELAY ERRR\n", __func__);
+        return -1;
+    }
+
+    als_ps_INFO("[ALS_PS][%s] val=%d\n", __func__, val);
+    if (val < PS_ALS_SET_MIN_DELAY_TIME )
+    {
+        val = PS_ALS_SET_MIN_DELAY_TIME;
+    }
+
+    als_ps->als_poll_delay = val ;
+
+    if (als_ps->enable_als_sensor == 1)//grace modified in 2013.10.09
+    {
+
+        /* we need this polling timer routine for sunlight canellation */
+        spin_lock_irqsave(&als_ps->update_lock.wait_lock, flags); 
+        	
+        /*
+         * If work is already scheduled then subsequent schedules will not
+         * change the scheduled time that's why we have to cancel it first.
+         */
+        cancel_delayed_work(&als_ps->als_dwork);
+        schedule_delayed_work(&als_ps->als_dwork, msecs_to_jiffies(als_ps->als_poll_delay));	// 125ms
+        		
+        spin_unlock_irqrestore(&als_ps->update_lock.wait_lock, flags);	
+
+    }
+    return 0;
+}
+
+static int rohm_als_enable_set(struct sensors_classdev *sensors_cdev,unsigned int enable)
+{
+    struct ALS_PS_DATA *als_ps = container_of(sensors_cdev,struct ALS_PS_DATA, als_cdev);
+    struct i2c_client *client = als_ps->client;
+    unsigned int val=enable;
+    unsigned long flags;
+    int tmp;
+    als_ps_INFO("[ALS_PS]%s: enable=%d,val=%d\n", __func__,enable,val);
+    if ((val != 0) && (val != 1)) 
+    {
+        als_ps_INFO("[ALS_PS]%s: enable als sensor=%d\n",__func__, val);
+        return -1;
+    }
+
+    if(val == 1)
+    {
+    	//turn on light  sensor
+        if (als_ps->enable_als_sensor==0)
+        {
+            if(als_ps->enable_ps_sensor == 0)
+            {
+                als_ps_INFO("[ALS_PS]rpr521_store_enable_als_sensor-grace test before power on/n"); //grace modify in 2014.7.28
+                tmp = rpr521_init_client(client);
+                if (tmp<0) 
+                {
+                    als_ps_INFO("[ALS_PS]%s:line:%d,Failed to init rpr521\n", __func__, __LINE__);
+                    return tmp;
+                }
+            }
+            luxsection = MAX_SECTION;			//make luxsection= 7 to print the luxvalue on first enable ALS
+            lastluxvalue = g_luxsection[6]+lux_stepbuff;	//make sure after resume, print the luxval
+            als_ps->enable_als_sensor = 1;
+            tmp=Rpr0521_i2c_read(client, REG_MODECONTROL,RPR0521_I2C_BYTE);
+            if(tmp<0)
+            {
+                als_ps_INFO("[ALS_PS]%s,error: tmp=%x\n", __func__, tmp);
+                return tmp;
+            }
+            tmp = tmp | 0x80;
+            rpr521_set_enable(client, tmp);	//ALS on
+
+        }
+        spin_lock_irqsave(&als_ps->update_lock.wait_lock, flags); 
+        cancel_delayed_work(&als_ps->als_dwork);
+        schedule_delayed_work(&als_ps->als_dwork, msecs_to_jiffies(als_ps->als_poll_delay));	// 125ms
+        spin_unlock_irqrestore(&als_ps->update_lock.wait_lock, flags);	
+    }
+    else
+    {
+        if(als_ps->enable_als_sensor == 1)
+        {
+            als_ps->enable_als_sensor = 0;
+            tmp=Rpr0521_i2c_read(client, REG_MODECONTROL,RPR0521_I2C_BYTE);
+            if(tmp<0)
+            {
+                als_ps_INFO("[ALS_PS]%s,error: tmp=%x\n", __func__, tmp);
+                return tmp;
+            }
+            tmp = tmp & (~0x80);
+            rpr521_set_enable(client, tmp);	//PS on and ALS off
+        }
+        spin_lock_irqsave(&als_ps->update_lock.wait_lock, flags); 
+        cancel_delayed_work(&als_ps->als_dwork);
+        spin_unlock_irqrestore(&als_ps->update_lock.wait_lock, flags);	
+    }
+    return 0;
+}
+static int rohm_ps_enable_set(struct sensors_classdev *sensors_cdev,unsigned int enable)
+{
+    struct ALS_PS_DATA *als_ps = container_of(sensors_cdev,struct ALS_PS_DATA, ps_cdev);
+    struct i2c_client *client = als_ps->client;
+    unsigned int val=enable;
+    int tmp;
+    als_ps_INFO("[ALS_PS]%s: enable=%d,val=%d\n", __func__,enable,val);
+    if ((val != 0) && (val != 1)) 
+    {
+        als_ps_INFO("[ALS_PS]%s: enable als sensor=%d\n",__func__, val);
+        return -1;
+    }
+
+    if(val == 1) 
+    {
+        /* report 1*/
+        input_report_abs(als_ps->input_dev_ps, ABS_DISTANCE, 1);
+        input_sync(als_ps->input_dev_ps);
+        //turn on p sensor
+        loop = 10;
+        if (als_ps->enable_ps_sensor == 0) 
+        {
+            if(als_ps->enable_als_sensor == 0)
+            {
+                als_ps_INFO("[ALS_PS]%s: ALS and PS power on.\n",__func__);
+                tmp = rpr521_init_client(client);
+                if (tmp<0) 
+                {
+                    als_ps_INFO("[ALS_PS]%s:line:%d,Failed to init rpr521\n", __func__, __LINE__);
+                    return tmp;
+                }
+            }
+            else
+            {
+                tmp=Rpr0521_i2c_read(client, REG_MODECONTROL,RPR0521_I2C_BYTE);
+                if(tmp<0)
+                {
+                    als_ps_ERR("[ALS_PS]%s,read REG_MODECONTROL reg error: tmp=%x\n", __func__, tmp);
+                    return tmp;
+                }
+
+                if (tmp&0x80)		//ALS device power on
+                {
+                    tmp=Rpr0521_i2c_write(client, REG_PSTH, 960,RPR0521_I2C_WORD);
+                    if (tmp<0) 
+                    {
+                        als_ps_INFO("[ALS_PS]%s:line:%d,Failed to init REG_PSTH.\n", __func__, __LINE__);
+                        return tmp;
+                    }
+                    tmp=Rpr0521_i2c_write(client, REG_PSTL, 959,RPR0521_I2C_WORD);
+                    if (tmp<0) 
+                    {
+                        als_ps_INFO("[ALS_PS]%s:line:%d,Failed to init REG_PSTL.\n", __func__, __LINE__);
+                        return tmp;
+                    }
+                }
+                else 			//ALS device power off
+                {
+                    tmp = rpr521_init_client(client);
+                    if (tmp < 0) 
+                    {
+                        als_ps_INFO("[ALS_PS]%s:line:%d,Failed to init rpr521\n", __func__, __LINE__);
+                        return tmp;
+                    }
+                    tmp=Rpr0521_i2c_read(client, REG_MODECONTROL,RPR0521_I2C_BYTE);
+                    if(tmp<0)
+                    {
+                        als_ps_ERR("[ALS_PS]%s,read REG_MODECONTROL reg error: tmp=%x\n", __func__, tmp);
+                        return tmp;
+                    }
+                    tmp = tmp | 0x80;
+                    rpr521_set_enable(client, tmp);	//ALS on
+                }
+            }
+
+            als_ps->enable_ps_sensor = 1;
+
+            tmp=Rpr0521_i2c_read(client, REG_MODECONTROL,RPR0521_I2C_BYTE);
+            if(tmp<0)
+            {
+                als_ps_INFO("[ALS_PS]%s,error: tmp=%x\n", __func__, tmp);
+                return tmp;
+            }
+            tmp = tmp | 0x40;
+            rpr521_set_enable(client, tmp);	//PS on
+            power_key_ps=false;
+            schedule_delayed_work(&als_ps->power_work, msecs_to_jiffies(100));
+            enable_irq(als_ps->irq_gpio);
+
+        }
+        else
+        {
+            als_ps_INFO("[ALS_PS]%s:enable alrady\n", __func__);
+        }
+    } 
+    else 
+    {
+        if(als_ps->enable_ps_sensor == 1)
+        {
+            als_ps->enable_ps_sensor = 0;
+            cancel_delayed_work(&als_ps->power_work);
+            tmp=Rpr0521_i2c_read(client, REG_MODECONTROL,RPR0521_I2C_BYTE);
+            if(tmp<0)
+            {
+                als_ps_INFO("[ALS_PS]%s,error: tmp=%x\n", __func__, tmp);
+                return tmp;
+            }
+            tmp = tmp & (~0x40);
+            rpr521_set_enable(client, tmp);	//PS on and ALS off
+            disable_irq(als_ps->irq_gpio);
+        //wake_unlock(&ps_lock);
+        }
+    }
+
+    return 0;
+}
 static int rpr521_probe(struct i2c_client *client,
 				   const struct i2c_device_id *id)
 {
@@ -2221,7 +2478,22 @@ static int rpr521_probe(struct i2c_client *client,
 		       als_ps->input_dev_ps->name);
 		goto exit_unregister_dev_als;
 	}
-
+       als_ps->als_cdev=rohm_als_cdev;
+       als_ps->als_cdev.sensors_enable=rohm_als_enable_set;
+       als_ps->als_cdev.sensors_poll_delay=rohm_als_poll_delay_set;
+       err = sensors_classdev_register(&client->dev, &als_ps->als_cdev);
+       if (err) 
+       {
+            als_ps_ERR("[ALS_PS]unable to register sensors_classdev: %d\n",err);
+       }
+       als_ps->ps_cdev=rohm_ps_cdev;
+       als_ps->ps_cdev.sensors_enable=rohm_ps_enable_set;
+       als_ps->ps_cdev.sensors_poll_delay=NULL;
+       err = sensors_classdev_register(&client->dev, &als_ps->ps_cdev);
+       if (err) 
+       {
+            als_ps_ERR("[ALS_PS]unable to register sensors_classdev: %d\n",err);
+       }
 	/* Register sysfs hooks */
 	err = sysfs_create_group(&client->dev.kobj, &rpr521_attr_group);
 	if (err)

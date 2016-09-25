@@ -2,7 +2,7 @@
 #define _LOG_EXCEPTION_H
 
 
-#define LOG_EXCEPTION_FS "/dev/log/exception"
+#define LOG_EXCEPTION_FS "/dev/hwlog_exception"
 
 #if defined (CONFIG_LOG_EXCEPTION)
 extern int log_to_exception(char* tag, char* msg);

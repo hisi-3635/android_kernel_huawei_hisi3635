@@ -5,14 +5,7 @@
  */
 
 
-/include/ "fastboot.dtsi"
 /include/ "CARRERA_TUGL_VN1_FPGA_config.dtsi"
-/include/ "CARRERA_TUGL_VN2_32G_pin.dtsi"
-/include/ "CARRERA_TUGL_VN2_32G_hi6402_pin.dtsi"
-/include/ "CARRERA_TUGL_VN2_32G_modem_pin.dtsi"
-///include/ "CARRERA_TUGL_VN2_32G_charger.dtsi"
-///include/ "CARRERA_TUGL_VN2_32G_pmic.dtsi"
-///include/ "CARRERA_TUGL_VN2_32G_gpio_logic.dtsi"
 
 / {
 	hisi,boardid = <1 4 8 6 >;

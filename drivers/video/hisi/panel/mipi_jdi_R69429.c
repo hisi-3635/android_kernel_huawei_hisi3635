@@ -41,6 +41,7 @@ static struct hisi_fb_panel_data jdi_panel_data;
 static int hkadc_buf = 0;
 static bool checksum_enable_ctl = false;
 static bool g_debug_enable = false;
+static int g_support_mode = 0;
 
 extern int fastboot_set_needed;
 
@@ -1097,6 +1098,50 @@ static ssize_t mipi_jdi_panel_lcd_cabc_mode_store(struct platform_device *pdev,
     return snprintf((char *)buf, count, "%d\n", cabc_mode);
 }
 
+static ssize_t mipi_jdi_panel_lcd_support_mode_show(struct platform_device *pdev,
+	char *buf)
+{
+	struct hisi_fb_data_type *hisifd = NULL;
+	ssize_t ret = 0;
+
+	BUG_ON(pdev == NULL);
+	hisifd = platform_get_drvdata(pdev);
+	BUG_ON(hisifd == NULL);
+
+	HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
+
+	ret = snprintf(buf, PAGE_SIZE, "%d\n", g_support_mode);
+
+	HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
+
+	return ret;
+}
+
+static ssize_t mipi_jdi_panel_lcd_support_mode_store(struct platform_device *pdev,
+	const char *buf, size_t count)
+{
+	int ret = 0;
+	unsigned long val = 0;
+	int flag=-1;
+	struct hisi_fb_data_type *hisifd = NULL;
+	BUG_ON(pdev == NULL);
+	hisifd = platform_get_drvdata(pdev);
+	BUG_ON(hisifd == NULL);
+
+	ret = strict_strtoul(buf, 0, &val);
+	if (ret)
+               return ret;
+
+	HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
+
+	flag=(int)val;
+
+	g_support_mode = flag;
+	
+	HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
+	
+	return snprintf((char *)buf, count, "%d\n", g_support_mode);
+}
 
 static int mipi_jdi_panel_set_sre(struct platform_device* pdev, int enable)
 {
@@ -1598,6 +1643,8 @@ static struct hisi_fb_panel_data jdi_panel_data = {
     .set_fastboot = mipi_jdi_panel_set_fastboot,
     .lcd_cabc_mode_store = mipi_jdi_panel_lcd_cabc_mode_store,
     .lcd_cabc_mode_show = mipi_jdi_panel_lcd_cabc_mode_show,
+	.lcd_support_mode_show = mipi_jdi_panel_lcd_support_mode_show,
+	.lcd_support_mode_store = mipi_jdi_panel_lcd_support_mode_store,
 	.lcd_check_reg = mipi_jdi_panel_lcd_check_reg_show,
 	.lcd_mipi_detect = mipi_jdi_panel_lcd_mipi_detect_show,
 	.lcd_hkadc_debug_show = mipi_jdi_panel_lcd_hkadc_debug_show,
@@ -1618,7 +1665,7 @@ static int mipi_jdi_probe(struct platform_device *pdev)
 {
     int ret = 0;
     struct hisi_panel_info *pinfo = NULL;
-
+	int support_mode = 0;
     
     struct device_node *np = NULL;
     uint32_t bl_type = 0;
@@ -1707,6 +1754,18 @@ static int mipi_jdi_probe(struct platform_device *pdev)
 
     pinfo->color_temperature_support = 1;
     pinfo->comform_mode_support = 1;
+	pinfo->lcd_ic_color_enhancement_mode_support = 0;
+	if(pinfo->comform_mode_support == 1){  
+		support_mode = (support_mode | 1);
+	}
+	if(pinfo->acm_color_enhancement_mode_support == 1){
+		support_mode = (support_mode | 2);
+	}
+	if(pinfo->lcd_ic_color_enhancement_mode_support == 1){
+		support_mode = (support_mode | 4);
+	}
+	g_support_mode =   support_mode;
+
     if(pinfo->acm_support == 1){
     	pinfo->acm_lut_hue_table = acm_lut_hue_table;
     	pinfo->acm_lut_hue_table_len = sizeof(acm_lut_hue_table) / sizeof(acm_lut_hue_table[0]);

@@ -1245,7 +1245,7 @@ VOS_VOID DIPC_RcvAtPdpActIndProc(AT_DIPC_PDP_ACT_STRU *pstAtDipcPdpActMsg)
         return;
     }
 
-    if (VOS_OK != (ADS_DL_RegDlDataCallback(pstAtDipcPdpActMsg->ucRabId, DIPC_DlAdsDataRcv)))
+    if (VOS_OK != (ADS_DL_RegDlDataCallback(pstAtDipcPdpActMsg->ucRabId, DIPC_DlAdsDataRcv, 0)))
     {
         DIPC_PrintLog(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
             "DIPC_RcvAtPdpActIndProc, call ADS_DL_RegDlDataCallback fail!\n");
@@ -1306,7 +1306,7 @@ VOS_VOID DIPC_RcvAtPdpRelIndProc(AT_DIPC_PDP_DEACT_STRU *pstAtDipcPdpDeactMsg)
         return;
     }
 
-    if (VOS_OK != (ADS_DL_RegDlDataCallback(pstAtDipcPdpDeactMsg->ucRabId, VOS_NULL_PTR)))
+    if (VOS_OK != (ADS_DL_RegDlDataCallback(pstAtDipcPdpDeactMsg->ucRabId, VOS_NULL_PTR, 0)))
     {
         DIPC_PrintLog(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
             "DIPC_RcvAtPdpRelIndProc, call ADS_DL_RegDlDataCallback fail!\n");
@@ -1322,7 +1322,7 @@ VOS_VOID DIPC_RcvAtPdpRelIndProc(AT_DIPC_PDP_DEACT_STRU *pstAtDipcPdpDeactMsg)
 
 
 VOS_UINT32 DIPC_DlAdsDataRcv(VOS_UINT8 ucRabId, IMM_ZC_STRU *pData,
-    ADS_PKT_TYPE_ENUM_UINT8 enPktType)
+    ADS_PKT_TYPE_ENUM_UINT8 enPktType, VOS_UINT32 ulExParam)
 {
     VOS_UINT16  usApp;      /* 使用skb_buff结构中已有字段传递上下行和参数信息 */
 

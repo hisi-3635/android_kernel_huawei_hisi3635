@@ -1,0 +1,24 @@
+cmd_arch/arm64/kernel/kuser32.o :=   /home/kevin/aarch64-linux-android-4.9/bin/aarch64-linux-android-gcc -Wp,-MD,arch/arm64/kernel/.kuser32.o.d  -nostdinc -isystem /home/kevin/aarch64-linux-android-4.9/bin/../lib/gcc/aarch64-linux-android/4.9.x/include -I/home/kevin/Downloads/mates/11/kernel/kernel/arch/arm64/include -Iarch/arm64/include/generated  -Iinclude -I/home/kevin/Downloads/mates/11/kernel/kernel/arch/arm64/include/uapi -Iarch/arm64/include/generated/uapi -I/home/kevin/Downloads/mates/11/kernel/kernel/include/uapi -Iinclude/generated/uapi -include /home/kevin/Downloads/mates/11/kernel/kernel/include/linux/kconfig.h -I/home/kevin/Downloads/mates/11/kernel/kernel/../kernel/drivers/ -I/home/kevin/Downloads/mates/11/kernel/kernel/../kernel/drivers/vendor/hisi/config/product/hi3635_udp/config -I/home/kevin/Downloads/mates/11/kernel/kernel/../kernel/drivers/vendor/hisi/platform/hi3630 -I/home/kevin/Downloads/mates/11/kernel/kernel/../kernel/drivers/vendor/hisi/platform/hi3630/soc -I/home/kevin/Downloads/mates/11/kernel/kernel/../kernel/drivers/vendor/hisi/config/product/hi3635_udp/include_gu -I/home/kevin/Downloads/mates/11/kernel/kernel/../kernel/drivers/vendor/hisi/config/nvim/include/gu -I/home/kevin/Downloads/mates/11/kernel/kernel/../kernel/drivers/vendor/hisi/../../external/efipartition -I/home/kevin/Downloads/mates/11/kernel/kernel/../kernel/drivers/vendor/hisi/include/drv -I/home/kevin/Downloads/mates/11/kernel/kernel/../kernel/drivers/vendor/hisi/include/drv/acore -I/home/kevin/Downloads/mates/11/kernel/kernel/../kernel/drivers/vendor/hisi/include/drv/common -I/home/kevin/Downloads/mates/11/kernel/kernel/../kernel/drivers/vendor/hisi/include/nv/tl/drv -I/home/kevin/Downloads/mates/11/kernel/kernel/../kernel/drivers/vendor/hisi/include/nv/tl/oam -I/home/kevin/Downloads/mates/11/kernel/kernel/../kernel/drivers/vendor/hisi/include/nv/tl/lps -I/home/kevin/Downloads/mates/11/kernel/kernel/../kernel/drivers/vendor/hisi/include/phy/lphy -I/home/kevin/Downloads/mates/11/kernel/kernel/../kernel/drivers/vendor/hisi/audiodsp/custom/hi6402_hifi/include/med -I/home/kevin/Downloads/mates/11/kernel/kernel/../kernel/drivers/vendor/hisi/include/taf -I/home/kevin/Downloads/mates/11/kernel/kernel/../kernel/drivers/vendor/hisi/modem/drv/common/include -D__KERNEL__ -mlittle-endian  -D__ASSEMBLY__ -gdwarf-2         -DBSP_CORE_APP -DBSP_COMPILE_ALLY -c -o arch/arm64/kernel/kuser32.o arch/arm64/kernel/kuser32.S
+
+source_arch/arm64/kernel/kuser32.o := arch/arm64/kernel/kuser32.S
+
+deps_arch/arm64/kernel/kuser32.o := \
+  /home/kevin/Downloads/mates/11/kernel/kernel/arch/arm64/include/asm/unistd.h \
+    $(wildcard include/config/compat.h) \
+  /home/kevin/Downloads/mates/11/kernel/kernel/arch/arm64/include/uapi/asm/unistd.h \
+  include/asm-generic/unistd.h \
+  include/uapi/asm-generic/unistd.h \
+    $(wildcard include/config/mmu.h) \
+  /home/kevin/Downloads/mates/11/kernel/kernel/arch/arm64/include/uapi/asm/bitsperlong.h \
+  include/asm-generic/bitsperlong.h \
+    $(wildcard include/config/64bit.h) \
+  include/uapi/asm-generic/bitsperlong.h \
+  include/linux/export.h \
+    $(wildcard include/config/have/underscore/symbol/prefix.h) \
+    $(wildcard include/config/modules.h) \
+    $(wildcard include/config/modversions.h) \
+    $(wildcard include/config/unused/symbols.h) \
+
+arch/arm64/kernel/kuser32.o: $(deps_arch/arm64/kernel/kuser32.o)
+
+$(deps_arch/arm64/kernel/kuser32.o):

@@ -64,7 +64,11 @@ DECLARE_TASKLET(isr_aec_tasklet, aec_cmd_tasklet, (unsigned long) 0);
 struct timeval tv[2];
 struct timeval ts[2];
 static void host_ae_tasklet(unsigned long data);
+static void host_ae_bshutter_tasklet(unsigned long data);
+
 DECLARE_TASKLET(isr_host_ae_tasklet, host_ae_tasklet, (unsigned long) 0);
+DECLARE_TASKLET(isr_host_ae_bshutter_tasklet, host_ae_bshutter_tasklet, (unsigned long) 0);
+
 
 static void host_ae_tasklet(unsigned long data)
 {
@@ -100,6 +104,36 @@ static void host_ae_tasklet(unsigned long data)
 	cam_info("tasklet used %dus",
 		(int)((ts[1].tv_sec - ts[0].tv_sec)*1000000 + (ts[1].tv_usec - ts[0].tv_usec)));
 }
+
+static void host_ae_bshutter_tasklet(unsigned long data)
+{
+	struct hisi_sensor_t *sensor = hisi_eg_ctrl.sensor;
+	struct bshutter_expo_gain_seq *me_seq = &hisi_eg_ctrl.bshutter_seq;
+	int index = hisi_eg_ctrl.seq_index;
+
+	if(!sensor) {
+		cam_err("%s, sensor pointer is NULL!", __func__);
+		return;
+	}
+	cam_info("%s enter, index=%d,seq_size=%d",__func__,index,me_seq->seq_size);
+
+	do_gettimeofday(&ts[0]);
+
+	if (index < me_seq->seq_size) {
+		sensor->func_tbl->sensor_set_vts(sensor, me_seq->vts[index]);
+		if (sensor->func_tbl->sensor_set_bshutter_expo_gain != NULL) {
+			sensor->func_tbl->sensor_set_bshutter_expo_gain(sensor,me_seq->expo[index], me_seq->gain[index]);
+		} else {
+		    cam_err("%s: sensor %s sensor_set_bshutter_expo_gain is NULL!",__func__,sensor->sensor_info->name);
+		}
+	}
+
+	hisi_eg_ctrl.seq_index++;
+	do_gettimeofday(&ts[1]);
+	cam_info("%s: tasklet used %dus",__func__,
+		(int)((ts[1].tv_sec - ts[0].tv_sec)*1000000 + (ts[1].tv_usec - ts[0].tv_usec)));
+}
+
 
 static void flash_eof_turn_on(struct work_struct *work)
 {
@@ -259,8 +293,11 @@ static irqreturn_t isp_irq_handler(int irq, void *dev_id)
 	u8 cmd_result = 0;
 	u8 cmd_done = 0;
 	int eof_trigger;
+	int eof_bshutter_trigger;
 	struct hisi_sensor_t *sensor = NULL;
 	struct expo_gain_seq *me_seq = &hisi_eg_ctrl.me_seq;
+	struct bshutter_expo_gain_seq *bshutter_seq = &hisi_eg_ctrl.bshutter_seq;
+
 	sensor = hisi_eg_ctrl.sensor;
 	do_gettimeofday(&tv[0]);
 
@@ -402,14 +439,22 @@ static irqreturn_t isp_irq_handler(int irq, void *dev_id)
 		|| (val_mac1[2] >> REG_SHIFT_WRITE_DONE) & 0x1
 		|| (val_mac2[1] >> REG_SHIFT_WRITE_DONE) & 0x1
 		|| (val_mac2[2] >> REG_SHIFT_WRITE_DONE) & 0x1) {
-		index = hisi_eg_ctrl.seq_index;
-		if (index >= SENSOR_EXPO_EFFECT_DELAY
-			&& index < (me_seq->seq_size + SENSOR_EXPO_EFFECT_DELAY)) {
-			isp_hw_data.irq_val.host_ae_applied = MANUAL_AE_APPLIED;
-			isp_hw_data.irq_val.expo = me_seq->expo[index - SENSOR_EXPO_EFFECT_DELAY];
-			isp_hw_data.irq_val.gain = me_seq->gain[index - SENSOR_EXPO_EFFECT_DELAY + sensor->sensor_info->sensor_type];
-			isp_hw_data.irq_val.hts = me_seq->hts;
-			isp_hw_data.irq_val.vts = me_seq->vts;
+		index = hisi_eg_ctrl.seq_index - SENSOR_EXPO_EFFECT_DELAY;
+		if (index >= 0){
+		    if(me_seq->seq_size && index < me_seq->seq_size) {
+    			isp_hw_data.irq_val.host_ae_applied = MANUAL_AE_APPLIED;
+    			isp_hw_data.irq_val.expo = me_seq->expo[index];
+    			isp_hw_data.irq_val.gain = me_seq->gain[index + sensor->sensor_info->sensor_type];
+    			isp_hw_data.irq_val.hts = me_seq->hts;
+    			isp_hw_data.irq_val.vts = me_seq->vts;
+    		}
+    		else if (bshutter_seq->seq_size && index < bshutter_seq->seq_size) {
+                isp_hw_data.irq_val.host_ae_applied = MANUAL_AE_APPLIED;
+                isp_hw_data.irq_val.expo = bshutter_seq->expo_time[index];
+                isp_hw_data.irq_val.gain = bshutter_seq->gain[index + bshutter_seq->expo_gain_offset];
+                isp_hw_data.irq_val.hts = bshutter_seq->hts[index];
+                isp_hw_data.irq_val.vts = bshutter_seq->vts[index];
+    		}
 		}
 	}
 
@@ -417,6 +462,12 @@ static irqreturn_t isp_irq_handler(int irq, void *dev_id)
 	if (((eof_trigger == PIPE0_TRIG) && (val_level1[3] & ISP_PIPE0_EOF_IDI))
 		|| ((eof_trigger == PIPE1_TRIG) && (val_level1[2] & ISP_PIPE1_EOF_IDI))) {
 		tasklet_hi_schedule(&isr_host_ae_tasklet);
+	}
+
+	eof_bshutter_trigger = hisi_eg_ctrl.eof_bshutter_trigger;
+	if (((eof_bshutter_trigger == PIPE0_TRIG) && (val_level1[3] & ISP_PIPE0_EOF_IDI))
+		|| ((eof_bshutter_trigger == PIPE1_TRIG) && (val_level1[2] & ISP_PIPE1_EOF_IDI))) {
+		tasklet_hi_schedule(&isr_host_ae_bshutter_tasklet);
 	}
 
 	if ((hisi_flash_get_turn_on() == true) &&
@@ -553,7 +604,7 @@ static int isp_res_init(struct device *pdev)
 	ret = of_property_read_u32(of_node, "hisi,isp-irq", &isp_hw_data.irq_no);
 	if (ret < 0) {
 		cam_err("%s failed line %d\n", __func__, __LINE__);
-		goto fail;
+		goto fail1;
 	}
 
 	cam_notice("%s isp-base address = 0x%x. isp-base size = 0x%x. isp-irq = %d.\n",
@@ -641,16 +692,17 @@ static int isp_res_init(struct device *pdev)
 	}
 
 	hisi_eg_ctrl.eof_trigger = NONE_TRIG;
+	hisi_eg_ctrl.eof_bshutter_trigger = NONE_TRIG;
 
 	return 0;
 fail:
-	if (isp_hw_data.viraddr)
-		iounmap((void*)isp_hw_data.viraddr);
-
 	if (isp_hw_data.irq_no) {
 		free_irq(isp_hw_data.irq_no, 0);
 		isp_hw_data.irq_no = 0;
 	}
+fail1:
+	if (isp_hw_data.viraddr)
+		iounmap((void*)isp_hw_data.viraddr);
 
 	return ret;
 }
@@ -667,6 +719,7 @@ static int isp_res_deinit(void)
 		iounmap((void*)isp_hw_data.viraddr);
 
 	hisi_eg_ctrl.eof_trigger = NONE_TRIG;
+	hisi_eg_ctrl.eof_bshutter_trigger = NONE_TRIG;
 
 	return ret;
 }
@@ -884,12 +937,30 @@ int setup_eof_tasklet(struct hisi_sensor_t *sensor, struct expo_gain_seq *me_seq
 
 	spin_lock_irqsave(&isp_hw_data.irq_status_lock, lock_flags);
 	hisi_eg_ctrl.sensor = sensor;
+	hisi_eg_ctrl.seq_index = 0;
 	memcpy(&hisi_eg_ctrl.me_seq, me_seq, sizeof(struct expo_gain_seq));
 	hisi_eg_ctrl.eof_trigger = me_seq->eof_trigger;
 	spin_unlock_irqrestore(&isp_hw_data.irq_status_lock, lock_flags);
 
 	return 0;
 }
+
+int setup_eof_bshutter_tasklet(struct hisi_sensor_t *sensor, struct bshutter_expo_gain_seq * bshutter_seq)
+{
+	unsigned long lock_flags;
+
+	cam_notice("%s enter", __func__);
+
+	spin_lock_irqsave(&isp_hw_data.irq_status_lock, lock_flags);
+	hisi_eg_ctrl.sensor = sensor;
+	hisi_eg_ctrl.seq_index = 0;
+	memcpy(&hisi_eg_ctrl.bshutter_seq, bshutter_seq, sizeof(struct bshutter_expo_gain_seq));
+	hisi_eg_ctrl.eof_bshutter_trigger = bshutter_seq->eof_bshutter_trigger;
+	spin_unlock_irqrestore(&isp_hw_data.irq_status_lock, lock_flags);
+
+	return 0;
+}
+
 
 int teardown_eof_tasklet(struct hisi_sensor_t *sensor, struct expo_gain_seq *me_seq)
 {
@@ -904,8 +975,10 @@ int teardown_eof_tasklet(struct hisi_sensor_t *sensor, struct expo_gain_seq *me_
 			me_seq->expo[0], me_seq->gain[0], false);
 
 	tasklet_kill(&isr_host_ae_tasklet);
+	tasklet_kill(&isr_host_ae_bshutter_tasklet);
 	spin_lock_irqsave(&isp_hw_data.irq_status_lock, lock_flags);
 	hisi_eg_ctrl.eof_trigger = NONE_TRIG;
+	hisi_eg_ctrl.eof_bshutter_trigger = NONE_TRIG;
 	hisi_eg_ctrl.sensor = NULL;
 	hisi_eg_ctrl.seq_index = 0;
 	memset(&hisi_eg_ctrl.me_seq, 0, sizeof(struct expo_gain_seq));
@@ -927,8 +1000,10 @@ int k3_alloc_firmware_memory()
 }
 void k3_free_firmware_memory()
 {
-	kfree(isp_firmware_addr);
-	isp_firmware_addr = NULL;
+    if (NULL != isp_firmware_addr) {
+        kfree(isp_firmware_addr);
+        isp_firmware_addr = NULL;
+    }
 }
 
 /***************** external interface definition end *****************************************/

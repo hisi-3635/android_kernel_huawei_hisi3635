@@ -155,12 +155,12 @@ static ssize_t test_hung_task(struct kobject *kobj,
 #endif
 
 static struct kobj_attribute test_rdr_interface_attr =
-	__ATTR(test_rdr_interface, 0444, test_rdr_interface, NULL);
+	__ATTR(test_rdr_interface, 0440, test_rdr_interface, NULL);
 static struct kobj_attribute test_buddy_fail_attr =
-	__ATTR(test_buddy_fail, 0444, test_buddy_fail, NULL);
+	__ATTR(test_buddy_fail, 0440, test_buddy_fail, NULL);
 #ifdef CONFIG_DETECT_HUNG_TASK
 static struct kobj_attribute test_hung_task_attr =
-	__ATTR(test_hung_task, 0444, test_hung_task, NULL);
+	__ATTR(test_hung_task, 0440, test_hung_task, NULL);
 #endif
 
 static const struct attribute *rdr_test_attrs[] = {

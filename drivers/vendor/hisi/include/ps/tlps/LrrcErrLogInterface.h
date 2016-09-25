@@ -69,6 +69,7 @@ extern "C" {
 #define RRC_ERRLOG_AREA_LOST_MAX_NUM             (4)
 /* ErrorLog新增丢网信息end */
 
+#define LRRC_OM_SRVCC_MAX_MEASID_NUM               (3)
 
 /*****************************************************************************
   4 Enum
@@ -147,6 +148,13 @@ enum RRC_APP_ERROR_CODE_ENUM
     RRC_APP_RB_CFGDSP_TIMEROUT_ERR          = 7, /* 重配置失败--配置DSP，保护定时器超时 */
     RRC_APP_RB_CFGL2_TIMEROUT_ERR           = 8, /* 重配置失败--配置L2，保护定时器超时 */
 
+    //RRC_APP_EST_PRESENT                         = 12, /* RRC连接建立失败--RRC连接已存在*/
+    //RRC_APP_EST_ESTING                          = 13, /* RRC连接建立失败--RRC正在建链*/
+    //RRC_APP_EST_DELING                          = 14, /* RRC连接建立失败--RRC正在释放连接*/
+    //RRC_APP_EST_DSDS_NO_RF                      = 15, /* RRC连接建立失败--双通:无射频资源*/
+    //RRC_APP_EST_CELL_SEARCHING                  = 16, /* RRC连接建立失败--RRC正在搜网*/
+    //RRC_APP_EST_EUTRAN_REJ                      = 17, /* RRC连接建立失败--网侧拒绝建链*/
+
     RRC_APP_EST_MT_T302_ERR                     = 18, /* RRC连接建立失败--MT Call；T302定时器在运行 */
 
     RRC_APP_EST_MO_T302_ERR                     = 22, /* RRC连接建立失败--Mo Data；T302定时器在运行 */
@@ -165,7 +173,7 @@ enum RRC_APP_ERROR_CODE_ENUM
     RRC_APP_EST_AREA_LOST_ERR                   = 34, /* 当前已经出服务区直接给NAS回失败 */
 
     /* ErrorLog新增丢网信息begin */
-    RRC_APP_AREA_LOST_ERR                       =35,  /* 上报NAS丢网 */
+    RRC_APP_AREA_LOST_ERR                       = 35,  /* 上报NAS丢网 */
     /* ErrorLog新增丢网信息end */
 
     RRC_APP_REEST_T311_TIMEROUT_ERR             = 49, /* 重建立失败--重建过程中小区搜索T311定时器超时 */
@@ -180,6 +188,28 @@ enum RRC_APP_ERROR_CODE_ENUM
     RRC_APP_REEST_SRB1CFGDSP_ERR                = 58, /* 重建立失败--配置DSP，DSP返回失败 */
     RRC_APP_REEST_SRB1CFGL2_ERR                 = 59, /* 重建立失败--配置L2，L2返回失败 */
     RRC_APP_REEST_SECU_ERR                      = 60, /* 重建立失败--安全上下文失败 */
+
+    //RRC_APP_QLOW_WARN                           = 70,/* 长时间驻留到弱小区报警----服务可能不可用 */
+    //RRC_APP_PINGPONG_WARN                       = 71,/* 乒乓重选告警----可能导致被叫不通 */
+    //RRC_APP_CSFB_FAIL_ERR                       = 72,/* CSFB失败 --- 可能导致主叫或被叫不通 */
+    //RRC_APP_MOBILITY_2_QLOW_WARN                = 73,/* 重选重定向到弱小区----服务可能不可用 */
+    //RRC_APP_OUT_SYNC_ERR                        = 74,/* 失步错误 */
+
+    //RRC_APP_SRCHED_FIRST_FREQ_INFO              = 75,/* 搜网搜到第一个MCC时的频点信息上报 major */
+    //RRC_APP_SRCHED_SUCC_FREQ_INFO               = 76,/* 搜网成功时频点信息上报 major */
+    //RRC_APP_SERVICE_RECOVER_WARN                = 77,/* 出服务区后重新恢复 */
+
+    //RRC_APP_MAC_RA_MAC_ERR                      = 78,/* 随机接入失败,Mac上报Err_Ind */
+    //RRC_APP_MAC_RA_CNF_FAIL                     = 79,/* 随机接入失败,随机接入请求，MAC回复CNF指示失败 */
+    //RRC_APP_MAC_RA_CNF_TIME_OUT                 = 80,/* 随机接入失败,随机接入请求，等待Mac回复Cnf超时 */
+
+    //RRC_APP_AIRMSG_DECODE_FAIL                  = 81,/* 空口消息ASN解码失败 */
+    //RRC_APP_AIRMSG_CHECK_FAIL                   = 82,/* 空口消息检查失败 */
+    RRC_APP_SRVCC_FAIL_REEST                    = 83,/* SRVCC 失败 -- HO失败等重建立触发 */
+    RRC_APP_SRVCC_FAIL_RF_FAIL                  = 84,/* SRVCC 失败 -- RF失步重建立触发 */
+    RRC_APP_SRVCC_FAIL_CONN_REL                 = 85,/* SRVCC 失败 -- 异常释放触发 */
+    RRC_APP_SRVCC_FAIL_IRAT_FAIL                = 86,/* SRVCC 失败 -- 异系统切换失败触发 */
+    RRC_APP_SRVCC_STAT                          = 87,/* SRVCC 统计信息 */
 
     RRC_APP_ERR_CODE_BUTT
 };
@@ -380,6 +410,19 @@ enum LRRC_APP_BAND_WIDTH_ENUM
 };
 typedef VOS_UINT16 LRRC_APP_BAND_WIDTH_ENUM_UINT16;
 
+/*****************************************************************************
+ 结构名    :LRRC_ERRLOG_ESR_CS_FAIL_TYPE_ENUM32
+ 结构说明  :
+*****************************************************************************/
+enum LRRC_OM_RAT_TYPE_ENUM
+{
+    LRRC_OM_RAT_TYPE_GSM = 1,                         /* GSM接入技术 */
+    LRRC_OM_RAT_TYPE_UTRA,                            /* UTRA接入技术 */
+    LRRC_OM_RAT_TYPE_LTE,                             /* LTE接入技术 */
+    LRRC_OM_RAT_TYPE_HRPD,                            /* CDMA HRPD*/
+    LRRC_OM_RAT_TYPE_BUTT
+};
+typedef VOS_UINT16  LRRC_OM_RAT_TYPE_ENUM_UINT16;
 /*****************************************************************************
    5 STRUCT
 *****************************************************************************/
@@ -586,11 +629,25 @@ typedef struct
 *****************************************************************************/
 enum LRRC_OM_ALARMID_ENUM
 {
-    LRRC_OM_ALARMID_ENUM_RECFG          = 1,    /*重配置错误*/
-    LRRC_OM_ALARMID_ENUM_REEST,                 /*重建立错误*/
-    LRRC_OM_ALARMID_ENUM_EST,                   /*建链错误*/
-    LRRC_OM_ALARMID_ENUM_LOSTAREA,              /*丢网*/
-    LRRC_OM_ALARMID_ENUM_OVERFLOW,              /*消息缓冲区溢出*/
+    LRRC_OM_ALARMID_ENUM_RECFG          = 1,                /*重配置错误*/
+    LRRC_OM_ALARMID_ENUM_REEST          = 2,                /*重建立错误*/
+    LRRC_OM_ALARMID_ENUM_EST            = 3,                /*建链错误*/
+    LRRC_OM_ALARMID_ENUM_LOSTAREA       = 4,                /*丢网*/
+    LRRC_OM_ALARMID_ENUM_OVERFLOW       = 5,                /*消息缓冲区溢出*/
+
+    //LRRC_OM_ALARMID_ENUM_QLOW_CELL      = 6,                /*驻留在弱小区告警*/
+    //LRRC_OM_ALARMID_ENUM_PINGPONG_RESEL = 7,                /*乒乓重选告警*/
+    //LRRC_OM_ALARMID_ENUM_CSFB_FAIL      = 8,                /*CSFB失败*/
+    //LRRC_OM_ALARMID_ENUM_MOBILITY_2_QLOW_CELL = 9,          /*重选、重定向到弱小区告警*/
+    //LRRC_OM_ALARMID_ENUM_OUT_OF_SYNC    = 10,               /*失步报警*/
+
+    //LRRC_OM_ALARMID_ENUM_CSEL_INFO      = 11,               /* 小区选择信息 */
+    //LRRC_OM_ALARMID_ENUM_ISLAND_CELL    = 12,               /* 孤岛小区 */
+    //LRRC_OM_ALARMID_ENUM_RA             = 13,               /* 随机接入 */
+    //LRRC_OM_ALARMID_ENUM_AIRMSG_FAIL    = 14,               /* 空口消息异常 */
+
+    LRRC_OM_ALARMID_ENUM_SRVCC_FAIL     = 15,               /* SRVCC 失败 */
+    LRRC_OM_ALARMID_ENUM_SRVCC_STAT     = 16,               /* SRVCC 统计信息 */
     LRRC_OM_ALARMID_ENUM_BUTT
 };
 typedef VOS_UINT16 LRRC_OM_ALARMID_ENUM_UINT16;
@@ -670,6 +727,53 @@ enum LRRC_APP_ERR_LOG_AREA_LOST_CAUSE_ENUM
     LRRC_APP_ERR_LOG_AREA_LOST_BUTT = 1         /* 当前预留该枚举值*/
 };
 typedef VOS_UINT8  LRRC_APP_ERR_LOG_AREA_LOST_CAUSE_ENUM_UINT8;
+
+
+/*****************************************************************************
+ 结构名    : LRRC_OM_SRVCC_RST_ENUM
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : SRVCC结果
+*****************************************************************************/
+enum LRRC_OM_SRVCC_RST_ENUM
+{
+    LRRC_OM_SRVCC_NO_B1B2                    = 0,                                   /* SRVCC 没有收到B1B2配置 */
+    LRRC_OM_SRVCC_NO_RPT                     = 1,                                   /* SRVCC 没有发送B1B2报告 */
+    LRRC_OM_SRVCC_NO_HO                      = 2,                                   /* SRVCC 网侧未配置切换 */
+    LRRC_OM_SRVCC_HO_FAIL                    = 3,                                   /* SRVCC 切换失败 */
+    LRRC_OM_SRVCC_CONN_REL                   = 4,                                   /* Volte 过程中，收到网络的异常连接释放 */
+    LRRC_OM_SRVCC_REEST                      = 5,                                   /* Volte 过程中，由于安全完整性失败等其他原因发起了重建立 */
+    LRRC_OM_SRVCC_SUCC                       = 6,                                   /* SRVCC 成功 */
+    LRRC_OM_SRVCC_FAIL_BUTT
+};
+typedef VOS_UINT8 LRRC_OM_SRVCC_RST_UINT8;
+
+/*****************************************************************************
+ 结构名    : LRRC_OM_MEAS_RPT_TYPE_ENUM
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : 测量报告的类型
+*****************************************************************************/
+enum LRRC_OM_MEAS_RPT_TYPE_ENUM
+{
+    LRRC_OM_MEAS_RPT_TYPE_EVENT_BEGIN = 0,
+    LRRC_OM_MEAS_RPT_TYPE_EVENT_A1,
+    LRRC_OM_MEAS_RPT_TYPE_EVENT_A2,
+    LRRC_OM_MEAS_RPT_TYPE_EVENT_A3,
+    LRRC_OM_MEAS_RPT_TYPE_EVENT_A4,
+    LRRC_OM_MEAS_RPT_TYPE_EVENT_A5,
+    LRRC_OM_MEAS_RPT_TYPE_EVENT_A6,
+    LRRC_OM_MEAS_RPT_TYPE_EVENT_B1,
+    LRRC_OM_MEAS_RPT_TYPE_EVENT_B2,
+
+    LRRC_OM_MEAS_RPT_TYPE_PERIOD_BEGIN = 20,
+    LRRC_OM_MEAS_RPT_TYPE_REPORT_STRONGESTCELLS,
+    LRRC_OM_MEAS_RPT_TYPE_REPORT_STRONGESTCELLS_FOR_SON,
+    LRRC_OM_MEAS_RPT_TYPE_REPORT_CGI,
+
+    LRRC_OM_MEAS_RPT_TYPE_BUTT
+};
+typedef VOS_UINT16 LRRC_OM_MEAS_RPT_TYPE_UINT16;
 
 /*****************************************************************************
  结构名    : LRRC_OM_OVERFLOW_INFO_STRU
@@ -794,6 +898,95 @@ typedef struct
     VOS_UINT8                           aucContent[4]; /* 故障内容 */
 } LRRC_OM_ERR_LOG_REPORT_CNF_STRU;
 /*end:edit by wangmiao00272217 for ErrorLog*/
+
+/*****************************************************************************
+ 结构名    : LRRC_OM_FAULT_ERR_LOG_IND_STRU
+ 结构说明  : Balong平台内部交互的主动上报Fault数据结构
+*****************************************************************************/
+typedef struct
+{
+    VOS_MSG_HEADER
+    VOS_UINT32                          ulMsgName;
+    VOS_UINT32                          ulMsgType;
+    VOS_UINT32                          ulMsgSN;
+    VOS_UINT32                          ulRptlen;      /* 故障内容长度,如果ulRptlen为0,aucContent内容长度也为0 */
+    VOS_UINT8                           aucContent[4]; /* 故障内容 */
+}LRRC_OM_FAULT_ERR_LOG_IND_STRU;
+
+typedef LRRC_OM_FAULT_ERR_LOG_IND_STRU LRRC_OM_ALARM_ERR_LOG_IND_STRU;
+/*****************************************************************************
+结构名    : LRRC_OM_SRVCC_MEAS_INFO_STRU
+协议表格  :
+ASN.1描述 :
+结构说明  : SRVCC相关的测量ID
+*****************************************************************************/
+typedef struct
+{
+    VOS_UINT16                                   usMeasId;
+    VOS_UINT16                                   usMeasObjId;
+    VOS_UINT16                                   usMeasRptId;
+    LRRC_OM_RAT_TYPE_ENUM_UINT16                 usMeasObjRat;
+    VOS_UINT32                                   ulCarrierFreq;
+    LRRC_OM_MEAS_RPT_TYPE_UINT16                 usMeasRptType;
+    VOS_INT16                                    sEventThreshold1;
+    VOS_INT16                                    sEventThreshold2;
+    VOS_INT16                                    sFreqOffset;
+    VOS_UINT8                                    ucHysteresis;
+    VOS_UINT8                                    ucEventRptFlg;                 /* 该MeasId是否触发过测量报告 */
+    VOS_UINT8                                    aucRsv[2];
+    VOS_UINT32                                   aulRsv[4];
+}LRRC_OM_SRVCC_MEAS_INFO_STRU;
+
+/*****************************************************************************
+结构名    : LRRC_OM_SRVCC_INFO_STRU
+协议表格  :
+ASN.1描述 :
+结构说明  : SRVCC失败信息
+*****************************************************************************/
+typedef struct
+{
+    OM_ERR_LOG_HEADER_STRU                       stHead;
+    RRC_APP_ERROR_CODE_ENUM_UINT16               enErrorCode;                   /* 错误码上报结构，每个模块单独编号 */
+    VOS_INT16                                    sRsrp;                         /* 当前服务小区rsrp */
+    VOS_INT16                                    sRsrq;                         /* 当前服务小区rsrq */
+    VOS_INT16                                    sRssi;
+    VOS_UINT32                                   ulGci;                         /* sib1中的GlobalCellId */
+    LRRC_OM_TAC_STRU                             stTac;                         /* tac */
+    VOS_UINT32                                   ulMcc;                         /* Mcc */
+    VOS_UINT32                                   ulMnc;                         /* Mnc */
+    VOS_UINT32                                   ulDlEarfcn;                    /*下行频点，单位100khz */
+    VOS_UINT16                                   usPhyCellId;                   /* 物理小区，单位100khz */
+    LRRC_OM_SRVCC_RST_UINT8                      ucFailCause;                   /* 失败原因值 */
+    VOS_UINT8                                    ucSrvccState;                  /* 预留 */
+    VOS_UINT16                                   usRsv;
+    VOS_UINT16                                   usMeasIdNum;
+    LRRC_OM_SRVCC_MEAS_INFO_STRU                 astMeasIdList[LRRC_OM_SRVCC_MAX_MEASID_NUM];
+    VOS_UINT32                                   aulRsv[8];
+}LRRC_OM_SRVCC_FAIL_INFO_STRU;
+
+/*****************************************************************************
+结构名    : LRRC_OM_SRVCC_STAT_INFO_STRU
+协议表格  :
+ASN.1描述 :
+结构说明  : SRVCC统计信息
+*****************************************************************************/
+typedef struct
+{
+    OM_ERR_LOG_HEADER_STRU                       stHead;
+    RRC_APP_ERROR_CODE_ENUM_UINT16               enErrorCode;                   /* 错误码上报结构，每个模块单独编号 */
+    VOS_UINT16                                   usRsv;
+    VOS_UINT32                                   ulGci;
+    LRRC_OM_TAC_STRU                             stTac;                         /* tac */
+    VOS_UINT32                                   ulPreDelay;                    /* SRVCC准备时延 */
+    VOS_INT16                                    sMeasCfgRsrp;                  /* 配置B1B2时rsrp */
+    VOS_INT16                                    sMeasCfgRsrq;                  /* 配置B1B2时rsrq */
+    VOS_INT16                                    sMeasRptRsrp;                  /* 测量报告时rsrq */
+    VOS_INT16                                    sMeasRptRsrq;                  /* 测量报告时rsrp */
+    VOS_INT16                                    sEventThreshold1;
+    VOS_INT16                                    sEventThreshold2;
+    VOS_UINT32                                   aulRsv[8];
+}LRRC_OM_SRVCC_STAT_INFO_STRU;
+
 /*****************************************************************************
   6 UNION
 *****************************************************************************/

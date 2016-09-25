@@ -9,6 +9,8 @@
 /**
  * hisi iommu domain interface
  */
+typedef void (*iommu_vpu_cb)(void);
+extern void iommu_set_vpu_onoff(int onoff, iommu_vpu_cb vpu_cb);
 size_t hisi_iommu_iova_size(void);
 size_t hisi_iommu_iova_available(int flag);
 void hisi_iommu_free_iova(unsigned long iova, size_t size);
@@ -30,6 +32,8 @@ int hisi_iommu_get_info(unsigned int *iova_start, unsigned int *pgtbl_base);
 
 #else
 
+typedef void (*iommu_vpu_cb)(void);
+extern void iommu_set_vpu_onoff(int onoff, iommu_vpu_cb vpu_cb){}
 /**
  * hisi iommu domain interface
  */

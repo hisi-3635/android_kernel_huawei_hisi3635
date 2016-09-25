@@ -141,12 +141,7 @@ typedef struct
 extern VOS_VOID     TTF_LinkInit(VOS_UINT32 ulPid, TTF_LINK_ST *pLink);
 extern VOS_VOID     TTF_NodeInit(TTF_NODE_ST *pNode);
 extern VOS_VOID     TTF_LinkFree(VOS_UINT32 ulPid, TTF_LINK_ST *pLink);
-
-
-
-#ifdef WTTF_PC_ST_SWITCH
 extern VOS_UINT32   TTF_LinkCheckNodeInLink(VOS_UINT32 ulPid, TTF_LINK_ST *pLink, TTF_NODE_ST *pCurr);
-#endif
 
 #ifdef _lint
 /*

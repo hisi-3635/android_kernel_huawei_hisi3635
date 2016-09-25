@@ -516,6 +516,7 @@ int bsp_efuse_write(const unsigned int* buf,
 	}
 	TEEC_Info("succeed to open session.\n");
 
+	memset(&operation, 0, sizeof(operation));
 	operation.started = 1;
 	operation.paramTypes = TEEC_PARAM_TYPES(
 						TEEC_VALUE_INPUT,
@@ -616,6 +617,7 @@ int bsp_efuse_read(unsigned int* buf,
 	}
 	TEEC_Info("succeed to open session.\n");
 
+	memset(&operation, 0, sizeof(operation));
 	operation.started = 1;
 	operation.paramTypes = TEEC_PARAM_TYPES(
 						TEEC_VALUE_INPUT,

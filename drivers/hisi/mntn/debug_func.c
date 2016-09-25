@@ -501,65 +501,6 @@ int wdg_dbg_settime(dbg_wdg_type ewdg_type,int ival_msec)
 }
 
 /*****************************************************************************
- Function: show_memory
- Description: show the data of memory given addr and size
- Input: void  *addr_in, addr of memory
-            int nbytes,size of memory
-            int ibool, ibool>0,vir addr;0>=ibool, phy addr
- Out: нч
- Return value: void
- History:
- 1.     20140121    Creat
-*****************************************************************************/
-#ifdef CONFIG_ARCH_HI6XXX
-void show_memory(unsigned long addr_in, unsigned int nbytes, int ibool)
-{
-    int i, j;
-    u32 *p;
-    unsigned long virtual_addr;
-    unsigned int itotalbytes = nbytes;
-    const unsigned int line_size = 32;
-    unsigned int nlines;
-    unsigned int size;
-
-    printk("\naddress 0x%lx:\n", addr_in);
-
-    /*vir addr*/
-    if (ibool) {
-        virtual_addr = addr_in;
-
-        /* round address down to a 32/64 bit boundary */
-        p = (u32 *)(virtual_addr & ~(sizeof(unsigned long) - 1));
-        /* always dump a multiple of 32 bytes */
-        itotalbytes += (virtual_addr & (sizeof(unsigned long) - 1));
-        nlines = (itotalbytes + (line_size-1)) / line_size;
-
-        for (i=0; i<nlines; i++) {
-            /*
-            * just display low 16 bits of address to keep
-            * each line of the dump < 80 characters
-            */
-            printk("%04lx ", (unsigned long)p & 0xffff);
-            for (j=0; j < line_size/sizeof(u32); j++) {
-                u32 data;
-                if (probe_kernel_address(p++, data)) {
-                    printk(" ********");
-                } else {
-                    printk(" %08x", data);
-                }
-            }
-            printk("\n");
-        }
-    }else { /*phy addr*/
-        /* always dump a multiple of 32 bytes */
-        nlines = (itotalbytes + (line_size-1)) / line_size;
-        size = nlines*line_size / sizeof(u32);
-
-        reg_dbg_dump(addr_in, size, sizeof(u32));
-    }
-}
-#endif
-/*****************************************************************************
  Function: test_get_slice
  Description: only for testting, to check whether the slices are same.
  Input:

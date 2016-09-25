@@ -64,9 +64,12 @@
 #ifdef CONFIG_ARCH_HI6XXX
 #include <linux/hisi/hi6xxx-iomap.h>
 #endif
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 /*add ChipVerification debug*/
 #include <huawei_platform/chipverification/chipverification.h>
+#ifdef CONFIG_SERIAL_VOTE
+#include <linux/pwrctrl_power_state_manager.h>
+#endif
 
 #define UART_NR			14
 
@@ -239,9 +242,68 @@ struct uart_amba_port {
 #ifdef CONFIG_SERIAL_AMBA_PL011_CONSOLE
 	struct uart_tx_unit tx_unit;
 #endif
+#ifdef CONFIG_SERIAL_VOTE
+	int pwrctrl_vote_cnt;
+#endif
 };
 
 static struct dsm_client *s_dev_uart_dsm_client = NULL;
+
+#ifdef CONFIG_SERIAL_VOTE
+static void pm_vote_cpu_no_sleep(struct uart_port *port)
+{
+    struct uart_amba_port *uap = (struct uart_amba_port *)port;
+    int  err = -1;
+		if (NULL == uap) {
+			pr_err("%s:uap is null\n", __func__);
+			return;
+		}
+    switch (uap->port.line) {
+        case 1:
+            err = pwrctrl_request_power_state(PWRCTRL_SLEEP_UART1, PWRCTRL_SYS_STAT_S1,&uap->pwrctrl_vote_cnt);
+            break;
+        case 2:
+            err = pwrctrl_request_power_state(PWRCTRL_SLEEP_UART2, PWRCTRL_SYS_STAT_S1,&uap->pwrctrl_vote_cnt);
+            break;
+        default:
+            dev_info(uap->port.dev, "uart port [%d] do not need to vote", uap->port.line);
+				return;
+    }
+
+    if(0 != err)
+        dev_err(uap->port.dev, "uart port[%d]: pwrctrl_request_power_state fail\n", uap->port.line);
+    else
+        dev_info(uap->port.dev, "uart port[%d]: pwrctrl_request_power_state SUCC\n", uap->port.line);
+    return;
+}
+
+static void pm_vote_cpu_has_sleep(struct uart_port *port)
+{
+    struct uart_amba_port *uap = (struct uart_amba_port *)port;
+    int  err = -1;
+
+	if (NULL == uap) {
+			pr_err("%s:uap is null\n", __func__);
+			return;
+	}
+
+	switch (uap->port.line) {
+        case 1:
+        case 2:
+            err = pwrctrl_release_power_state(uap->pwrctrl_vote_cnt);
+            break;
+        default:
+            dev_info(uap->port.dev, "uart port [%d] did not vote", uap->port.line);
+			return;
+    }
+
+    if(0 != err)
+        dev_err(uap->port.dev, "uart port[%d]: pwrctrl_release_power_state fail\n", uap->port.line);
+    else
+        dev_info(uap->port.dev, "uart port[%d]: pwrctrl_release_power_state SUCC\n", uap->port.line);
+    return;
+}
+#endif
 
 void dev_uart_dsm_client_notify(const char* content,int value, int errNum, struct uart_amba_port *uap)
 {
@@ -1800,7 +1862,9 @@ static int pl011_startup(struct uart_port *port)
 		uap->im |= UART011_RXIM;
 	writew(uap->im, uap->port.membase + UART011_IMSC);
 	spin_unlock_irq(&uap->port.lock);
-
+#ifdef CONFIG_SERIAL_VOTE
+	pm_vote_cpu_no_sleep(port);
+#endif
 	return 0;
 
  clk_dis:
@@ -1888,7 +1952,9 @@ static void pl011_shutdown(struct uart_port *port)
 		if (plat->exit)
 			plat->exit();
 	}
-
+#ifdef CONFIG_SERIAL_VOTE
+	pm_vote_cpu_has_sleep(port);
+#endif
 }
 
 static void
@@ -2850,6 +2916,9 @@ static int pl011_probe(struct amba_device *dev, const struct amba_id *id)
 	uap->lcrh_rx = vendor->lcrh_rx;
 	uap->lcrh_tx = vendor->lcrh_tx;
 	uap->old_cr = 0;
+#ifdef CONFIG_SERIAL_VOTE
+	uap->pwrctrl_vote_cnt = PWRCTRL_POWER_STAT_INVALID_ID;
+#endif
 	uap->port.dev = &dev->dev;
 	uap->port.mapbase = dev->res.start;
 	uap->port.membase = base;

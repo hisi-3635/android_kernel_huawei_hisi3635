@@ -202,7 +202,9 @@ typedef struct _isp_hw_data{
 typedef struct {
 	struct hisi_sensor_t *sensor;
 	struct expo_gain_seq me_seq;
+	struct bshutter_expo_gain_seq bshutter_seq;
 	int eof_trigger;
+	int eof_bshutter_trigger;
 	int seq_index;
 }hisi_eg_ctrl_t;
 
@@ -227,6 +229,7 @@ void k3_query_irq(struct irq_reg_t *irq_info);
 u32 k3_get_isp_base_addr(void);
 u32 k3_get_isp_mem_size(void);
 int setup_eof_tasklet(struct hisi_sensor_t *sensor, struct expo_gain_seq *me_seq);
+int setup_eof_bshutter_tasklet(struct hisi_sensor_t *sensor, struct bshutter_expo_gain_seq * bshutter_seq);
 int teardown_eof_tasklet(struct hisi_sensor_t *sensor, struct expo_gain_seq *me_seq);
 int k3_isp_clk_rate_set(int rate);
 int k3_alloc_firmware_memory(void);

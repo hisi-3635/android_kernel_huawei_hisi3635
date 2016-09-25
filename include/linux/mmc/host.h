@@ -162,6 +162,9 @@ struct mmc_host_ops {
 				unsigned int offset, unsigned int len);
 	int	(*panic_erase)(struct raw_hd_struct *rhd, unsigned int offset,
 				unsigned int len);
+#ifdef CONFIG_MMC_PASSWORDS
+	int	(*sd_lock_reset)(struct mmc_host *host);
+#endif
 };
 
 struct mmc_card;

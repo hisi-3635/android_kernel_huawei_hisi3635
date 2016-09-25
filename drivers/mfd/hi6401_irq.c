@@ -26,7 +26,7 @@
 #include <linux/mfd/hi6401_irq.h>
 
 #include <linux/pinctrl/consumer.h>
-#include <linux/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 
 #include <asm/mach/irq.h>
 #include <linux/irq.h>

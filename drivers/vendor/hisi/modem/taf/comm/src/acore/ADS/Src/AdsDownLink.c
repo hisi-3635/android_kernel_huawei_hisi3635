@@ -542,12 +542,14 @@ VOS_VOID ADS_DL_Xmit(
 {
     RCV_DL_DATA_FUNC                    pRcvDlDataFunc = VOS_NULL_PTR;
     IMM_ZC_STRU                        *pstLstImmZc = VOS_NULL_PTR;
+    VOS_UINT32                          ulExParam;
     ADS_PKT_TYPE_ENUM_UINT8             enLstIpType;
 
     /* 获取RABID对应下行回调函数指针 */
     if (ADS_IS_VALID_RABID(ucRabId))
     {
         pRcvDlDataFunc = ADS_DL_GET_DATA_CALLBACK_FUNC(ucInstanceIndex, ucRabId);
+        ulExParam      = ADS_DL_GET_DATA_EXPARAM(ucInstanceIndex, ucRabId);
     }
     else
     {
@@ -576,7 +578,7 @@ VOS_VOID ADS_DL_Xmit(
                 pstLstImmZc->psh = 1;
             }
 
-            (VOS_VOID)pRcvDlDataFunc(ADS_BUILD_EX_RAB_ID(ucInstanceIndex, ucRabId), pstLstImmZc, enLstIpType);
+            (VOS_VOID)pRcvDlDataFunc(ADS_BUILD_EX_RAB_ID(ucInstanceIndex, ucRabId), pstLstImmZc, enLstIpType, ulExParam);
         }
         ADS_DL_SET_LST_DATA_PTR(ucInstanceIndex,ucRabId, pstCurImmZc);
         ADS_DL_SET_LST_DATA_IPTYPE(ucInstanceIndex,ucRabId, enIpType);
@@ -660,6 +662,7 @@ VOS_VOID ADS_DL_ProcIpfResult(VOS_VOID)
 #if(FEATURE_OFF == FEATURE_SKB_EXP)
     IMM_ZC_STRU                        *pstImmZc = VOS_NULL_PTR;
 #endif
+    VOS_UINT32                          ulRxTimeout;
 
 #ifdef CONFIG_ARM64
     struct device                       dev;
@@ -671,6 +674,8 @@ VOS_VOID ADS_DL_ProcIpfResult(VOS_VOID)
 #endif
 
     ucInstanceIndex = 0;
+    ulRxTimeout     = 0;
+
     /*
     IPF_RD_DESC_S中u16Result含义
     [15]Reserve
@@ -703,7 +708,6 @@ VOS_VOID ADS_DL_ProcIpfResult(VOS_VOID)
     {
         /* 增加RD获取个数为0的统计个数 */
         ADS_DBG_DL_RECV_RD_ZERO_NUM(1);
-
         return;
     }
 
@@ -757,6 +761,7 @@ VOS_VOID ADS_DL_ProcIpfResult(VOS_VOID)
                 ADS_DBG_DL_IPF_ERR_PKT_NUM(ucInstanceIndex, 1);
             }
 
+            ulRxTimeout = ADS_DL_RX_WAKE_LOCK_TMR_LEN;
             ADS_DL_ProcRd(pstRdDesc);
         }
         /* BearId 19: NDClient包，需要转发给NDClient */
@@ -786,7 +791,7 @@ VOS_VOID ADS_DL_ProcIpfResult(VOS_VOID)
     }
     /*lint +e771*/
 
-
+    ADS_DL_EnableRxWakeLockTimeout(ulRxTimeout);
     return;
 }
 
@@ -848,7 +853,9 @@ VOS_VOID ADS_DL_RegDrvAssemFunc(FC_ADS_DRV_ASSEM_STRU *pstDrvAssemParam)
 
 VOS_UINT32 ADS_DL_RegDlDataCallback(
     VOS_UINT8                           ucRabId,
-    RCV_DL_DATA_FUNC                    pFunc)
+    RCV_DL_DATA_FUNC                    pFunc,
+    VOS_UINT32                          ulExParam
+)
 {
     ADS_DL_RAB_INFO_STRU               *pstDlRabInfo;
     VOS_UINT8                           ucInstanceIndex;
@@ -868,8 +875,9 @@ VOS_UINT32 ADS_DL_RegDlDataCallback(
     pstDlRabInfo = ADS_DL_GET_RAB_INFO_PTR(ucInstanceIndex, ucRealRabId);
 
     /* 设置ADS下行数据回调内容 */
-    pstDlRabInfo->ucRabId        = ucRealRabId;
-    pstDlRabInfo->pRcvDlDataFunc = pFunc;
+    pstDlRabInfo->ucRabId           = ucRealRabId;
+    pstDlRabInfo->ulExParam         = ulExParam;
+    pstDlRabInfo->pRcvDlDataFunc    = pFunc;
 
     return VOS_OK;
 }
@@ -978,8 +986,10 @@ VOS_UINT32 ADS_DL_ProcPdpStatusInd(
     else if (ADS_PDP_STATUS_DEACT == enPdpStatus)
     {
         /* 清除ADS下行数据回调内容 */
-        pstDlRabInfo->ucRabId        = ADS_RAB_ID_INVALID;
-        pstDlRabInfo->pRcvDlDataFunc = VOS_NULL_PTR;
+        pstDlRabInfo->ucRabId           = ADS_RAB_ID_INVALID;
+        pstDlRabInfo->enPktType         = ADS_CDS_IPF_PKT_TYPE_IP;
+        pstDlRabInfo->ulExParam         = 0;
+        pstDlRabInfo->pRcvDlDataFunc    = VOS_NULL_PTR;
     }
     else
     {

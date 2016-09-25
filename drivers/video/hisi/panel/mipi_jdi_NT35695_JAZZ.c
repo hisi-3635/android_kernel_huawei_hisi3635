@@ -3308,28 +3308,29 @@ static struct regulator *vcc_lcdanalog;
 
 static struct vcc_desc jdi_lcd_vcc_init_cmds[] = {
 	/* vcc get */
-	{DTYPE_VCC_GET, VCC_LCDIO_NAME, &vcc_lcdio, 0, 0},
-	{DTYPE_VCC_GET, VCC_LCDANALOG_NAME, &vcc_lcdanalog, 0, 0},
+	{DTYPE_VCC_GET, VCC_LCDIO_NAME, &vcc_lcdio, 0, 0, WAIT_TYPE_MS, 0},
+	{DTYPE_VCC_GET, VCC_LCDANALOG_NAME, &vcc_lcdanalog, 0, 0, WAIT_TYPE_MS, 0},
+
 	/* vcc set voltage */
-	{DTYPE_VCC_SET_VOLTAGE, VCC_LCDANALOG_NAME, &vcc_lcdanalog, 3100000, 3100000},
+	{DTYPE_VCC_SET_VOLTAGE, VCC_LCDANALOG_NAME, &vcc_lcdanalog, 3100000, 3100000, WAIT_TYPE_MS, 0},
 };
 
 static struct vcc_desc jdi_lcd_vcc_finit_cmds[] = {
 	/* vcc put */
-	{DTYPE_VCC_PUT, VCC_LCDIO_NAME, &vcc_lcdio, 0, 0},
-	{DTYPE_VCC_PUT, VCC_LCDANALOG_NAME, &vcc_lcdanalog, 0, 0},
+	{DTYPE_VCC_PUT, VCC_LCDIO_NAME, &vcc_lcdio, 0, 0, WAIT_TYPE_MS, 0},
+	{DTYPE_VCC_PUT, VCC_LCDANALOG_NAME, &vcc_lcdanalog, 0, 0, WAIT_TYPE_MS, 0},
 };
 
 static struct vcc_desc jdi_lcd_vcc_enable_cmds[] = {
 	/* vcc enable */
-	{DTYPE_VCC_ENABLE, VCC_LCDANALOG_NAME, &vcc_lcdanalog, 0, 0},
-	{DTYPE_VCC_ENABLE, VCC_LCDIO_NAME, &vcc_lcdio, 0, 0},
+	{DTYPE_VCC_ENABLE, VCC_LCDANALOG_NAME, &vcc_lcdanalog, 0, 0, WAIT_TYPE_MS, 3},
+	{DTYPE_VCC_ENABLE, VCC_LCDIO_NAME, &vcc_lcdio, 0, 0, WAIT_TYPE_MS, 3},
 };
 
 static struct vcc_desc jdi_lcd_vcc_disable_cmds[] = {
 	/* vcc disable */
-	{DTYPE_VCC_DISABLE, VCC_LCDIO_NAME, &vcc_lcdio, 0, 0},
-	{DTYPE_VCC_DISABLE, VCC_LCDANALOG_NAME, &vcc_lcdanalog, 0, 0},
+	{DTYPE_VCC_DISABLE, VCC_LCDIO_NAME, &vcc_lcdio, 0, 0, WAIT_TYPE_MS, 3},
+	{DTYPE_VCC_DISABLE, VCC_LCDANALOG_NAME, &vcc_lcdanalog, 0, 0, WAIT_TYPE_MS, 3},
 };
 
 /*******************************************************************************
@@ -3560,16 +3561,15 @@ static int mipi_jdi_NT35695_panel_on(struct platform_device *pdev)
 	mipi_dsi0_base = hisifd->mipi_dsi0_base;
 
 	if (pinfo->lcd_init_step == LCD_INIT_POWER_ON) {
-		//LOG_JANK_D(JLID_KERNEL_LCD_POWER_ON, "%s", "JL_KERNEL_LCD_POWER_ON");
-		//if (false == gesture_func) {
-		if (1) {
+		LOG_JANK_D(JLID_KERNEL_LCD_POWER_ON, "%s", "JL_KERNEL_LCD_POWER_ON");
+		if (false == gesture_func) {
 			/* lcd vcc enable */
 			vcc_cmds_tx(pdev, jdi_lcd_vcc_enable_cmds,
 				ARRAY_SIZE(jdi_lcd_vcc_enable_cmds));
 			//if (g_vddio_type)
 			//	ts_power_gpio_enable();
 		} else {
-			//HISI_FB_INFO("power on (gesture_func:%d)\n", gesture_func);
+			HISI_FB_INFO("power on (gesture_func:%d)\n", gesture_func);
 		}
 
 		pinfo->lcd_init_step = LCD_INIT_MIPI_LP_SEND_SEQUENCE;
@@ -3577,8 +3577,7 @@ static int mipi_jdi_NT35695_panel_on(struct platform_device *pdev)
 		/* lcd pinctrl normal */
 		pinctrl_cmds_tx(pdev, jdi_lcd_pinctrl_normal_cmds,
 			ARRAY_SIZE(jdi_lcd_pinctrl_normal_cmds));
-		//if (false == gesture_func) {
-		if (1) {
+		if (false == gesture_func) {
 			/* lcd gpio request */
 			gpio_cmds_tx(jdi_lcd_gpio_request_cmds, \
 				ARRAY_SIZE(jdi_lcd_gpio_request_cmds));
@@ -3592,7 +3591,7 @@ static int mipi_jdi_NT35695_panel_on(struct platform_device *pdev)
 			msleep(50);
 			gpio_cmds_tx(jdi_lcd_gpio_sleep_normal_cmds, \
 					ARRAY_SIZE(jdi_lcd_gpio_sleep_normal_cmds));
-			//HISI_FB_INFO("lp send sequence (gesture_func:%d)\n", gesture_func);
+			HISI_FB_INFO("lp send sequence (gesture_func:%d)\n", gesture_func);
 		}
 
 		mipi_dsi_cmds_tx(jdi_display_effect_on_cmds, \
@@ -3637,7 +3636,7 @@ static int mipi_jdi_NT35695_panel_off(struct platform_device *pdev)
 
 	HISI_FB_INFO("fb%d, +!\n", hisifd->index);
 
-	//LOG_JANK_D(JLID_KERNEL_LCD_POWER_OFF, "%s", "JL_KERNEL_LCD_POWER_OFF");
+	LOG_JANK_D(JLID_KERNEL_LCD_POWER_OFF, "%s", "JL_KERNEL_LCD_POWER_OFF");
 
 	/* backlight off */
 	hisi_lcd_backlight_off(pdev);
@@ -3645,8 +3644,7 @@ static int mipi_jdi_NT35695_panel_off(struct platform_device *pdev)
 	/* lcd display off sequence */
 	mipi_dsi_cmds_tx(jdi_display_off_cmds, \
 		ARRAY_SIZE(jdi_display_off_cmds), hisifd->mipi_dsi0_base);
-	//if (false == gesture_func) {
-	if (1) {
+	if (false == gesture_func) {
 		/* lcd gpio lowpower */
 		gpio_cmds_tx(jdi_lcd_gpio_lowpower_cmds, \
 			ARRAY_SIZE(jdi_lcd_gpio_lowpower_cmds));
@@ -3665,7 +3663,7 @@ static int mipi_jdi_NT35695_panel_off(struct platform_device *pdev)
 		vcc_cmds_tx(pdev, jdi_lcd_vcc_disable_cmds,
 			ARRAY_SIZE(jdi_lcd_vcc_disable_cmds));
 	} else {
-		//HISI_FB_INFO("display_off (gesture_func:%d)\n", gesture_func);
+		HISI_FB_INFO("display_off (gesture_func:%d)\n", gesture_func);
 		/*backlights disable*/
 		gpio_cmds_tx(jdi_lcd_gpio_sleep_lp_cmds, \
 			ARRAY_SIZE(jdi_lcd_gpio_sleep_lp_cmds));
@@ -3681,7 +3679,7 @@ static int mipi_jdi_NT35695_panel_off(struct platform_device *pdev)
 
 
 	if (hisifd->hisi_fb_shutdown) {
-		//ts_thread_stop_notify();
+		ts_thread_stop_notify();
 	}
 	checksum_enable_ctl = false;
 
@@ -3731,7 +3729,7 @@ static int mipi_jdi_panel_set_backlight(struct platform_device *pdev)
 
 	if (unlikely(g_debug_enable)) {
 		HISI_FB_INFO("Set backlight to %d\n", hisifd->bl_level);
-		//LOG_JANK_D(JLID_KERNEL_LCD_BACKLIGHT_ON, "JL_KERNEL_LCD_BACKLIGHT_ON,%u", hisifd->bl_level);
+		LOG_JANK_D(JLID_KERNEL_LCD_BACKLIGHT_ON, "JL_KERNEL_LCD_BACKLIGHT_ON,%u", hisifd->bl_level);
 		g_debug_enable = false;
 	}
 
@@ -4216,6 +4214,50 @@ static int mipi_jdi_panel_set_display_region(struct platform_device *pdev,
 	return 0;
 }
 
+static int g_support_mode = 0;
+static ssize_t mipi_jdi_panel_lcd_support_mode_show(struct platform_device *pdev,
+     char *buf)
+{
+       struct hisi_fb_data_type *hisifd = NULL;
+       ssize_t ret = 0;
+
+
+       BUG_ON(pdev == NULL);
+       hisifd = platform_get_drvdata(pdev);
+       BUG_ON(hisifd == NULL);
+
+       HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
+
+       ret = snprintf(buf, PAGE_SIZE, "%d\n", g_support_mode);
+
+       HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
+
+       return ret;
+}
+
+static ssize_t mipi_jdi_panel_lcd_support_mode_store(struct platform_device *pdev,
+       const char *buf, size_t count)
+{
+       int ret = 0;
+       unsigned long val = 0;
+       int flag = -1;
+       struct hisi_fb_data_type *hisifd = NULL;
+       BUG_ON(pdev == NULL);
+       hisifd = platform_get_drvdata(pdev);
+       BUG_ON(hisifd == NULL);
+
+       ret = strict_strtoul(buf, 0, &val);
+       if (ret)
+               return ret;
+
+       HISI_FB_DEBUG("fb%d, +.\n", hisifd->index);
+
+       flag = (int)val;
+
+       g_support_mode = flag;
+       HISI_FB_DEBUG("fb%d, -.\n", hisifd->index);
+      return snprintf((char *)buf, count, "%d\n", g_support_mode);
+}
 
 static struct hisi_panel_info jdi_panel_info = {0};
 static struct hisi_fb_panel_data jdi_panel_data = {
@@ -4237,6 +4279,8 @@ static struct hisi_fb_panel_data jdi_panel_data = {
 	.lcd_gram_check_store = mipi_jdi_panel_lcd_gram_check_store,
 	.lcd_bist_check = mipi_jdi_panel_lcd_bist_check,
 	.set_display_region = mipi_jdi_panel_set_display_region,
+	.lcd_support_mode_show = mipi_jdi_panel_lcd_support_mode_show,
+	.lcd_support_mode_store = mipi_jdi_panel_lcd_support_mode_store,
 
 };
 
@@ -4368,6 +4412,8 @@ static int mipi_jdi_NT35695_probe(struct platform_device *pdev)
 	}
 	//HISI_FB_INFO("runmode_is_factory()=%d,pinfo->sbl_support=%d\n",runmode_is_factory(),pinfo->sbl_support);
 	pinfo->color_temperature_support = 1;
+	pinfo->comform_mode_support = 1;
+	g_support_mode = 1;
 	pinfo->smart_bl.strength_limit = 160;
 	//pinfo->smart_bl.variance = 145;
 	//pinfo->smart_bl.slope_max = 54;

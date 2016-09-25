@@ -322,8 +322,8 @@ static sensor_setting_t ov5648_foxconn_cherrypro_init_array[] = {
 };
 
 static framesize_s ov5648_foxconn_cherrypro_framesizes[] = {
-    {0, 0, 1280, 960, 1408, 1360, 30, 30, 0x199, 0x154, 0x100, VIEW_FULL, RESOLUTION_4_3, false, false, {ov5648_foxconn_cherrypro_framesize_quarter, ARRAY_SIZE(ov5648_foxconn_cherrypro_framesize_quarter)}, CLK_300M},
-    {0, 0, 2592, 1952, 2816, 2128, 14, 14, 0x133, 0x100, 0xC0, VIEW_FULL, RESOLUTION_4_3, false, false, {ov5648_foxconn_cherrypro_framesize_full, ARRAY_SIZE(ov5648_foxconn_cherrypro_framesize_full)}, CLK_450M },
+    {0, 0, 1280, 960, 1408, 1360, 30, 30, 0x199, 0x154, 0x100, VIEW_FULL, RESOLUTION_4_3, false, false, ECGC_TYPE_MAX,{ov5648_foxconn_cherrypro_framesize_quarter, ARRAY_SIZE(ov5648_foxconn_cherrypro_framesize_quarter)}, CLK_300M},
+    {0, 0, 2592, 1952, 2816, 2128, 14, 14, 0x133, 0x100, 0xC0, VIEW_FULL, RESOLUTION_4_3, false, false, ECGC_TYPE_MAX,{ov5648_foxconn_cherrypro_framesize_full, ARRAY_SIZE(ov5648_foxconn_cherrypro_framesize_full)}, CLK_450M },
 };
 #endif /* _OV5648_FOXCONN_CHERRYPRO_H_ */
 

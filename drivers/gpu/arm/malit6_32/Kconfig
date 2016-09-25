@@ -15,5 +15,5 @@
 
 
 menu "ARM GPU Configuration"
-source "drivers/gpu/arm/malit6_32/midgard/Kconfig"
+source "drivers/gpu/arm/malit6_32/r5p1-00rel1/Kconfig"
 endmenu

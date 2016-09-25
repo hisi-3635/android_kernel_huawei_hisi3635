@@ -25,6 +25,10 @@
 #ifdef CONFIG_HW_WIFIPRO
 #include "wifipro_tcp_monitor.h"
 #endif
+#ifdef CONFIG_HW_WIFI
+ #include "wifi_tcp_statistics.h"
+#endif
+
 
 int sysctl_tcp_syn_retries __read_mostly = TCP_SYN_RETRIES;
 int sysctl_tcp_synack_retries __read_mostly = TCP_SYNACK_RETRIES;
@@ -456,6 +460,10 @@ void tcp_retransmit_timer(struct sock *sk)
 	if(is_wifipro_on){
 	    wifipro_handle_retrans(sk, icsk);
 	}
+#endif
+
+#ifdef CONFIG_HW_WIFI
+	wifi_IncrReSendSegs(sk, 1);
 #endif
 
 out_reset_timer:

@@ -53,7 +53,7 @@
 #include <linux/huawei/hw_connectivity.h>
 #endif
 #ifdef  CONFIG_HUAWEI_DSM
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 #endif
 /* Common flag combinations */
 #define DW_MCI_DATA_ERROR_FLAGS	(SDMMC_INT_DTO | SDMMC_INT_DCRC | \
@@ -1295,30 +1295,23 @@ static void dw_mci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	 * atomic, otherwise the card could be removed in between and the
 	 * request wouldn't fail until another card was inserted.
 	 */
-	spin_lock_bh(&host->lock);
 
 	if (!test_bit(DW_MMC_CARD_PRESENT, &slot->flags)) {
-		spin_unlock_bh(&host->lock);
 		mrq->cmd->error = -ENOMEDIUM;
 		mmc_request_done(mmc, mrq);
 		return;
 	}
 
-	spin_unlock_bh(&host->lock);
-
 	pm_runtime_get_sync(mmc_dev(mmc));
 
-	if((host->hw_mmc_id != DWMMC_SD_ID))
-	{
-		if (!dw_mci_stop_abort_cmd(mrq->cmd)) {
-			if (!dw_mci_wait_data_busy(host, mrq)) {
-				dev_err(&mmc->class_dev, "wait data busy timeout !\n");
-				mrq->cmd->error = -ENOTRECOVERABLE;
-				mmc_request_done(mmc, mrq);
-				pm_runtime_mark_last_busy(mmc_dev(mmc));
-				pm_runtime_put_autosuspend(mmc_dev(mmc));
-				return;
-			}
+	if (!dw_mci_stop_abort_cmd(mrq->cmd)) {
+		if (!dw_mci_wait_data_busy(host, mrq)) {
+			dev_err(&mmc->class_dev, "wait data busy timeout !\n");
+			mrq->cmd->error = -ENOTRECOVERABLE;
+			mmc_request_done(mmc, mrq);
+			pm_runtime_mark_last_busy(mmc_dev(mmc));
+			pm_runtime_put_autosuspend(mmc_dev(mmc));
+			return;
 		}
 	}
 
@@ -1600,6 +1593,26 @@ int dw_mci_start_signal_voltage_switch(struct mmc_host *mmc,
     return err;
 }
 
+#ifdef CONFIG_MMC_PASSWORDS
+static int dw_mci_sd_lock_reset(struct mmc_host *mmc)
+{
+	struct dw_mci_slot *slot = mmc_priv(mmc);
+	struct dw_mci *host = slot->host;
+	const struct dw_mci_drv_data *drv_data = slot->host->drv_data;
+	u32 present = 0;
+
+	pm_runtime_get_sync(mmc_dev(mmc));
+	present = dw_mci_get_cd(mmc);
+	if (present == 1) {
+		if (drv_data && drv_data->work_fail_reset)
+			drv_data->work_fail_reset(host);
+	}
+	pm_runtime_mark_last_busy(mmc_dev(mmc));
+	pm_runtime_put_autosuspend(mmc_dev(mmc));
+
+	return 0;
+}
+#endif
 static const struct mmc_host_ops dw_mci_ops = {
 	.request		= dw_mci_request,
 	.pre_req		= dw_mci_pre_req,
@@ -1617,6 +1630,9 @@ static const struct mmc_host_ops dw_mci_ops = {
 	.execute_tuning		 = dw_mci_execute_tuning,
 #ifdef CONFIG_HI110X_WIFI_ENABLE
 	.init_card  = mshci_init_card,
+#endif
+#ifdef CONFIG_MMC_PASSWORDS
+	.sd_lock_reset		= dw_mci_sd_lock_reset,
 #endif
 };
 

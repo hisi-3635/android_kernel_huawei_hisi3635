@@ -1,0 +1,4 @@
+kernel/drivers/i2c/i2c-core.ko
+kernel/drivers/i2c/busses/i2c-designware-core.ko
+kernel/drivers/i2c/busses/i2c-designware-platform.ko
+kernel/drivers/i2c/busses/hisi_i2c_designware.ko

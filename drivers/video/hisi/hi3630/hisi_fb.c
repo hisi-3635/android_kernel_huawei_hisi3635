@@ -416,9 +416,15 @@ static int hisi_fb_open_sub(struct fb_info *info)
 	int ret = 0;
 	bool needed = false;
 
-	BUG_ON(info == NULL);
+	if (NULL == info) {
+		HISI_FB_ERR("NULL Pointer");
+		return -EINVAL;
+	}
 	hisifd = (struct hisi_fb_data_type *)info->par;
-	BUG_ON(hisifd == NULL);
+	if (NULL == hisifd) {
+		HISI_FB_ERR("NULL Pointer");
+		return -EINVAL;
+	}
 
 	if (hisifd->set_fastboot_fnc) {
 		needed = hisifd->set_fastboot_fnc(info);
@@ -439,7 +445,10 @@ static int hisi_fb_release_sub(struct fb_info *info)
 {
 	int ret = 0;
 
-	BUG_ON(info == NULL);
+	if (NULL == info) {
+		HISI_FB_ERR("NULL Pointer");
+		return -EINVAL;
+	}
 
 	ret = hisi_fb_blank_sub(FB_BLANK_POWERDOWN, info);
 	if (ret != 0) {
@@ -809,6 +818,11 @@ static int hisifb_resolution_switch(struct fb_info *info, void __user *argp)
 
 	BUG_ON(NULL == hisifd);
 
+	if (flag < 0) {
+		HISI_FB_ERR("Invalid level of Multi Resolution\n");
+		return -1;
+	}
+
 	if (flag >= DISPLAY_LOW_POWER_LEVEL_MAX ) {
 		HISI_FB_ERR("Invalid level of Multi Resolution\n");
 		return -1;
@@ -848,6 +862,21 @@ static int hisifb_resolution_update(struct fb_info *info, void __user *argp)
 	hisifd = (struct hisi_fb_data_type*)info->par;
 	BUG_ON(hisifd == NULL);
 
+	if (flag < 0) {
+		HISI_FB_ERR("Invalid level of Multi Resolution\n");
+		return -1;
+	}
+
+	if (flag >= DISPLAY_LOW_POWER_LEVEL_MAX ) {
+		HISI_FB_ERR("Invalid level of Multi Resolution\n");
+		return -1;
+	}
+
+	if (hisifd->index != 0){
+		HISI_FB_ERR("Invalid FB device\n");
+		return -1;
+	}
+
 	if (hisifd->switch_res_flag == flag) {
 		ret = hisi_fb_blank_sub(FB_BLANK_UNBLANK, info);
 	}
@@ -869,26 +898,27 @@ static int hisi_fb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long a
 	BUG_ON(hisifd == NULL);
 
 	switch (cmd) {
+#if 0
 	case HISIFB_LINE_LENGTH_GET:
 		ret = hisifb_line_length_get(info, argp);
 		break;
+#endif
 	case HISIFB_VSYNC_CTRL:
 		if (hisifd->vsync_ctrl_fnc) {
 			ret = hisifd->vsync_ctrl_fnc(info, argp);
 		}
 		break;
-
+#if 0
 	case HISIFB_DSS_CLK_RATE_SET:
 		ret = hisifb_ctrl_dss_clk_rate(info, argp);
 		break;
-
+#endif
 	case HISIFB_PIXCLK_RATE_SET:
 		ret = hisifb_ctrl_pixclk_rate(info, argp);
 		break;
-
-    case HISIFB_LCD_DIRTY_REGION_INFO_GET:
-        ret = hisifb_lcd_dirty_region_info_get(info, argp);
-    break;
+	case HISIFB_LCD_DIRTY_REGION_INFO_GET:
+		ret = hisifb_lcd_dirty_region_info_get(info, argp);
+	break;
 	case HISIFB_DIRTY_REGION_UPDT_SET:
 		ret = hisifb_dirty_region_updt_set(info, argp);
 		break;
@@ -1073,7 +1103,10 @@ static void hisifb_sysfs_init(struct hisi_fb_data_type *hisifd)
 {
 	int i = 0;
 
-	BUG_ON(hisifd == NULL);
+	if (NULL == hisifd) {
+		HISI_FB_ERR("Null Pointer");
+		return;
+	}
 
 	hisifd->sysfs_index = 0;
 	for (i = 0; i < HISI_FB_SYSFS_ATTRS_NUM; i++) {
@@ -1084,8 +1117,10 @@ static void hisifb_sysfs_init(struct hisi_fb_data_type *hisifd)
 
 static void hisifb_sysfs_attrs_append(struct hisi_fb_data_type *hisifd, struct attribute *attr)
 {
-	BUG_ON(hisifd == NULL);
-	BUG_ON(attr == NULL);
+	if (NULL == hisifd || NULL == attr) {
+		HISI_FB_ERR("NULL Pointer. hisifd : %p ,  attr : %p\n", hisifd, attr);
+		return;
+	}
 
 	if (hisifd->sysfs_index >= HISI_FB_SYSFS_ATTRS_NUM) {
 		HISI_FB_ERR("fb%d, sysfs_atts_num(%d) is out of range(%d)!\n",
@@ -1102,9 +1137,15 @@ static int hisifb_sysfs_create(struct platform_device *pdev)
 	int ret = 0;
 	struct hisi_fb_data_type *hisifd = NULL;
 
-	BUG_ON(pdev == NULL);
+	if (NULL == pdev) {
+		HISI_FB_ERR("NULL Pointer");
+		return -EINVAL;
+	}
 	hisifd = platform_get_drvdata(pdev);
-	BUG_ON(hisifd == NULL);
+	if (NULL == hisifd ) {
+		HISI_FB_ERR("NULL Pointer");
+		return -EINVAL;
+	}
 
 	ret = sysfs_create_group(&hisifd->fbi->dev->kobj, &(hisifd->sysfs_attr_group));
 	if (ret) {
@@ -1119,9 +1160,15 @@ static void hisifb_sysfs_remove(struct platform_device *pdev)
 {
 	struct hisi_fb_data_type *hisifd = NULL;
 
-	BUG_ON(pdev == NULL);
+	if (NULL == pdev) {
+		HISI_FB_ERR("NULL Pointer");
+		return -EINVAL;
+	}
 	hisifd = platform_get_drvdata(pdev);
-	BUG_ON(hisifd == NULL);
+	if (NULL == hisifd ) {
+		HISI_FB_ERR("NULL Pointer");
+		return -EINVAL;
+	}
 
 	sysfs_remove_group(&hisifd->fbi->dev->kobj, &(hisifd->sysfs_attr_group));
 
@@ -1171,7 +1218,10 @@ static void hisifb_frame_end_wq_handler(struct work_struct *work)
 	int esd_check_count = 0;
 
 	hisifd = container_of(work, struct hisi_fb_data_type, frame_end_work);
-	BUG_ON(hisifd == NULL);
+	if (NULL == hisifd) {
+		HISI_FB_ERR("NULL Pointer");
+		return ;
+	}
 
 	if (!hisifd->panel_info.esd_enable)
 		return ;
@@ -1593,6 +1643,7 @@ static int hisi_fb_register(struct hisi_fb_data_type *hisifd)
 		INIT_WORK(&hisifd->dss_debug_work, dss_debug_func);
 #endif
 
+        hisifd->dsi_bit_clk_updated = false;
 		if (hisifd->panel_info.esd_enable) {
 			if (is_mipi_cmd_panel(hisifd)) {
 				hisifd->frame_end_wq= create_singlethread_workqueue("dss_frame_end");
@@ -2128,8 +2179,10 @@ static int hisi_fb_runtime_idle(struct device *dev)
 static void hisifb_pm_runtime_get(struct hisi_fb_data_type *hisifd)
 {
 	int ret = 0;
-
-	BUG_ON(hisifd == NULL);
+	if (NULL == hisifd) {
+		HISI_FB_ERR("NULL Pointer");
+		return;
+	}
 
 	ret = pm_runtime_get_sync(hisifd->fbi->dev);
 	if (ret < 0) {
@@ -2140,8 +2193,10 @@ static void hisifb_pm_runtime_get(struct hisi_fb_data_type *hisifd)
 static void hisifb_pm_runtime_put(struct hisi_fb_data_type *hisifd)
 {
 	int ret = 0;
-
-	BUG_ON(hisifd == NULL);
+	if (NULL == hisifd) {
+		HISI_FB_ERR("NULL Pointer");
+		return;
+	}
 
 	ret = pm_runtime_put(hisifd->fbi->dev);
 	if (ret < 0) {
@@ -2154,9 +2209,15 @@ static void hisifb_pm_runtime_register(struct platform_device *pdev)
 	int ret = 0;
 	struct hisi_fb_data_type *hisifd = NULL;
 
-	BUG_ON(pdev == NULL);
+	if (NULL == pdev) {
+		HISI_FB_ERR("NULL Pointer");
+		return;
+	}
 	hisifd = platform_get_drvdata(pdev);
-	BUG_ON(hisifd == NULL);
+	if (NULL == hisifd) {
+		HISI_FB_ERR("NULL Pointer");
+		return;
+	}
 
 	ret = pm_runtime_set_active(hisifd->fbi->dev);
 	if (ret < 0)
@@ -2168,9 +2229,15 @@ static void hisifb_pm_runtime_unregister(struct platform_device *pdev)
 {
 	struct hisi_fb_data_type *hisifd = NULL;
 
-	BUG_ON(pdev == NULL);
+	if (NULL == pdev) {
+		HISI_FB_ERR("NULL Pointer");
+		return;
+	}
 	hisifd = platform_get_drvdata(pdev);
-	BUG_ON(hisifd == NULL);
+	if (NULL == hisifd) {
+		HISI_FB_ERR("NULL Pointer");
+		return;
+	}
 
 	pm_runtime_disable(hisifd->fbi->dev);
 }

@@ -23,6 +23,7 @@
 #include "inputhub_route.h"
 #include "inputhub_bridge.h"
 #include "sensor_info.h"
+#include "sensor_debug.h"
 #include "sensor_sys_info.h"
 #include <huawei_platform/inputhub/motionhub.h>
 #include <huawei_platform/inputhub/sensorhub.h>
@@ -32,7 +33,7 @@
 #include <linux/rtc.h>
 #include <huawei_platform/log/log_exception.h>
 #include <linux/wakelock.h>
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 
 #define LINK_PACKAGE
 #define ROUTE_BUFFER_MAX_SIZE (1024)
@@ -62,9 +63,12 @@ int iom3_timeout = 4000;
 int (*api_mculog_process)(const char * buf,unsigned int length/*buf length*/)=0;
 
 extern int loglevel_val;
+
 static uint32_t valid_step_count = 0;
 static uint32_t recovery_step_count = 0;
+
 extern void iom3_log_store(int level, u32 ts_nsec, const char *text, u16 text_len);
+extern int ak8789_register_report_data(int ms);
 extern int hall_first_report(bool enable);
 extern void dmd_log_report(int dmd_mark,const char * err_func,const char * err_msg);
 extern struct dsm_client *shb_dclient;
@@ -102,6 +106,49 @@ static struct inputhub_route_table  package_route_tbl[] =
     {ROUTE_MOTION_PORT, {NULL,0},{NULL,0},{NULL,0},__WAIT_QUEUE_HEAD_INITIALIZER(package_route_tbl[1].read_wait)},
 };
 
+struct sensors_cmd_map {
+    int         hal_sensor_type;
+    int         tag;
+};
+
+static const struct sensors_cmd_map sensors_cmd_map_tab[] = {
+    {SENSORHUB_TYPE_ACCELEROMETER,                  TAG_ACCEL},
+    {SENSORHUB_TYPE_LIGHT,                          TAG_ALS},
+    {SENSORHUB_TYPE_PROXIMITY,                      TAG_PS},
+    {SENSORHUB_TYPE_GYROSCOPE,                      TAG_GYRO},
+    {SENSORHUB_TYPE_GRAVITY,                        TAG_GRAVITY},
+    {SENSORHUB_TYPE_MAGNETIC,                       TAG_MAG},
+    {SENSORHUB_TYPE_ROTATESCREEN,                   TAG_SCREEN_ROTATE},
+    {SENSORHUB_TYPE_LINEARACCELERATE,               TAG_LINEAR_ACCEL},
+    {SENSORHUB_TYPE_ORIENTATION,                    TAG_ORIENTATION},
+    {SENSORHUB_TYPE_ROTATEVECTOR,                   TAG_ROTATION_VECTORS},
+    {SENSORHUB_TYPE_PRESSURE,                       TAG_PRESSURE},
+    {SENSORHUB_TYPE_TEMPERATURE,                    TAG_TEMP},
+    {SENSORHUB_TYPE_RELATIVE_HUMIDITY,              TAG_HUMIDITY},
+    {SENSORHUB_TYPE_AMBIENT_TEMPERATURE,            TAG_AMBIENT_TEMP},
+    {SENSORHUB_TYPE_MCU_LABC,                       TAG_LABC},
+    {SENSORHUB_TYPE_HALL,                           TAG_HALL},
+    {SENSORHUB_TYPE_MAGNETIC_FIELD_UNCALIBRATED,    TAG_MAG_UNCALIBRATED},
+    {SENSORHUB_TYPE_GAME_ROTATION_VECTOR,           TAG_GAME_RV},
+    {SENSORHUB_TYPE_GYROSCOPE_UNCALIBRATED,         TAG_GYRO_UNCALIBRATED},
+    {SENSORHUB_TYPE_SIGNIFICANT_MOTION,             TAG_SIGNIFICANT_MOTION},
+    {SENSORHUB_TYPE_STEP_DETECTOR,                  TAG_STEP_DETECTOR},
+    {SENSORHUB_TYPE_STEP_COUNTER,                   TAG_STEP_COUNTER},
+    {SENSORHUB_TYPE_GEOMAGNETIC_ROTATION_VECTOR,    TAG_GEOMAGNETIC_RV},
+    {SENSORHUB_TYPE_HANDPRESS,                      TAG_HANDPRESS},
+    {SENSORHUB_TYPE_CAP_PROX,                       TAG_CAP_PROX}
+};
+
+static uint8_t tag_to_hal_sensor_type[TAG_SENSOR_END];
+static uint8_t hal_sensor_type_to_tag[SENSORHUB_TYPE_END];
+static void init_hash_tables(void)
+{
+    int i;
+    for (i = 0; i < sizeof(sensors_cmd_map_tab) / sizeof(sensors_cmd_map_tab[0]); ++i) {
+        tag_to_hal_sensor_type[sensors_cmd_map_tab[i].tag] = sensors_cmd_map_tab[i].hal_sensor_type;
+        hal_sensor_type_to_tag[sensors_cmd_map_tab[i].hal_sensor_type] = sensors_cmd_map_tab[i].tag;
+    }
+}
 static void get_time_stamp(char* timestamp_buf,  unsigned int len)
 {
    struct timeval tv;
@@ -322,7 +369,7 @@ EXPORT_SYMBOL_GPL(inputhub_route_read);
 static int64_t getTimestamp(void) {
     struct timespec ts;
 
-    ktime_get_ts(&ts);
+    get_monotonic_boottime(&ts);
     //timevalToNano
     return ts.tv_sec*1000000000LL + ts.tv_nsec;
 }
@@ -353,13 +400,89 @@ static inline void write_to_fifo(struct inputhub_buffer_pos *pwriter, char *cons
     }
 }
 
-int ap_hall_report(int value)
+t_ap_sensor_ops_record all_ap_sensor_operations[TAG_SENSOR_END] =
+{
+#ifdef CONFIG_HUAWEI_HALL_INPUTHUB
+    [TAG_HALL] =
+    {
+        .work_on_ap = true,
+        .ops = {.setdelay = ak8789_register_report_data},
+    },
+#endif
+};
+
+int register_ap_sensor_operations(int tag, sensor_operation_t *ops)
+{
+    if (!(TAG_SENSOR_BEGIN <= tag && tag < TAG_SENSOR_END)) {
+        hwlog_err("tag %d range error in %s\n", tag, __func__);
+        return -EINVAL;
+    }
+
+    if (!all_ap_sensor_operations[tag].work_on_ap) {
+        memcpy(&all_ap_sensor_operations[tag].ops, ops, sizeof(sensor_operation_t));
+        all_ap_sensor_operations[tag].work_on_ap = true;
+    } else {
+        hwlog_warn("tag %d has registered already in %s\n", tag, __func__);
+    }
+
+    return 0;
+}
+
+int unregister_ap_sensor_operations(int tag)
+{
+    if (!(TAG_SENSOR_BEGIN <= tag && tag < TAG_SENSOR_END)) {
+        hwlog_err("tag %d range error in %s\n", tag, __func__);
+        return -EINVAL;
+    }
+    memset(&all_ap_sensor_operations[tag], 0, sizeof(all_ap_sensor_operations[tag]));
+    return 0;
+}
+
+int report_sensor_event(int tag, int value[], int length)
 {
     struct sensor_data event;
-    event.type = TAG_HALL;
-    event.length = sizeof(event.value[0]);
-    event.value[0] = (int)value;
+
+    if ((!(TAG_SENSOR_BEGIN <= tag && tag < TAG_SENSOR_END)) || (length > sizeof(event.value))) {
+        hwlog_err("para error (tag : %d), (length : %d) in %s\n", tag, length, __func__);
+        return -EINVAL;
+    }
+
+    event.type = tag_to_hal_sensor_type[tag];
+    event.length = length;
+    memcpy(&event.value, value, length);
+    sensor_get_data(&event);
     return inputhub_route_write(ROUTE_SHB_PORT, (char *)&event, event.length + OFFSET_OF_END_MEM(struct sensor_data, length));
+}
+
+int ap_hall_report(int value)
+{
+    return report_sensor_event(TAG_HALL, &value, sizeof(value));
+}
+
+bool ap_sensor_enable(int tag, bool enable)
+{
+    bool work_on_ap = all_ap_sensor_operations[tag].work_on_ap;
+
+    if (work_on_ap) {
+        if (all_ap_sensor_operations[tag].ops.enable) {
+            all_ap_sensor_operations[tag].ops.enable(enable);
+        }
+    }
+
+    return work_on_ap;
+}
+
+bool ap_sensor_setdelay(int tag, int ms)
+{
+    bool work_on_ap = all_ap_sensor_operations[tag].work_on_ap;
+
+    if (work_on_ap) {
+        if (all_ap_sensor_operations[tag].ops.setdelay) {
+            all_ap_sensor_operations[tag].ops.setdelay(ms);
+        }
+    }
+
+    return work_on_ap;
 }
 
 /*******************************************************************************************
@@ -563,7 +686,6 @@ char* obj_tag_str[] = {
 	[TAG_STEP_DETECTOR] = "TAG_STEP_DETECTOR",
 	[TAG_STEP_COUNTER] = "TAG_STEP_COUNTER",
 	[TAG_GEOMAGNETIC_RV] = "TAG_GEOMAGNETIC_RV",
-	[TAG_AIRPRESS] = "TAG_AIRPRESS",
 	[TAG_HANDPRESS] = "TAG_HANDPRESS",
 	[TAG_CAP_PROX] = "TAG_CAP_PROX",
 	[TAG_TP] = "TAG_TP",
@@ -581,14 +703,20 @@ char* obj_tag_str[] = {
 };
 static int inputhub_sensor_enable_internal_nolock(int tag, bool enable, close_param_t *param)
 {
+/*  ---disable hall 
 #ifdef CONFIG_HUAWEI_HALL_INPUTHUB
     if (TAG_HALL == tag)
         return hall_first_report(enable);
 #endif
+*/
     if (NULL == param) {
         hwlog_err("NULL pointer param in %s\n", __func__);
         dmd_log_report(DSM_SHB_ERR_CMD, __func__, "NULL pointer param\n");
         return -EINVAL;
+    }
+
+    if (ap_sensor_enable(tag, enable)) {
+        return 0;
     }
 
     if (TAG_SENSOR_BEGIN <= tag && tag < TAG_SENSOR_END) {
@@ -623,13 +751,14 @@ static int inputhub_sensor_enable_internal_nolock(int tag, bool enable, close_pa
 
 static int inputhub_sensor_setdelay_internal_nolock(int tag, open_param_t *param)
 {
-    if (TAG_HALL == tag)
-        return 0;
-
     if (NULL == param) {
         hwlog_err("NULL pointer param in %s\n", __func__);
         dmd_log_report(DSM_SHB_ERR_CMD, __func__, "NULL pointer param\n");
         return -EINVAL;
+    }
+
+    if (ap_sensor_setdelay(tag, param->period)) {
+        return 0;
     }
 
     if (TAG_SENSOR_BEGIN <= tag && tag < TAG_SENSOR_END) {
@@ -871,14 +1000,20 @@ static bool is_motion_data_report(const pkt_header_t *head)
 static int inputhub_sensor_enable_internal(int tag, bool enable, close_param_t *param)
 {
 	int ret = 0;
+/* ---by wangguanlin disable HALL
 #ifdef CONFIG_HUAWEI_HALL_INPUTHUB
 	if (TAG_HALL == tag)
 		return hall_first_report(enable);
 #endif
+*/
 	if (NULL == param) {
 		hwlog_err("NULL pointer param in %s\n", __func__);
 		dmd_log_report(DSM_SHB_ERR_CMD, __func__, "NULL pointer param\n");
 		return -EINVAL;
+	}
+
+	if (ap_sensor_enable(tag, enable)) {
+		return 0;
 	}
 
 	if (TAG_SENSOR_BEGIN <= tag && tag < TAG_SENSOR_END) {
@@ -929,13 +1064,14 @@ static int inputhub_sensor_enable_internal(int tag, bool enable, close_param_t *
 
 static int inputhub_sensor_setdelay_internal(int tag, open_param_t *param)
 {
-	if (TAG_HALL == tag)
-		return 0;
-
 	if (NULL == param) {
 		hwlog_err("NULL pointer param in %s\n", __func__);
 		dmd_log_report(DSM_SHB_ERR_CMD, __func__, "NULL pointer param\n");
 		return -EINVAL;
+	}
+
+	if (ap_sensor_setdelay(tag, param->period)) {
+		return 0;
 	}
 
 	if (TAG_SENSOR_BEGIN <= tag && tag < TAG_SENSOR_END) {
@@ -1209,45 +1345,6 @@ void iom3_log_handle(struct work_struct  *work)
     kfree(iom3_log);
 }
 
-
-
-struct sensors_cmd_map {
-    int         shb_ioctl_app_cmd;
-    int         hal_sensor_type;
-    int         tag;
-    obj_cmd_t   cmd;
-};
-static const struct sensors_cmd_map sensors_cmd_map_tab[] = {
-    {SHB_IOCTL_APP_ENABLE_SENSOR,               -1,                                 -1,                     CMD_CMN_OPEN_REQ},
-    {SHB_IOCTL_APP_DISABLE_SENSOR,              -1,                                 -1,                     CMD_CMN_CLOSE_REQ},
-    {SHB_IOCTL_APP_DELAY_ACCEL,                 SENSORHUB_TYPE_ACCELEROMETER,       TAG_ACCEL,              CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_LIGHT,                 SENSORHUB_TYPE_LIGHT,               TAG_ALS,                CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_PROXI,                 SENSORHUB_TYPE_PROXIMITY,           TAG_PS,                 CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_GYRO,                  SENSORHUB_TYPE_GYROSCOPE,           TAG_GYRO,               CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_GRAVITY,               SENSORHUB_TYPE_GRAVITY,             TAG_GRAVITY,            CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_MAGNETIC,              SENSORHUB_TYPE_MAGNETIC,            TAG_MAG,                CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_ROTATESCREEN,          SENSORHUB_TYPE_ROTATESCREEN,        TAG_SCREEN_ROTATE,      CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_LINEARACCELERATE,      SENSORHUB_TYPE_LINEARACCELERATE,    TAG_LINEAR_ACCEL,       CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_ORIENTATION,           SENSORHUB_TYPE_ORIENTATION,         TAG_ORIENTATION,        CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_ROTATEVECTOR,          SENSORHUB_TYPE_ROTATEVECTOR,        TAG_ROTATION_VECTORS,   CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_PRESSURE,              SENSORHUB_TYPE_PRESSURE,            TAG_PRESSURE,           CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_TEMPERATURE,           SENSORHUB_TYPE_TEMPERATURE,         TAG_TEMP,               CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_RELATIVE_HUMIDITY,     SENSORHUB_TYPE_RELATIVE_HUMIDITY,   TAG_HUMIDITY,           CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_AMBIENT_TEMPERATURE,   SENSORHUB_TYPE_AMBIENT_TEMPERATURE, TAG_AMBIENT_TEMP,       CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_MCU_LABC,              SENSORHUB_TYPE_MCU_LABC,            TAG_LABC,               CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_HALL,                  SENSORHUB_TYPE_HALL,                TAG_HALL,               CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_MAGNETIC_FIELD_UNCALIBRATED,   SENSORHUB_TYPE_MAGNETIC_FIELD_UNCALIBRATED,     TAG_MAG_UNCALIBRATED,       CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_GAME_ROTATION_VECTOR,          SENSORHUB_TYPE_GAME_ROTATION_VECTOR,            TAG_GAME_RV,                CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_GYROSCOPE_UNCALIBRATED,        SENSORHUB_TYPE_GYROSCOPE_UNCALIBRATED,          TAG_GYRO_UNCALIBRATED,      CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_SIGNIFICANT_MOTION,            SENSORHUB_TYPE_SIGNIFICANT_MOTION,              TAG_SIGNIFICANT_MOTION,     CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_STEP_DETECTOR,                 SENSORHUB_TYPE_STEP_DETECTOR,                   TAG_STEP_DETECTOR,          CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_STEP_COUNTER,                  SENSORHUB_TYPE_STEP_COUNTER,                    TAG_STEP_COUNTER,           CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_GEOMAGNETIC_ROTATION_VECTOR,   SENSORHUB_TYPE_GEOMAGNETIC_ROTATION_VECTOR,     TAG_GEOMAGNETIC_RV,         CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_AIRPRESS,     SENSORHUB_TYPE_AIRPRESS,     TAG_AIRPRESS,         CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_HANDPRESS,     SENSORHUB_TYPE_HANDPRESS,     TAG_HANDPRESS,         CMD_CMN_INTERVAL_REQ},
-    {SHB_IOCTL_APP_DELAY_CAP_PROX,   SENSORHUB_TYPE_CAP_PROX,     TAG_CAP_PROX,         CMD_CMN_INTERVAL_REQ}
-};
-
 int inputhub_sensor_enable(int tag, bool enable)
 {
     close_param_t default_close_prama;
@@ -1279,70 +1376,33 @@ Return:         成功或者失败信息
 static int send_sensor_cmd(unsigned int cmd, unsigned long arg)
 {
     void __user *argp = (void __user *)arg;
-    int argvalue = 0;//values of TLV are defined in type of int in communication protocols
-    int i = 0;
+    int tag = 0;
+    struct ioctl_para para;
 
-    for (i = 0; i < sizeof(sensors_cmd_map_tab) / sizeof(sensors_cmd_map_tab[0]); ++i) {
-        if (sensors_cmd_map_tab[i].shb_ioctl_app_cmd == cmd) {
-            break;
-        }
-    }
-
-    if (sizeof(sensors_cmd_map_tab) / sizeof(sensors_cmd_map_tab[0]) == i) {
-        hwlog_err("unknown cmd %d in %s!\n", cmd, __func__);
-        dmd_log_report(DSM_SHB_ERR_CMD, __func__, "unknown cmd\n");
-        return -EINVAL;
-    }
-
-    if (copy_from_user(&argvalue, argp, sizeof(argvalue))) {
+    if (copy_from_user(&para, argp, sizeof(para))) {
         return -EFAULT;
     }
 
-    if (CMD_CMN_OPEN_REQ == sensors_cmd_map_tab[i].cmd || CMD_CMN_CLOSE_REQ == sensors_cmd_map_tab[i].cmd) {
-        int j;
-        for (j = 0; j < sizeof(sensors_cmd_map_tab) / sizeof(sensors_cmd_map_tab[0]); ++j) {
-            if (sensors_cmd_map_tab[j].hal_sensor_type == argvalue) {
-                break;
-            }
-        }
-        if (sizeof(sensors_cmd_map_tab) / sizeof(sensors_cmd_map_tab[0]) == j) {
-            hwlog_err("unknown hal_sensor_type %d in %s!\n", argvalue, __func__);
-            dmd_log_report(DSM_SHB_ERR_CMD, __func__, "unknown hal_sensor_type\n");
-            return -EINVAL;
-        }
+    if (!(SENSORHUB_TYPE_BEGIN <= para.shbtype && para.shbtype < SENSORHUB_TYPE_END)) {
+        hwlog_err("error shbtype %d in %s\n", para.shbtype, __func__);
+        return -EINVAL;
+    }
 
-        if (check_sensor_info(sensors_cmd_map_tab[j].tag,
-			                    (CMD_CMN_OPEN_REQ == sensors_cmd_map_tab[i].cmd),
-			                    0)){
-            hwlog_info("%s %s!\n", (CMD_CMN_OPEN_REQ == sensors_cmd_map_tab[i].cmd)?"open":"close",
-				obj_tag_str[sensors_cmd_map_tab[j].tag]);
-            return inputhub_sensor_enable(sensors_cmd_map_tab[j].tag, CMD_CMN_OPEN_REQ == sensors_cmd_map_tab[i].cmd);
-        }else{
-            hwlog_info("already %s %s!\n", (CMD_CMN_OPEN_REQ == sensors_cmd_map_tab[i].cmd)?"open":"close",
-				obj_tag_str[sensors_cmd_map_tab[j].tag]);
-            return 0;
-        }
+    tag = hal_sensor_type_to_tag[para.shbtype];
+    switch (cmd) {
+    case SHB_IOCTL_APP_ENABLE_SENSOR:
+    case SHB_IOCTL_APP_DISABLE_SENSOR:
+        return inputhub_sensor_enable(tag, SHB_IOCTL_APP_ENABLE_SENSOR == cmd);
+        break;
 
-    } else if (CMD_CMN_INTERVAL_REQ == sensors_cmd_map_tab[i].cmd) {
-        if (argvalue < 10){
-            argvalue = 10;
-            hwlog_info("%s, %s ready set delay(%d)  to 10ms", __func__,
-				obj_tag_str[sensors_cmd_map_tab[i].tag], argvalue);
-        }
+    case SHB_IOCTL_APP_DELAY_SENSOR:
+        //add disable here when modify interval. need modify CMD when reconsturcture
+        /* delete some line */
+        return inputhub_sensor_setdelay(tag, para.delay_ms);
+        break;
 
-        if (check_sensor_info(sensors_cmd_map_tab[i].tag,
-			                    (CMD_CMN_INTERVAL_REQ),
-			                    argvalue)){
-            hwlog_info("set %s delay %dms\n", obj_tag_str[sensors_cmd_map_tab[i].tag], argvalue);
-            return inputhub_sensor_setdelay(sensors_cmd_map_tab[i].tag, argvalue);
-        }else{
-            hwlog_info("---- already set %s delay %dms\n", obj_tag_str[sensors_cmd_map_tab[i].tag], argvalue);
-            return 0;
-        }
-
-    } else {
-        hwlog_err("unknown cmd!\n");
-        dmd_log_report(DSM_SHB_ERR_CMD, __func__, "unknown cmd\n");
+    default:
+        hwlog_err("unknown shb_hal_cmd %d in %s!\n", cmd, __func__);
         return -EINVAL;
     }
 
@@ -1727,6 +1787,7 @@ int fobidden_comm = 0; /*once this flag set to 1, ap/iom3 will not transfer comm
 int inputhub_route_recv_mcu_data(const char *buf, unsigned int length)
 {
     const pkt_header_t *head = (const pkt_header_t *)buf;
+    bool is_notifier = false;
 #ifdef LINK_PACKAGE
     if (NULL == (head = pack(buf, length))) {
             return 0;//receive next partial package.
@@ -1745,56 +1806,54 @@ int inputhub_route_recv_mcu_data(const char *buf, unsigned int length)
 
     ++ipc_debug_info.event_cnt[head->tag];
 
+    if (is_mcu_notifier(head)) {
+        mcu_notifier_queue_work(head);
+        is_notifier = true;
+    }
+
     if (is_fingersense_zaxis_data_report(head)) {
        pkt_fingersense_data_report_req_t *zaxis_report = (pkt_fingersense_data_report_req_t *) head;
        update_fingersense_zaxis_data(zaxis_report->zaxis_data, zaxis_report->hd.length / sizeof(s16));
     } else if (is_sensor_data_report(head)) {
-        //这里转成之前的格式(HAL层需要的格式)
-        struct sensor_data event;
+        pkt_xyz_data_req_t *sensor_event = (pkt_xyz_data_req_t *)head;
 
+        sensor_read_number[head->tag]++;
         if (TAG_STEP_COUNTER == head->tag) {//extend step counter date
             step_counter_data_process((pkt_step_counter_data_req_t *)head);
         }
-
-        event.type = head->tag;
-        event.length = head->length;
-        memcpy(event.value, ((char *)head) + sizeof(pkt_header_t), event.length);
-        if(head->tag == TAG_PS && event.value[0] != 0) //recieve proximity far
-        {
+        if (head->tag == TAG_PS && sensor_event->x != 0) {//recieve proximity far
             wake_lock_timeout(&wlock, HZ);
             hwlog_info("Kernel get far event!\n");
-        }else if(head->tag == TAG_PS)
-        {
+        } else if (head->tag == TAG_PS) {
             hwlog_info("Kernel get near event!!!!\n");
         }
-        sensor_read_number[event.type]++;
         if(head->tag == TAG_ACCEL)
         {
             if(!(sensor_read_number[TAG_ACCEL] & 0x7FF)){
-                hwlog_info("Kernel get acc event %d, %d, %d\n", event.value[0], event.value[1], event.value[2]);
+                hwlog_info("Kernel get acc event %d, %d, %d\n", sensor_event->x, sensor_event->y, sensor_event->z);
             }
         }
 
 	if(head->tag == TAG_ALS)
 	{
 		if(!(sensor_read_number[TAG_ALS] & 0xF)){
-			hwlog_info("Kernel get als event %d, %d, %d\n", event.value[0], event.value[1], event.value[2]);
+			hwlog_info("Kernel get als event %d, %d, %d\n", sensor_event->x, sensor_event->y, sensor_event->z);
 		}
 	}
 
 	 if (unlikely((stop_auto_accel)&&(head->tag == TAG_ACCEL))){
 		hwlog_info("%s not report data for dt\n", __func__);
-		return (event.length + OFFSET_OF_END_MEM(struct sensor_data, length) + HEAD_SIZE);
+            return 0;
 	 }
-	 if(head->tag == TAG_AIRPRESS){
+        if (head->tag == TAG_PRESSURE) {
 //		hwlog_info("Kernel get airpress event %d, %d\n", event.value[0],event.value[1]);
-		get_airpress_data = event.value[0];
-		get_temperature_data = event.value[1];
+            get_airpress_data = sensor_event->x;
+            get_temperature_data = sensor_event->y;
 	}
 	 if(head->tag == TAG_HANDPRESS){
-		hwlog_err("Kernel get [TAG_HANDPRESS] tag:%d; type:%d; len:%d\n", head->tag, event.type, event.length);
+		hwlog_err("Kernel get [TAG_HANDPRESS] tag:%d; len:%d\n", head->tag, head->length);
 	}
-        return inputhub_route_write(ROUTE_SHB_PORT, (char *)&event, event.length + OFFSET_OF_END_MEM(struct sensor_data, length));
+        return report_sensor_event(head->tag, (int *)((char *)head + sizeof(pkt_header_t)), head->length);
     } else if (is_log_data_report(head)) {
         struct iom3_log_work *work = kmalloc(sizeof(struct iom3_log_work), GFP_ATOMIC);
         if(!work){
@@ -1821,13 +1880,19 @@ int inputhub_route_recv_mcu_data(const char *buf, unsigned int length)
             wake_lock_timeout(&wlock, HZ);
             hwlog_err("%s weaklock HZ motiontype = %d \n", __func__, motion_data[0]);
         }
+        if(((int)motion_data[0]) == MOTIONHUB_TYPE_ROTATION){
+            if(((int)motion_data[2]) == motion_rotate_mask){
+                hwlog_err("%s rotate in %d no need rotate \n", __func__, motion_rotate_mask);
+                return 0;
+            }
+        }
         return inputhub_route_write(ROUTE_MOTION_PORT, motion_data, head->length);
-    } else if (is_mcu_notifier(head)) {
-        mcu_notifier_queue_work(head);
     } else {
-        hwlog_err("--------->tag = %d, cmd = %d is not implement!\n", head->tag, head->cmd);
-        fobidden_comm = 1;
-        return -EINVAL;
+        if (!is_notifier) {
+            hwlog_err("--------->tag = %d, cmd = %d is not implement!\n", head->tag, head->cmd);
+            fobidden_comm = 1;
+            return -EINVAL;
+        }
     }
 
     return 0;
@@ -2409,6 +2474,7 @@ int inputhub_route_init(void)
 {
     init_locks();
     set_notifier();
+    init_hash_tables();
     return 0;
 }
 EXPORT_SYMBOL_GPL(inputhub_route_init);

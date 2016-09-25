@@ -8561,8 +8561,13 @@ VOS_VOID AT_PS_ProcIpv6RaInfo(TAF_PS_IPV6_INFO_IND_STRU *pstRaInfoNotifyInd)
 {
     AT_PS_CALL_ENTITY_STRU             *pstCallEntity = VOS_NULL_PTR;
     AT_IPV6_RA_INFO_STRU               *pstIpv6RaInfo = VOS_NULL_PTR;
+    VOS_UINT32                          ulIpv6AddrTestModeCfg;
+    AT_COMM_PS_CTX_STRU                *pstCommPsCtx = VOS_NULL_PTR;
     VOS_UINT8                           aucIpv6LanAddr[TAF_IPV6_ADDR_LEN] = {0};
     VOS_UINT8                           ucCallId;
+
+    pstCommPsCtx          = AT_GetCommPsCtxAddr();
+    ulIpv6AddrTestModeCfg = pstCommPsCtx->ulIpv6AddrTestModeCfg;
 
     ucCallId = AT_PS_TransCidToCallId(pstRaInfoNotifyInd->stCtrl.usClientId, pstRaInfoNotifyInd->ucCid);
 
@@ -8614,7 +8619,17 @@ VOS_VOID AT_PS_ProcIpv6RaInfo(TAF_PS_IPV6_INFO_IND_STRU *pstRaInfoNotifyInd)
         PS_MEM_CPY(pstIpv6RaInfo->aucLanAddr, aucIpv6LanAddr, TAF_IPV6_ADDR_LEN);
 
         /* 更新DHCPV6信息中的IPv6全局地址 */
-        PS_MEM_CPY(pstCallEntity->stIpv6DhcpInfo.aucIpv6Addr, aucIpv6LanAddr, TAF_IPV6_ADDR_LEN);
+        if ((IPV6_ADDRESS_TEST_MODE_ENABLE == ulIpv6AddrTestModeCfg)
+         && (AT_PS_IS_IPV6_ADDR_IID_VALID(pstCallEntity->stIpv6DhcpInfo.aucIpv6Addr)))
+        {
+            PS_MEM_CPY(pstCallEntity->stIpv6DhcpInfo.aucIpv6Addr,
+                       pstRaInfoNotifyInd->stIpv6RaInfo.astPrefixList[0].aucPrefix,
+                       pstRaInfoNotifyInd->stIpv6RaInfo.astPrefixList[0].ulBitPrefixLen/8);
+        }
+        else
+        {
+            PS_MEM_CPY(pstCallEntity->stIpv6DhcpInfo.aucIpv6Addr, aucIpv6LanAddr, TAF_IPV6_ADDR_LEN);
+        }
     }
 
     /* 记录Preferred Lifetime */

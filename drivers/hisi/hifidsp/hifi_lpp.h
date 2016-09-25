@@ -102,7 +102,7 @@ extern "C" {
 #define DRV_DSP_UART_TO_MEM_RESERVE_SIZE (10*1024)
 
 #define HIFI_SIZE_MUSIC_DATA			(HIFI_MUSIC_DATA_SIZE)
-#define SIZE_PARAM_PRIV 				(200 * 1024)
+#define SIZE_PARAM_PRIV 				(202 * 1024)
 
 #define SYS_TIME_STAMP_REG				(0xFFF0A534)
 #endif
@@ -111,7 +111,7 @@ extern "C" {
 #define OFFSET_HIFI_PRIV		(0x00300000)
 #define HIFI_MUSIC_DATA_SIZE	(0x100000) /* LowPowerPlayer.cpp:MEM_BUFF_SIZE */
 #define HIFI_PRIV_ADDR			(HIFI_SYS_MEM_ADDR + OFFSET_HIFI_PRIV)
-#define SIZE_PARAM_PRIV 		(200 * 1024)
+#define SIZE_PARAM_PRIV 		(202 * 1024)
 #endif
 
 /* 接收HIFI消息，前部cmd_id占用的字节数 */

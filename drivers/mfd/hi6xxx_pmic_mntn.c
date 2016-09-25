@@ -18,7 +18,7 @@
 #include <linux/hisi/hi6xxx_mntn.h> /*BSP_MODU_PMU*/
 
 #if defined (CONFIG_HUAWEI_DSM)
-#include <huawei_platform/dsm/dsm_pub.h>
+#include <dsm/dsm_pub.h>
 
 static struct dsm_dev dsm_pmu_ocp = {
 	.name = "dsm_pmu_ocp",
@@ -797,15 +797,72 @@ static ssize_t pmic_device_check_show(struct kobject *kobj, struct kobj_attribut
     return sum;
 }
 
+static ssize_t pmic_peri_en_ctrl_show(struct kobject *kobj, struct kobj_attribute *attr,
+            char *buf)
+{
+    unsigned char data = 0;
+
+    data = hi6xxx_pmic_reg_read(SOC_SMART_PERI_EN_MARK_ADDR(0));
+    return snprintf(buf, 10, "0x%x\n", data);
+}
+
+static ssize_t pmic_peri_en_ctrl_store(struct kobject *kobj, struct kobj_attribute *attr,
+             const char *buf, size_t count)
+{
+#define BIT_7 (1<<7) //This mean bit4~bit0 configure individually! Or BUCK2/LDO8/LDO18/LDO12 will be configured together!
+#define BIT4_BIT1_MASK (0xf<<1)
+#define BIT7_BIT5_MASK (0x7<<5)
+
+    long in_val = 0;
+    unsigned char reg_val = 0;
+    unsigned char raw_reg_val = 0;
+
+    if (strict_strtol(buf, 0, &in_val) < 0)
+        return -EINVAL;
+    if (NULL == strstr(saved_command_line,"androidboot.swtype=factory"))
+    {
+        pr_info("%s it's not factory version!\n", __func__);
+        return -EINVAL;
+    }
+
+    reg_val = (unsigned char)in_val;
+    raw_reg_val = hi6xxx_pmic_reg_read(SOC_SMART_PERI_EN_MARK_ADDR(0));
+    pr_info("%s in_val:%ld, reg_val:0x%x, raw_reg_val:0x%x!\n", __func__, in_val, reg_val, raw_reg_val);
+    if (reg_val & BIT_7)
+    {
+        reg_val = reg_val & (~BIT7_BIT5_MASK);
+        raw_reg_val |= reg_val;
+        reg_val = reg_val | BIT7_BIT5_MASK;
+        hi6xxx_pmic_reg_write(SOC_SMART_PERI_EN_MARK_ADDR(0), raw_reg_val & reg_val);
+    }
+    else
+    {
+        if (reg_val)
+        {
+            hi6xxx_pmic_reg_write(SOC_SMART_PERI_EN_MARK_ADDR(0), raw_reg_val & (~BIT4_BIT1_MASK));
+        }
+        else
+        {
+            hi6xxx_pmic_reg_write(SOC_SMART_PERI_EN_MARK_ADDR(0), raw_reg_val | BIT4_BIT1_MASK);
+        }
+    }
+
+    return count;
+}
+
 static struct kobj_attribute pmic_mntn_attribute =
     __ATTR(pmic_exch, 0660, pmic_mntn_show, pmic_mntn_store);
 
 static struct kobj_attribute pmic_device_attribute =
     __ATTR(pmic_device_check, 0660, pmic_device_check_show, NULL);
 
+static struct kobj_attribute pmic_peri_en_ctrl_attribute =
+    __ATTR(pmic_peri_en_ctrl, 0660, pmic_peri_en_ctrl_show, pmic_peri_en_ctrl_store);
+
 static struct attribute *pmic_mntn_attrs[] = {
     &pmic_mntn_attribute.attr,
     &pmic_device_attribute.attr,
+    &pmic_peri_en_ctrl_attribute.attr,
     NULL,   /* need to NULL terminate the list of attributes */
 };
 

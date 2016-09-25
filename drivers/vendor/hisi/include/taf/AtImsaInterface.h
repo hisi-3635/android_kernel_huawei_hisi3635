@@ -22,6 +22,8 @@ extern "C" {
 
 #define AT_IMSA_IMPU_MAX_LENGTH     (128)
 
+/* equals IMSA_MAX_CALL_NUMBER_LENGTH */
+#define AT_IMSA_CALL_ASCII_NUM_MAX_LENGTH     (40)
 /*****************************************************************************
   2 枚举定义
 *****************************************************************************/
@@ -56,9 +58,14 @@ enum AT_IMSA_MSG_TYPE_ENUM
     ID_IMSA_AT_VT_PDP_ACTIVATE_IND,                                             /* _H2ASN_MsgChoice IMSA_AT_VT_PDP_ACTIVATE_IND_STRU */
     ID_IMSA_AT_VT_PDP_DEACTIVATE_IND,                                           /* _H2ASN_MsgChoice IMSA_AT_VT_PDP_DEACTIVATE_IND_STRU */
 
+    ID_IMSA_AT_MT_STATES_IND,                                                   /* _H2ASN_MsgChoice IMSA_AT_MT_STATES_IND_STRU */
+
     ID_AT_IMSA_MSG_BUTT
 };
 typedef  VOS_UINT32  AT_IMSA_MSG_TYPE_ENUM_UINT32;
+
+
+
 enum AT_IMSA_IMS_REG_STATE_REPORT_ENUM
 {
     AT_IMSA_IMS_REG_STATE_DISABLE_REPORT        = 0,
@@ -307,6 +314,19 @@ typedef struct
     TAF_PDP_TYPE_ENUM_UINT8             enPdpType;
 } IMSA_AT_VT_PDP_DEACTIVATE_IND_STRU;
 
+
+typedef struct
+{
+    VOS_MSG_HEADER                                          /* _H2ASN_Skip */
+    VOS_UINT32                          ulMsgId;            /* _H2ASN_Skip */
+    VOS_UINT16                          usClientId;
+    VOS_UINT8                           ucOpId;
+    VOS_UINT8                           aucReserved[1];
+    VOS_UINT32                          ulCauseCode;
+    VOS_UINT8                           ucMtStatus;
+    VOS_UINT8                           aucRsv[3];
+    VOS_UINT8                           aucAsciiCallNum[AT_IMSA_CALL_ASCII_NUM_MAX_LENGTH];
+} IMSA_AT_MT_STATES_IND_STRU;
 /*****************************************************************************
   4 宏定义
 *****************************************************************************/

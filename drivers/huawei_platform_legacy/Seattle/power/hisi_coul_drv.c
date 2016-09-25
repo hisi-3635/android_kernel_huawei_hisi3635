@@ -103,6 +103,25 @@ int is_hisi_battery_exist(void)
 
     return 0;
 }
+/****************************************************************************
+  Function:     hisi_battery_aging_safe_policy
+  Description:  get the battery aging safe policy
+  Input:        AGING_SAFE_POLICY *asp
+  Output:       NA
+  Return:       0 SUCCESS Or < 0 if something fails
+****************************************************************************/
+int hisi_battery_aging_safe_policy(AGING_SAFE_POLICY_TYPE *asp)
+{
+    /*declare the local variable of struct hisi_coul_ops */
+    LOCAL_HISI_COUL_OPS();
+
+    /*execute the operation of coul module */
+    if (g_hisi_coul_ops && g_hisi_coul_ops->aging_safe_policy)
+    {
+        return g_hisi_coul_ops->aging_safe_policy(asp);
+    }
+    return -EPERM;
+}
 
 /****************************************************************************
   Function:     is_hisi_battery_reach_threshold

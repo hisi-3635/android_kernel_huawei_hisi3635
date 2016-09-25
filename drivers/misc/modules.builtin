@@ -1,0 +1,3 @@
+kernel/drivers/misc/uid_cputime.ko
+kernel/drivers/misc/drv2605/drv2605.ko
+kernel/drivers/misc/hilog/hisi-log.ko
